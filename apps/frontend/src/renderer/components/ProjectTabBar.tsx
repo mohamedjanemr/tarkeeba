@@ -5,7 +5,7 @@ import { cn } from '../lib/utils';
 import { Button } from './ui/button';
 import { SortableProjectTab } from './SortableProjectTab';
 import { UsageIndicator } from './UsageIndicator';
-import { AuthStatusIndicator } from './AuthStatusIndicator';
+import { OpenAIAccountIndicator } from './OpenAIAccountIndicator';
 import type { Project } from '../../shared/types';
 
 interface ProjectTabBarProps {
@@ -113,7 +113,7 @@ export function ProjectTabBar({
       </div>
 
       <div className="flex items-center gap-2 px-2 py-1">
-        <AuthStatusIndicator />
+        <OpenAIAccountIndicator />
         <UsageIndicator />
         <Button
           variant="ghost"

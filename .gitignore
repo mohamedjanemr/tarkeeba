@@ -44,6 +44,7 @@ credentials/
 logs/
 *.log
 npm-debug.log*
+.npm-cache/
 yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
@@ -54,7 +55,7 @@ lerna-debug.log*
 .worktrees/
 
 # ===========================
-# Auto Claude Generated
+# Tarkeeba Generated
 # ===========================
 .auto-claude/
 .planning/
@@ -170,7 +171,7 @@ _bmad-output/
 OPUS_ANALYSIS_AND_IDEAS.md
 /.github/agents
 
-# Auto Claude generated files
+# Tarkeeba generated files
 .security-key
 /shared_docs
 logs/security/

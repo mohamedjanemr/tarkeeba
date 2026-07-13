@@ -366,6 +366,31 @@ const browserMockAPI: ElectronAPI = {
     error: 'Screenshot capture not available in browser mode'
   }),
 
+  // Codex model discovery
+  listCodexModels: async () => ({
+    success: true,
+    data: [
+      {
+        id: 'gpt-5.6-sol',
+        displayName: 'GPT-5.6-Sol',
+        supportedReasoningEfforts: ['low', 'medium', 'high', 'xhigh'] as const
+      }
+    ]
+  }),
+  getOpenAIProfiles: async () => ({ success: true, data: { profiles: [], activeProfileId: null } }),
+  createOpenAIProfile: async (name: string) => ({
+    success: true,
+    data: {
+      id: 'openai-browser-mock', name, codexHome: '/tmp/codex-browser-mock',
+      isAuthenticated: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
+    }
+  }),
+  renameOpenAIProfile: async () => ({ success: true }),
+  deleteOpenAIProfile: async () => ({ success: true }),
+  setActiveOpenAIProfile: async () => ({ success: true }),
+  loginOpenAIProfile: async () => ({ success: true }),
+  verifyOpenAIProfile: async () => ({ success: true, data: { authenticated: false } }),
+
   // Debug Operations
   getDebugInfo: async () => ({
     systemInfo: {

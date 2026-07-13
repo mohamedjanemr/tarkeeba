@@ -2,7 +2,7 @@
 Runners Module
 ==============
 
-Standalone runners for various Auto Claude capabilities.
+Standalone runners for various Tarkeeba capabilities.
 Each runner can be invoked from CLI or programmatically.
 """
 

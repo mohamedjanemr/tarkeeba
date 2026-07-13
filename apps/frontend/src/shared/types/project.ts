@@ -441,7 +441,7 @@ export interface McpTestConnectionResult {
   responseTime?: number;
 }
 
-// Auto Claude Initialization Types
+// Tarkeeba Initialization Types
 export interface AutoBuildVersionInfo {
   isInitialized: boolean;
   updateAvailable: boolean; // Always false - .auto-claude only contains data, no code to update

@@ -7,7 +7,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Activity, TrendingUp, AlertCircle, Clock, ChevronRight, Info, LogIn } from 'lucide-react';
+import { Activity, TrendingUp, AlertCircle, Clock, ChevronRight, Info, LogIn, RefreshCw } from 'lucide-react';
 import {
   Popover,
   PopoverContent,
@@ -30,6 +30,7 @@ import type { AppSection } from './settings/AppSettings';
 const THRESHOLD_CRITICAL = 95;  // Red: At or near limit
 const THRESHOLD_WARNING = 91;   // Orange: Very high usage
 const THRESHOLD_ELEVATED = 71;  // Yellow: Moderate usage
+const AUTO_REFRESH_INTERVAL_MS = 60_000;
 // Below 71 is considered normal (green)
 
 /**
@@ -81,7 +82,22 @@ export function UsageIndicator() {
   const [activeProfileNeedsReauth, setActiveProfileNeedsReauth] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState(false);
+  const [activeProvider, setActiveProvider] = useState<'claude' | 'codex'>(() =>
+    localStorage.getItem('auto-claude:agent-provider') === 'codex' ? 'codex' : 'claude'
+  );
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const refreshInFlightRef = useRef(false);
+
+  useEffect(() => {
+    const handleProviderChange = (event: Event) => {
+      const provider = (event as CustomEvent<{ provider: 'claude' | 'codex' }>).detail?.provider;
+      if (provider) setActiveProvider(provider);
+    };
+    window.addEventListener('agent-provider-changed', handleProviderChange);
+    return () => window.removeEventListener('agent-provider-changed', handleProviderChange);
+  }, []);
 
   /**
    * Helper function to get initials from a profile name
@@ -290,6 +306,57 @@ export function UsageIndicator() {
     }
   }, []);
 
+  /**
+   * Refresh the active account and all profile usage without allowing
+   * overlapping requests from the button and the auto-refresh timer.
+   */
+  const refreshUsage = useCallback(async () => {
+    if (refreshInFlightRef.current) return;
+
+    refreshInFlightRef.current = true;
+    setIsRefreshing(true);
+    setRefreshError(false);
+
+    try {
+      const [usageResult, allProfilesResult] = await Promise.all([
+        window.electronAPI.requestUsageUpdate(),
+        window.electronAPI.requestAllProfilesUsage?.(true) ?? Promise.resolve(null),
+      ]);
+
+      if (!usageResult.success || !usageResult.data) {
+        throw new Error(usageResult.error || 'Usage data was unavailable');
+      }
+
+      setUsage(usageResult.data);
+      setIsAvailable(true);
+
+      if (allProfilesResult?.success && allProfilesResult.data) {
+        const nonActiveProfiles = allProfilesResult.data.allProfiles.filter(p => !p.isActive);
+        const activeProfile = allProfilesResult.data.allProfiles.find(p => p.isActive);
+        setOtherProfiles(nonActiveProfiles);
+        setActiveProfileNeedsReauth(activeProfile?.needsReauthentication ?? false);
+      }
+    } catch (error) {
+      console.warn('[UsageIndicator] Failed to refresh usage:', error);
+      setRefreshError(true);
+    } finally {
+      refreshInFlightRef.current = false;
+      setIsRefreshing(false);
+    }
+  }, []);
+
+  // Keep the visible breakdown current without polling while it is closed.
+  useEffect(() => {
+    if (!isOpen) return;
+
+    void refreshUsage();
+    const intervalId = window.setInterval(() => {
+      void refreshUsage();
+    }, AUTO_REFRESH_INTERVAL_MS);
+
+    return () => window.clearInterval(intervalId);
+  }, [isOpen, refreshUsage]);
+
   // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
@@ -362,6 +429,9 @@ export function UsageIndicator() {
       unsubscribeAllProfiles?.();
     };
   }, []);
+
+  // OpenAI does not expose Claude-style usage windows through the Codex CLI.
+  if (activeProvider === 'codex') return null;
 
   // Show loading state
   if (isLoading) {
@@ -504,9 +574,27 @@ export function UsageIndicator() {
       >
         <div className="p-3 space-y-3">
           {/* Header with overall status */}
-          <div className="flex items-center gap-1.5 pb-2 border-b">
-            <Icon className="h-3.5 w-3.5" />
-            <span className="font-semibold text-xs">{t('common:usage.usageBreakdown')}</span>
+          <div className="flex items-center justify-between gap-2 pb-2 border-b">
+            <div className="flex items-center gap-1.5">
+              <Icon className="h-3.5 w-3.5" />
+              <span className="font-semibold text-xs">{t('common:usage.usageBreakdown')}</span>
+            </div>
+            <button
+              type="button"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                void refreshUsage();
+              }}
+              disabled={isRefreshing}
+              className={`rounded p-1 transition-colors hover:bg-muted disabled:cursor-wait ${
+                refreshError ? 'text-destructive' : 'text-muted-foreground hover:text-foreground'
+              }`}
+              aria-label={isRefreshing ? t('common:buttons.refreshing') : t('common:usage.refreshUsage')}
+              title={refreshError ? t('common:usage.refreshFailed') : t('common:usage.refreshUsage')}
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? 'motion-safe:animate-spin' : ''}`} />
+            </button>
           </div>
 
           {/* Re-auth required prompt - shown when active profile needs re-authentication */}

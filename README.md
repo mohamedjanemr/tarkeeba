@@ -1,14 +1,13 @@
-# Auto Claude
+# Tarkeeba
 
-**Autonomous multi-agent coding framework that plans, builds, and validates software for you.**
+**A provider-neutral desktop workspace that plans, builds, and validates software with autonomous coding agents.**
 
-![Auto Claude Kanban Board](.github/assets/Auto-Claude-Kanban.png)
+Tarkeeba currently supports Anthropic Claude Code and OpenAI Codex, including model selection and separate account profiles for each provider.
+
+![Tarkeeba Kanban Board](.github/assets/Tarkeeba-Kanban.png)
 
 [![License](https://img.shields.io/badge/license-AGPL--3.0-green?style=flat-square)](./agpl-3.0.txt)
-[![Discord](https://img.shields.io/badge/Discord-Join%20Community-5865F2?style=flat-square&logo=discord&logoColor=white)](https://discord.gg/KCXaPBr4Dj)
-[![YouTube](https://img.shields.io/badge/YouTube-Subscribe-FF0000?style=flat-square&logo=youtube&logoColor=white)](https://www.youtube.com/@AndreMikalsen)
-[![CI](https://img.shields.io/github/actions/workflow/status/AndyMik90/Auto-Claude/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/AndyMik90/Auto-Claude/actions)
-[![Mentioned in Awesome Claude Code](https://awesome.re/mentioned-badge-flat.svg)](https://github.com/hesreallyhim/awesome-claude-code)
+[![CI](https://img.shields.io/github/actions/workflow/status/mohamedjanemr/tarkeeba/ci.yml?branch=develop&style=flat-square&label=CI)](https://github.com/mohamedjanemr/tarkeeba/actions)
 
 ---
 
@@ -17,37 +16,32 @@
 ### Stable Release
 
 <!-- STABLE_VERSION_BADGE -->
-[![Stable](https://img.shields.io/badge/stable-2.7.6-blue?style=flat-square)](https://github.com/AndyMik90/Auto-Claude/releases/tag/v2.7.6)
+No Tarkeeba stable release has been published yet.
 <!-- STABLE_VERSION_BADGE_END -->
 
 <!-- STABLE_DOWNLOADS -->
-| Platform | Download |
-|----------|----------|
-| **Windows** | [Auto-Claude-2.7.6-win32-x64.exe](https://github.com/AndyMik90/Auto-Claude/releases/download/v2.7.6/Auto-Claude-2.7.6-win32-x64.exe) |
-| **macOS (Apple Silicon)** | [Auto-Claude-2.7.6-darwin-arm64.dmg](https://github.com/AndyMik90/Auto-Claude/releases/download/v2.7.6/Auto-Claude-2.7.6-darwin-arm64.dmg) |
-| **macOS (Intel)** | [Auto-Claude-2.7.6-darwin-x64.dmg](https://github.com/AndyMik90/Auto-Claude/releases/download/v2.7.6/Auto-Claude-2.7.6-darwin-x64.dmg) |
-| **Linux** | [Auto-Claude-2.7.6-linux-x86_64.AppImage](https://github.com/AndyMik90/Auto-Claude/releases/download/v2.7.6/Auto-Claude-2.7.6-linux-x86_64.AppImage) |
-| **Linux (Debian)** | [Auto-Claude-2.7.6-linux-amd64.deb](https://github.com/AndyMik90/Auto-Claude/releases/download/v2.7.6/Auto-Claude-2.7.6-linux-amd64.deb) |
-| **Linux (Flatpak)** | [Auto-Claude-2.7.6-linux-x86_64.flatpak](https://github.com/AndyMik90/Auto-Claude/releases/download/v2.7.6/Auto-Claude-2.7.6-linux-x86_64.flatpak) |
+Downloads will appear here after the first stable release.
 <!-- STABLE_DOWNLOADS_END -->
 
 ### Beta Release
 
-> ⚠️ Beta releases may contain bugs and breaking changes. [View all releases](https://github.com/AndyMik90/Auto-Claude/releases)
+> ⚠️ Beta releases may contain bugs and breaking changes. [View all releases](https://github.com/mohamedjanemr/tarkeeba/releases)
+>
+> `2.8.0-beta.1` is prepared but not published yet; the links below become active after the release workflow succeeds.
 
 <!-- BETA_VERSION_BADGE -->
-[![Beta](https://img.shields.io/badge/beta-2.7.6--beta.6-orange?style=flat-square)](https://github.com/AndyMik90/Auto-Claude/releases/tag/v2.7.6-beta.6)
+[![Beta](https://img.shields.io/badge/beta-2.8.0--beta.1-orange?style=flat-square)](https://github.com/mohamedjanemr/tarkeeba/releases/tag/v2.8.0-beta.1)
 <!-- BETA_VERSION_BADGE_END -->
 
 <!-- BETA_DOWNLOADS -->
 | Platform | Download |
 |----------|----------|
-| **Windows** | [Auto-Claude-2.7.6-beta.6-win32-x64.exe](https://github.com/AndyMik90/Auto-Claude/releases/download/v2.7.6-beta.6/Auto-Claude-2.7.6-beta.6-win32-x64.exe) |
-| **macOS (Apple Silicon)** | [Auto-Claude-2.7.6-beta.6-darwin-arm64.dmg](https://github.com/AndyMik90/Auto-Claude/releases/download/v2.7.6-beta.6/Auto-Claude-2.7.6-beta.6-darwin-arm64.dmg) |
-| **macOS (Intel)** | [Auto-Claude-2.7.6-beta.6-darwin-x64.dmg](https://github.com/AndyMik90/Auto-Claude/releases/download/v2.7.6-beta.6/Auto-Claude-2.7.6-beta.6-darwin-x64.dmg) |
-| **Linux** | [Auto-Claude-2.7.6-beta.6-linux-x86_64.AppImage](https://github.com/AndyMik90/Auto-Claude/releases/download/v2.7.6-beta.6/Auto-Claude-2.7.6-beta.6-linux-x86_64.AppImage) |
-| **Linux (Debian)** | [Auto-Claude-2.7.6-beta.6-linux-amd64.deb](https://github.com/AndyMik90/Auto-Claude/releases/download/v2.7.6-beta.6/Auto-Claude-2.7.6-beta.6-linux-amd64.deb) |
-| **Linux (Flatpak)** | [Auto-Claude-2.7.6-beta.6-linux-x86_64.flatpak](https://github.com/AndyMik90/Auto-Claude/releases/download/v2.7.6-beta.6/Auto-Claude-2.7.6-beta.6-linux-x86_64.flatpak) |
+| **Windows** | [Tarkeeba-2.8.0-beta.1-win32-x64.exe](https://github.com/mohamedjanemr/tarkeeba/releases/download/v2.8.0-beta.1/Tarkeeba-2.8.0-beta.1-win32-x64.exe) |
+| **macOS (Apple Silicon)** | [Tarkeeba-2.8.0-beta.1-darwin-arm64.dmg](https://github.com/mohamedjanemr/tarkeeba/releases/download/v2.8.0-beta.1/Tarkeeba-2.8.0-beta.1-darwin-arm64.dmg) |
+| **macOS (Intel)** | [Tarkeeba-2.8.0-beta.1-darwin-x64.dmg](https://github.com/mohamedjanemr/tarkeeba/releases/download/v2.8.0-beta.1/Tarkeeba-2.8.0-beta.1-darwin-x64.dmg) |
+| **Linux** | [Tarkeeba-2.8.0-beta.1-linux-x86_64.AppImage](https://github.com/mohamedjanemr/tarkeeba/releases/download/v2.8.0-beta.1/Tarkeeba-2.8.0-beta.1-linux-x86_64.AppImage) |
+| **Linux (Debian)** | [Tarkeeba-2.8.0-beta.1-linux-amd64.deb](https://github.com/mohamedjanemr/tarkeeba/releases/download/v2.8.0-beta.1/Tarkeeba-2.8.0-beta.1-linux-amd64.deb) |
+| **Linux (Flatpak)** | [Tarkeeba-2.8.0-beta.1-linux-x86_64.flatpak](https://github.com/mohamedjanemr/tarkeeba/releases/download/v2.8.0-beta.1/Tarkeeba-2.8.0-beta.1-linux-x86_64.flatpak) |
 <!-- BETA_DOWNLOADS_END -->
 
 > All releases include SHA256 checksums and VirusTotal scan results for security verification.
@@ -56,8 +50,9 @@
 
 ## Requirements
 
-- **Claude Pro/Max subscription** - [Get one here](https://claude.ai/upgrade)
-- **Claude Code CLI** - `npm install -g @anthropic-ai/claude-code`
+- **At least one AI provider** - Claude Code or OpenAI Codex
+- **Claude option** - Claude Pro/Max plus `npm install -g @anthropic-ai/claude-code`
+- **Codex option** - Codex CLI authenticated with `codex login`
 - **Git repository** - Your project must be initialized as a git repo
 
 ---
@@ -66,7 +61,7 @@
 
 1. **Download and install** the app for your platform
 2. **Open your project** - Select a git repository folder
-3. **Connect Claude** - The app will guide you through OAuth setup
+3. **Connect a provider** - Onboard a Claude Code or OpenAI account in Settings
 4. **Create a task** - Describe what you want to build
 5. **Watch it work** - Agents plan, code, and validate autonomously
 
@@ -77,6 +72,7 @@
 | Feature | Description |
 |---------|-------------|
 | **Autonomous Tasks** | Describe your goal; agents handle planning, implementation, and validation |
+| **Provider Choice** | Select Claude Code or OpenAI Codex, account, and model per session |
 | **Parallel Execution** | Run multiple builds simultaneously with up to 12 agent terminals |
 | **Isolated Workspaces** | All changes happen in git worktrees - your main branch stays safe |
 | **Self-Validating QA** | Built-in quality assurance loop catches issues before you review |
@@ -97,12 +93,12 @@ Visual task management from planning through completion. Create tasks and monito
 ### Agent Terminals
 AI-powered terminals with one-click task context injection. Spawn multiple agents for parallel work.
 
-![Agent Terminals](.github/assets/Auto-Claude-Agents-terminals.png)
+![Agent Terminals](.github/assets/Tarkeeba-Agents-terminals.png)
 
 ### Roadmap
 AI-assisted feature planning with competitor analysis and audience targeting.
 
-![Roadmap](.github/assets/Auto-Claude-roadmap.png)
+![Roadmap](.github/assets/Tarkeeba-roadmap.png)
 
 ### Additional Features
 - **Insights** - Chat interface for exploring your codebase
@@ -157,7 +153,7 @@ For Linux-specific builds (Flatpak, AppImage), see [guides/linux.md](guides/linu
 
 ## Security
 
-Auto Claude uses a three-layer security model:
+Tarkeeba uses a three-layer security model:
 
 1. **OS Sandbox** - Bash commands run in isolation
 2. **Filesystem Restrictions** - Operations limited to project directory
@@ -200,9 +196,8 @@ We welcome contributions! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for:
 
 ## Community
 
-- **Discord** - [Join our community](https://discord.gg/KCXaPBr4Dj)
-- **Issues** - [Report bugs or request features](https://github.com/AndyMik90/Auto-Claude/issues)
-- **Discussions** - [Ask questions](https://github.com/AndyMik90/Auto-Claude/discussions)
+- **Issues** - [Report bugs or request features](https://github.com/mohamedjanemr/tarkeeba/issues)
+- **Discussions** - [Ask questions](https://github.com/mohamedjanemr/tarkeeba/discussions)
 
 ---
 
@@ -210,14 +205,10 @@ We welcome contributions! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for:
 
 **AGPL-3.0** - GNU Affero General Public License v3.0
 
-Auto Claude is free to use. If you modify and distribute it, or run it as a service, your code must also be open source under AGPL-3.0.
-
-Commercial licensing available for closed-source use cases.
+Tarkeeba is free software. If you modify and distribute it, or offer a modified version over a network, review and comply with the AGPL-3.0 source-availability requirements.
 
 ---
 
-## Star History
+## Origin and attribution
 
-[![GitHub Repo stars](https://img.shields.io/github/stars/AndyMik90/Auto-Claude?style=social)](https://github.com/AndyMik90/Auto-Claude/stargazers)
-
-[![Star History Chart](https://api.star-history.com/svg?repos=AndyMik90/Auto-Claude&type=Date)](https://star-history.com/#AndyMik90/Auto-Claude&Date)
+Tarkeeba is an independent AGPL-3.0 fork of [Auto-Claude](https://github.com/B1tMaster/Auto-Claude), whose upstream project is now [Aperant](https://github.com/AndyMik90/Aperant). It is not affiliated with Anthropic or OpenAI. Original copyright and contributor history remain available in this repository's Git history and changelog.

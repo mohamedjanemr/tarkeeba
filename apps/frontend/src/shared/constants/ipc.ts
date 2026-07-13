@@ -464,7 +464,7 @@ export const IPC_CHANNELS = {
   OLLAMA_PULL_MODEL: 'ollama:pullModel',
   OLLAMA_PULL_PROGRESS: 'ollama:pullProgress',
 
-  // Auto Claude source environment configuration
+  // Tarkeeba source environment configuration
   AUTOBUILD_SOURCE_ENV_GET: 'autobuild:source:env:get',
   AUTOBUILD_SOURCE_ENV_UPDATE: 'autobuild:source:env:update',
   AUTOBUILD_SOURCE_ENV_CHECK_TOKEN: 'autobuild:source:env:checkToken',
@@ -580,6 +580,16 @@ export const IPC_CHANNELS = {
   // Screenshot capture
   SCREENSHOT_GET_SOURCES: 'screenshot:getSources',  // Get available screens/windows
   SCREENSHOT_CAPTURE: 'screenshot:capture',          // Capture screenshot from source
+
+  // OpenAI Codex CLI
+  CODEX_LIST_MODELS: 'codex:listModels',              // Discover models available to the active Codex login
+  CODEX_PROFILES_GET: 'codex:profiles:get',
+  CODEX_PROFILE_CREATE: 'codex:profiles:create',
+  CODEX_PROFILE_RENAME: 'codex:profiles:rename',
+  CODEX_PROFILE_DELETE: 'codex:profiles:delete',
+  CODEX_PROFILE_SET_ACTIVE: 'codex:profiles:setActive',
+  CODEX_PROFILE_LOGIN: 'codex:profiles:login',
+  CODEX_PROFILE_VERIFY: 'codex:profiles:verify',
 
   // Queue routing (rate limit recovery)
   QUEUE_GET_RUNNING_TASKS_BY_PROFILE: 'queue:getRunningTasksByProfile',

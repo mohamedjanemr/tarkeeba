@@ -1,8 +1,8 @@
 """
-Auto Claude CLI Package
+Tarkeeba CLI Package
 =======================
 
-Command-line interface for the Auto Claude autonomous coding framework.
+Command-line interface for the Tarkeeba autonomous coding framework.
 
 This package provides a modular CLI structure:
 - main.py: Argument parsing and command routing

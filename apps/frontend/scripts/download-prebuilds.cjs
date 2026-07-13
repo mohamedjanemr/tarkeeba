@@ -11,7 +11,8 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
-const GITHUB_REPO = 'AndyMik90/Auto-Claude';
+// Native prebuilds are inherited from the upstream project, not Tarkeeba releases.
+const GITHUB_REPO = 'AndyMik90/Aperant';
 
 /**
  * Get the Electron ABI version for the installed Electron
@@ -60,7 +61,7 @@ function getLatestRelease() {
       hostname: 'api.github.com',
       path: `/repos/${GITHUB_REPO}/releases/latest`,
       headers: {
-        'User-Agent': 'Auto-Claude-Installer',
+        'User-Agent': 'Tarkeeba-Installer',
         Accept: 'application/vnd.github.v3+json',
       },
     };
@@ -104,7 +105,7 @@ function downloadFile(url, destPath) {
 
     const request = (url) => {
       https
-        .get(url, { headers: { 'User-Agent': 'Auto-Claude-Installer' } }, (res) => {
+        .get(url, { headers: { 'User-Agent': 'Tarkeeba-Installer' } }, (res) => {
           if (res.statusCode === 302 || res.statusCode === 301) {
             // Follow redirect
             request(res.headers.location);

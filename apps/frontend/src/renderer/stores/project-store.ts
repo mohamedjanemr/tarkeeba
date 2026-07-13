@@ -435,14 +435,17 @@ export async function initializeProject(
     const result = await window.electronAPI.initializeProject(projectId);
     console.log('[ProjectStore] IPC result:', result);
 
-    if (result.success && result.data) {
-      console.log('[ProjectStore] IPC succeeded, result.data:', result.data);
+    // InitializationResult carries the actionable backend error even when the
+    // IPCResult itself is unsuccessful. Preserve it for dialog feedback.
+    if (result.data) {
+      console.log('[ProjectStore] IPC returned result.data:', result.data);
       // Update the project's autoBuildPath in local state
       if (result.data.success) {
         console.log('[ProjectStore] Updating project autoBuildPath to .auto-claude');
         store.updateProject(projectId, { autoBuildPath: '.auto-claude' });
       } else {
         console.log('[ProjectStore] result.data.success is false, not updating project');
+        store.setError(result.data.error || result.error || 'Failed to initialize project');
       }
       return result.data;
     }

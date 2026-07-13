@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">Tarkeeba</title>
+  <desc id="desc">A luminous modular T assembled from connected code paths.</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#20262c"/>
+      <stop offset="1" stop-color="#111418"/>
+    </linearGradient>
+    <linearGradient id="signal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f4f08a"/>
+      <stop offset="1" stop-color="#a8d86f"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="220" fill="url(#background)"/>
+  <rect x="56" y="56" width="912" height="912" rx="176" fill="none" stroke="#343c42" stroke-width="18"/>
+  <path d="M512 156 790 316v320L512 796 234 636V316z" fill="#171c20" stroke="url(#signal)" stroke-width="46" stroke-linejoin="round"/>
+  <path d="M344 370h336M512 370v310" fill="none" stroke="url(#signal)" stroke-width="58" stroke-linecap="round"/>
+  <circle cx="344" cy="370" r="38" fill="#f4f08a"/>
+  <circle cx="512" cy="370" r="49" fill="#eef18a" stroke="#171c20" stroke-width="18"/>
+  <circle cx="680" cy="370" r="38" fill="#d7e982"/>
+  <circle cx="512" cy="520" r="35" fill="#c3e279" stroke="#171c20" stroke-width="14"/>
+  <circle cx="512" cy="680" r="38" fill="#a8d86f"/>
+</svg>

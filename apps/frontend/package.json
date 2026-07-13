@@ -1,17 +1,16 @@
 {
-  "name": "auto-claude-ui",
-  "version": "2.7.6",
+  "name": "tarkeeba",
+  "version": "2.8.0-beta.1",
   "type": "module",
-  "description": "Desktop UI for Auto Claude autonomous coding framework",
-  "homepage": "https://github.com/AndyMik90/Auto-Claude",
+  "description": "Tarkeeba desktop workspace for autonomous coding agents",
+  "homepage": "https://github.com/mohamedjanemr/tarkeeba",
   "repository": {
     "type": "git",
-    "url": "https://github.com/AndyMik90/Auto-Claude.git"
+    "url": "https://github.com/mohamedjanemr/tarkeeba.git"
   },
   "main": "./out/main/index.js",
   "author": {
-    "name": "Auto Claude Team",
-    "email": "119136210+AndyMik90@users.noreply.github.com"
+    "name": "Tarkeeba contributors"
   },
   "license": "AGPL-3.0",
   "engines": {
@@ -38,9 +37,9 @@
     "package:flatpak": "node scripts/package-with-python.cjs --linux flatpak",
     "verify:linux": "node scripts/verify-linux-packages.cjs dist",
     "test:verify-linux": "node --test scripts/verify-linux-packages.test.mjs",
-    "start:packaged:mac": "open dist/mac-arm64/Auto-Claude.app || open dist/mac/Auto-Claude.app",
-    "start:packaged:win": "start \"\" \"dist\\win-unpacked\\Auto-Claude.exe\"",
-    "start:packaged:linux": "./dist/linux-unpacked/auto-claude",
+    "start:packaged:mac": "open dist/mac-arm64/Tarkeeba.app || open dist/mac/Tarkeeba.app",
+    "start:packaged:win": "start \"\" \"dist\\win-unpacked\\Tarkeeba.exe\"",
+    "start:packaged:linux": "./dist/linux-unpacked/tarkeeba",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
@@ -142,15 +141,15 @@
     "@electron/rebuild": "4.0.2"
   },
   "build": {
-    "appId": "com.autoclaude.ui",
-    "productName": "Auto-Claude",
+    "appId": "io.github.mohamedjanemr.tarkeeba",
+    "productName": "Tarkeeba",
     "npmRebuild": false,
     "artifactName": "${productName}-${version}-${platform}-${arch}.${ext}",
     "publish": [
       {
         "provider": "github",
-        "owner": "AndyMik90",
-        "repo": "Auto-Claude"
+        "owner": "mohamedjanemr",
+        "repo": "tarkeeba"
       }
     ],
     "directories": {

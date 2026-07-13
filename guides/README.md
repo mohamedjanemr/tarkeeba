@@ -1,6 +1,6 @@
-# Auto Claude Guides
+# Tarkeeba Guides
 
-Detailed documentation for Auto Claude setup and usage.
+Detailed documentation for Tarkeeba setup and usage.
 
 ## Available Guides
 

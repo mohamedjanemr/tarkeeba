@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events';
 import path from 'path';
-import { existsSync, readdirSync } from 'fs';
+import { existsSync, readFileSync, readdirSync } from 'fs';
 import { AgentState } from './agent-state';
 import { AgentEvents } from './agent-events';
 import { AgentProcessManager } from './agent-process';
@@ -17,6 +17,7 @@ import type { IdeationConfig } from '../../shared/types';
 import { resetStuckSubtasks } from '../ipc-handlers/task/plan-file-utils';
 import { AUTO_BUILD_PATHS, getSpecsDir, sanitizeThinkingLevel } from '../../shared/constants';
 import { projectStore } from '../project-store';
+import { getOpenAIProfileManager } from '../openai-profile-manager';
 
 /**
  * Main AgentManager - orchestrates agent process lifecycle
@@ -104,6 +105,48 @@ export class AgentManager extends EventEmitter {
    */
   configure(pythonPath?: string, autoBuildSourcePath?: string): void {
     this.processManager.configure(pythonPath, autoBuildSourcePath);
+  }
+
+  private getSpecDir(projectPath: string, specId: string): string {
+    return path.join(projectPath, AUTO_BUILD_PATHS.SPECS_DIR, specId);
+  }
+
+  private isCodexTask(specDir: string): boolean {
+    try {
+      const metadata = JSON.parse(readFileSync(path.join(specDir, 'task_metadata.json'), 'utf-8'));
+      return metadata.provider === 'codex';
+    } catch {
+      return false;
+    }
+  }
+
+  private applyCodexProfileEnv(env: Record<string, string>, profileId?: string): Record<string, string> {
+    const profile = getOpenAIProfileManager().getProfile(profileId);
+    if (!profile) return env;
+    return { ...env, CODEX_HOME: profile.codexHome };
+  }
+
+  private getCodexProfileId(specDir: string): string | undefined {
+    try {
+      const metadata = JSON.parse(readFileSync(path.join(specDir, 'task_metadata.json'), 'utf-8'));
+      return typeof metadata.codexProfileId === 'string' ? metadata.codexProfileId : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  private validateCodexProfile(taskId: string, profileId?: string): boolean {
+    if (!profileId) return true; // Backward compatibility for tasks created before account profiles.
+    const profile = getOpenAIProfileManager().getProfile(profileId);
+    if (!profile) {
+      this.emit('error', taskId, 'The OpenAI account assigned to this task no longer exists. Select another account in the task settings.');
+      return false;
+    }
+    if (!profile.isAuthenticated) {
+      this.emit('error', taskId, `OpenAI account "${profile.name}" requires sign-in. Open Settings > Accounts > OpenAI.`);
+      return false;
+    }
+    return true;
   }
 
   /**
@@ -230,19 +273,23 @@ export class AgentManager extends EventEmitter {
     baseBranch?: string,
     projectId?: string
   ): Promise<void> {
+    const useCodex = metadata?.provider === 'codex';
+    if (useCodex && !this.validateCodexProfile(taskId, metadata?.codexProfileId)) return;
     // Pre-flight auth check: Verify active profile has valid authentication
     // Ensure profile manager is initialized to prevent race condition
-    let profileManager: ClaudeProfileManager;
-    try {
-      profileManager = await initializeClaudeProfileManager();
-    } catch (error) {
-      console.error('[AgentManager] Failed to initialize profile manager:', error);
-      this.emit('error', taskId, 'Failed to initialize profile manager. Please check file permissions and disk space.');
-      return;
-    }
-    if (!profileManager.hasValidAuth()) {
-      this.emit('error', taskId, 'Claude authentication required. Please authenticate in Settings > Claude Profiles before starting tasks.');
-      return;
+    if (!useCodex) {
+      let profileManager: ClaudeProfileManager;
+      try {
+        profileManager = await initializeClaudeProfileManager();
+      } catch (error) {
+        console.error('[AgentManager] Failed to initialize profile manager:', error);
+        this.emit('error', taskId, 'Failed to initialize profile manager. Please check file permissions and disk space.');
+        return;
+      }
+      if (!profileManager.hasValidAuth()) {
+        this.emit('error', taskId, 'Claude authentication required. Please authenticate in Settings > Claude Profiles before starting tasks.');
+        return;
+      }
     }
 
     // Ensure Python environment is ready before spawning process (prevents exit code 127 race condition)
@@ -259,16 +306,18 @@ export class AgentManager extends EventEmitter {
       return;
     }
 
-    const specRunnerPath = path.join(autoBuildSource, 'runners', 'spec_runner.py');
+    const specRunnerPath = path.join(autoBuildSource, 'runners', useCodex ? 'codex_runner.py' : 'spec_runner.py');
 
     if (!existsSync(specRunnerPath)) {
       this.emit('error', taskId, `Spec runner not found at: ${specRunnerPath}`);
       return;
     }
 
+    const effectiveSpecDir = specDir || this.getSpecDir(projectPath, taskId);
+
     // Reset stuck subtasks if restarting an existing spec creation task
-    if (specDir) {
-      const planPath = path.join(specDir, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN);
+    if (effectiveSpecDir) {
+      const planPath = path.join(effectiveSpecDir, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN);
       console.log('[AgentManager] Resetting stuck subtasks before spec creation restart:', planPath);
       try {
         const { success, resetCount } = await resetStuckSubtasks(planPath);
@@ -281,23 +330,27 @@ export class AgentManager extends EventEmitter {
     }
 
     // Get combined environment variables
-    const combinedEnv = this.processManager.getCombinedEnv(projectPath);
+    const combinedEnv = useCodex
+      ? this.applyCodexProfileEnv(this.processManager.getCombinedEnv(projectPath), metadata?.codexProfileId)
+      : this.processManager.getCombinedEnv(projectPath);
 
     // spec_runner.py will auto-start run.py after spec creation completes
-    const args = [specRunnerPath, '--task', taskDescription, '--project-dir', projectPath];
+    const args = useCodex
+      ? [specRunnerPath, '--stage', metadata?.requireReviewBeforeCoding ? 'spec' : 'full', '--task', taskDescription, '--project-dir', projectPath]
+      : [specRunnerPath, '--task', taskDescription, '--project-dir', projectPath];
 
     // Pass spec directory if provided (for UI-created tasks that already have a directory)
-    if (specDir) {
-      args.push('--spec-dir', specDir);
+    if (effectiveSpecDir) {
+      args.push('--spec-dir', effectiveSpecDir);
     }
 
     // Pass base branch if specified (ensures worktrees are created from the correct branch)
-    if (baseBranch) {
+    if (!useCodex && baseBranch) {
       args.push('--base-branch', baseBranch);
     }
 
     // Check if user requires review before coding
-    if (!metadata?.requireReviewBeforeCoding) {
+    if (!useCodex && !metadata?.requireReviewBeforeCoding) {
       // Auto-approve: When user starts a task from the UI without requiring review
       args.push('--auto-approve');
     }
@@ -305,11 +358,11 @@ export class AgentManager extends EventEmitter {
     // Pass model and thinking level configuration
     // For auto profile, use phase-specific config; otherwise use single model/thinking
     // Validate thinking levels to prevent legacy values (e.g. 'ultrathink') from reaching the backend
-    if (metadata?.isAutoProfile && metadata.phaseModels && metadata.phaseThinking) {
+    if (!useCodex && metadata?.isAutoProfile && metadata.phaseModels && metadata.phaseThinking) {
       // Pass the spec phase model and thinking level to spec_runner
       args.push('--model', metadata.phaseModels.spec);
       args.push('--thinking-level', sanitizeThinkingLevel(metadata.phaseThinking.spec));
-    } else if (metadata?.model) {
+    } else if (!useCodex && metadata?.model) {
       // Non-auto profile: use single model and thinking level
       args.push('--model', metadata.model);
       if (metadata.thinkingLevel) {
@@ -318,7 +371,7 @@ export class AgentManager extends EventEmitter {
     }
 
     // Workspace mode: --direct skips worktree isolation (default is isolated for safety)
-    if (metadata?.useWorktree === false) {
+    if (!useCodex && metadata?.useWorktree === false) {
       args.push('--direct');
     }
 
@@ -326,7 +379,9 @@ export class AgentManager extends EventEmitter {
     this.storeTaskContext(taskId, projectPath, '', {}, true, taskDescription, specDir, metadata, baseBranch, projectId);
 
     // Register with unified OperationRegistry for proactive swap support
-    this.registerTaskWithOperationRegistry(taskId, 'spec-creation', { projectPath, taskDescription, specDir });
+    if (!useCodex) {
+      this.registerTaskWithOperationRegistry(taskId, 'spec-creation', { projectPath, taskDescription, specDir });
+    }
 
     // Note: This is spec-creation but it chains to task-execution via run.py
     // Use projectPath as cwd instead of autoBuildSource to avoid cross-drive file access
@@ -344,19 +399,25 @@ export class AgentManager extends EventEmitter {
     options: TaskExecutionOptions = {},
     projectId?: string
   ): Promise<void> {
+    const specDir = this.getSpecDir(projectPath, specId);
+    const useCodex = this.isCodexTask(specDir);
+    const codexProfileId = useCodex ? this.getCodexProfileId(specDir) : undefined;
+    if (useCodex && !this.validateCodexProfile(taskId, codexProfileId)) return;
     // Pre-flight auth check: Verify active profile has valid authentication
     // Ensure profile manager is initialized to prevent race condition
-    let profileManager: ClaudeProfileManager;
-    try {
-      profileManager = await initializeClaudeProfileManager();
-    } catch (error) {
-      console.error('[AgentManager] Failed to initialize profile manager:', error);
-      this.emit('error', taskId, 'Failed to initialize profile manager. Please check file permissions and disk space.');
-      return;
-    }
-    if (!profileManager.hasValidAuth()) {
-      this.emit('error', taskId, 'Claude authentication required. Please authenticate in Settings > Claude Profiles before starting tasks.');
-      return;
+    if (!useCodex) {
+      let profileManager: ClaudeProfileManager;
+      try {
+        profileManager = await initializeClaudeProfileManager();
+      } catch (error) {
+        console.error('[AgentManager] Failed to initialize profile manager:', error);
+        this.emit('error', taskId, 'Failed to initialize profile manager. Please check file permissions and disk space.');
+        return;
+      }
+      if (!profileManager.hasValidAuth()) {
+        this.emit('error', taskId, 'Claude authentication required. Please authenticate in Settings > Claude Profiles before starting tasks.');
+        return;
+      }
     }
 
     // Ensure Python environment is ready before spawning process (prevents exit code 127 race condition)
@@ -373,7 +434,7 @@ export class AgentManager extends EventEmitter {
       return;
     }
 
-    const runPath = path.join(autoBuildSource, 'run.py');
+    const runPath = useCodex ? path.join(autoBuildSource, 'runners', 'codex_runner.py') : path.join(autoBuildSource, 'run.py');
 
     if (!existsSync(runPath)) {
       this.emit('error', taskId, `Run script not found at: ${runPath}`);
@@ -381,23 +442,27 @@ export class AgentManager extends EventEmitter {
     }
 
     // Get combined environment variables
-    const combinedEnv = this.processManager.getCombinedEnv(projectPath);
+    const combinedEnv = useCodex
+      ? this.applyCodexProfileEnv(this.processManager.getCombinedEnv(projectPath), codexProfileId)
+      : this.processManager.getCombinedEnv(projectPath);
 
-    const args = [runPath, '--spec', specId, '--project-dir', projectPath];
+    const args = useCodex
+      ? [runPath, '--stage', 'build', '--spec-dir', specDir, '--project-dir', projectPath]
+      : [runPath, '--spec', specId, '--project-dir', projectPath];
 
     // Always use auto-continue when running from UI (non-interactive)
-    args.push('--auto-continue');
+    if (!useCodex) args.push('--auto-continue');
 
     // Force: When user starts a task from the UI, that IS their approval
-    args.push('--force');
+    if (!useCodex) args.push('--force');
 
     // Workspace mode: --direct skips worktree isolation (default is isolated for safety)
-    if (options.useWorktree === false) {
+    if (!useCodex && options.useWorktree === false) {
       args.push('--direct');
     }
 
     // Pass base branch if specified (ensures worktrees are created from the correct branch)
-    if (options.baseBranch) {
+    if (!useCodex && options.baseBranch) {
       args.push('--base-branch', options.baseBranch);
     }
 
@@ -410,7 +475,9 @@ export class AgentManager extends EventEmitter {
     this.storeTaskContext(taskId, projectPath, specId, options, false, undefined, undefined, undefined, undefined, projectId);
 
     // Register with unified OperationRegistry for proactive swap support
-    this.registerTaskWithOperationRegistry(taskId, 'task-execution', { projectPath, specId, options });
+    if (!useCodex) {
+      this.registerTaskWithOperationRegistry(taskId, 'task-execution', { projectPath, specId, options });
+    }
 
     // Use projectPath as cwd instead of autoBuildSource to avoid cross-drive file access
     // issues on Windows. The script path (runPath) is absolute so Python finds its modules
@@ -427,6 +494,10 @@ export class AgentManager extends EventEmitter {
     specId: string,
     projectId?: string
   ): Promise<void> {
+    const specDir = this.getSpecDir(projectPath, specId);
+    const useCodex = this.isCodexTask(specDir);
+    const codexProfileId = useCodex ? this.getCodexProfileId(specDir) : undefined;
+    if (useCodex && !this.validateCodexProfile(taskId, codexProfileId)) return;
     // Ensure Python environment is ready before spawning process (prevents exit code 127 race condition)
     const pythonStatus = await this.processManager.ensurePythonEnvReady('AgentManager');
     if (!pythonStatus.ready) {
@@ -441,7 +512,7 @@ export class AgentManager extends EventEmitter {
       return;
     }
 
-    const runPath = path.join(autoBuildSource, 'run.py');
+    const runPath = useCodex ? path.join(autoBuildSource, 'runners', 'codex_runner.py') : path.join(autoBuildSource, 'run.py');
 
     if (!existsSync(runPath)) {
       this.emit('error', taskId, `Run script not found at: ${runPath}`);
@@ -449,9 +520,13 @@ export class AgentManager extends EventEmitter {
     }
 
     // Get combined environment variables
-    const combinedEnv = this.processManager.getCombinedEnv(projectPath);
+    const combinedEnv = useCodex
+      ? this.applyCodexProfileEnv(this.processManager.getCombinedEnv(projectPath), codexProfileId)
+      : this.processManager.getCombinedEnv(projectPath);
 
-    const args = [runPath, '--spec', specId, '--project-dir', projectPath, '--qa'];
+    const args = useCodex
+      ? [runPath, '--stage', 'qa', '--spec-dir', specDir, '--project-dir', projectPath]
+      : [runPath, '--spec', specId, '--project-dir', projectPath, '--qa'];
 
     // Use projectPath as cwd instead of autoBuildSource to avoid cross-drive issues on Windows (#1661)
     await this.processManager.spawnProcess(taskId, projectPath, args, combinedEnv, 'qa-process', projectId);

@@ -11,6 +11,9 @@ import { test, expect, _electron as electron, ElectronApplication, Page } from '
 import { mkdirSync, rmSync, existsSync } from 'fs';
 import path from 'path';
 import * as os from 'os';
+import { fileURLToPath } from 'url';
+
+const testFileDir = path.dirname(fileURLToPath(import.meta.url));
 
 // Global Navigator declaration for clipboard
 declare global {
@@ -75,7 +78,7 @@ test.describe('Terminal Copy/Paste Flows', () => {
 
   test.beforeEach(async () => {
     // Launch Electron app
-    const appPath = path.join(__dirname, '..');
+    const appPath = path.join(testFileDir, '..');
     app = await electron.launch({ args: [appPath] });
 
     window = await app.firstWindow({

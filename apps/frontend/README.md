@@ -1,6 +1,6 @@
-# Auto Claude UI - Frontend
+# Tarkeeba UI - Frontend
 
-A modern Electron + React desktop application for the Auto Claude autonomous coding framework.
+A modern Electron + React desktop application for the Tarkeeba autonomous coding framework.
 
 ## Prerequisites
 

@@ -25,7 +25,7 @@ import { createTask, saveDraft, loadDraft, clearDraft, isDraftEmpty } from '../s
 import { useProjectStore } from '../stores/project-store';
 import { buildBranchOptions } from '../lib/branch-utils';
 import { cn } from '../lib/utils';
-import type { TaskCategory, TaskPriority, TaskComplexity, TaskImpact, TaskMetadata, ImageAttachment, TaskDraft, ModelType, ThinkingLevel, ReferencedFile, GitBranchDetail } from '../../shared/types';
+import type { TaskCategory, TaskPriority, TaskComplexity, TaskImpact, TaskMetadata, ImageAttachment, TaskDraft, ModelType, ThinkingLevel, ReferencedFile, GitBranchDetail, AgentProvider, CodexReasoningEffort } from '../../shared/types';
 import type { PhaseModelConfig, PhaseThinkingConfig } from '../../shared/types/settings';
 import {
   DEFAULT_AGENT_PROFILES,
@@ -108,6 +108,23 @@ export function TaskCreationWizard({
   const [impact, setImpact] = useState<TaskImpact | ''>('');
 
   // Model configuration
+  const [provider, setProvider] = useState<AgentProvider>(() =>
+    localStorage.getItem('auto-claude:agent-provider') === 'codex' ? 'codex' : 'claude'
+  );
+  const [codexProfileId, setCodexProfileId] = useState('');
+  const [codexModel, setCodexModel] = useState('gpt-5.6-sol');
+  const [codexReasoningEffort, setCodexReasoningEffort] = useState<CodexReasoningEffort>('high');
+
+  useEffect(() => {
+    const handleProviderChange = (event: Event) => {
+      const detail = (event as CustomEvent<{ provider: AgentProvider; profileId?: string }>).detail;
+      if (!detail) return;
+      setProvider(detail.provider);
+      if (detail.profileId) setCodexProfileId(detail.profileId);
+    };
+    window.addEventListener('agent-provider-changed', handleProviderChange);
+    return () => window.removeEventListener('agent-provider-changed', handleProviderChange);
+  }, []);
   const [profileId, setProfileId] = useState<string>(settings.selectedAgentProfile || 'auto');
   const [model, setModel] = useState<ModelType | ''>(selectedProfile.model);
   const [thinkingLevel, setThinkingLevel] = useState<ThinkingLevel | ''>(selectedProfile.thinkingLevel);
@@ -165,6 +182,10 @@ export function TaskCreationWizard({
         setComplexity(draft.complexity);
         setImpact(draft.impact);
         setProfileId(draft.profileId || settings.selectedAgentProfile || 'auto');
+        setProvider(draft.provider || 'claude');
+        setCodexProfileId(draft.codexProfileId || '');
+        setCodexModel(draft.codexModel || 'gpt-5.6-sol');
+        setCodexReasoningEffort(draft.codexReasoningEffort || 'high');
         setModel(draft.model || selectedProfile.model);
         setThinkingLevel(draft.thinkingLevel || selectedProfile.thinkingLevel);
         setPhaseModels(draft.phaseModels || settings.customPhaseModels || selectedProfile.phaseModels || DEFAULT_PHASE_MODELS);
@@ -188,6 +209,10 @@ export function TaskCreationWizard({
         setComplexity('');
         setImpact('');
         setProfileId(settings.selectedAgentProfile || 'auto');
+        setProvider(localStorage.getItem('auto-claude:agent-provider') === 'codex' ? 'codex' : 'claude');
+        setCodexProfileId('');
+        setCodexModel('gpt-5.6-sol');
+        setCodexReasoningEffort('high');
         setModel(selectedProfile.model);
         setThinkingLevel(selectedProfile.thinkingLevel);
         setPhaseModels(settings.customPhaseModels || selectedProfile.phaseModels || DEFAULT_PHASE_MODELS);
@@ -265,6 +290,10 @@ export function TaskCreationWizard({
     complexity,
     impact,
     profileId,
+    provider,
+    codexProfileId,
+    codexModel,
+    codexReasoningEffort,
     model,
     thinkingLevel,
     phaseModels,
@@ -274,7 +303,7 @@ export function TaskCreationWizard({
     requireReviewBeforeCoding,
     fastMode,
     savedAt: new Date()
-  }), [projectId, title, description, category, priority, complexity, impact, profileId, model, thinkingLevel, phaseModels, phaseThinking, images, referencedFiles, requireReviewBeforeCoding, fastMode]);
+  }), [projectId, title, description, category, priority, complexity, impact, profileId, provider, codexProfileId, codexModel, codexReasoningEffort, model, thinkingLevel, phaseModels, phaseThinking, images, referencedFiles, requireReviewBeforeCoding, fastMode]);
 
   /**
    * Detect @ mention being typed and show autocomplete
@@ -429,6 +458,12 @@ export function TaskCreationWizard({
       const allReferencedFiles = parseFileMentions(description, referencedFiles);
 
       const metadata: TaskMetadata = { sourceType: 'manual' };
+      metadata.provider = provider;
+      if (provider === 'codex') {
+        metadata.codexProfileId = codexProfileId || undefined;
+        metadata.codexModel = codexModel.trim() || 'gpt-5.6-sol';
+        metadata.codexReasoningEffort = codexReasoningEffort;
+      }
       if (category) metadata.category = category;
       if (priority) metadata.priority = priority;
       if (complexity) metadata.complexity = complexity;
@@ -481,6 +516,10 @@ export function TaskCreationWizard({
     setComplexity('');
     setImpact('');
     setProfileId(settings.selectedAgentProfile || 'auto');
+    setProvider(localStorage.getItem('auto-claude:agent-provider') === 'codex' ? 'codex' : 'claude');
+    setCodexProfileId('');
+    setCodexModel('gpt-5.6-sol');
+    setCodexReasoningEffort('high');
     setModel(selectedProfile.model);
     setThinkingLevel(selectedProfile.thinkingLevel);
     setPhaseModels(settings.customPhaseModels || selectedProfile.phaseModels || DEFAULT_PHASE_MODELS);
@@ -643,6 +682,14 @@ export function TaskCreationWizard({
           descriptionRef={descriptionRef}
           title={title}
           onTitleChange={setTitle}
+          provider={provider}
+          codexProfileId={codexProfileId}
+          codexModel={codexModel}
+          codexReasoningEffort={codexReasoningEffort}
+          onProviderChange={setProvider}
+          onCodexProfileChange={setCodexProfileId}
+          onCodexModelChange={setCodexModel}
+          onCodexReasoningEffortChange={setCodexReasoningEffort}
           profileId={profileId}
           model={model}
           thinkingLevel={thinkingLevel}

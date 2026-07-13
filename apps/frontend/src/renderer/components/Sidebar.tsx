@@ -118,6 +118,7 @@ export function Sidebar({
   const [gitStatus, setGitStatus] = useState<GitStatus | null>(null);
   const [pendingProject, setPendingProject] = useState<Project | null>(null);
   const [isInitializing, setIsInitializing] = useState(false);
+  const [initError, setInitError] = useState<string | null>(null);
 
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
 
@@ -247,6 +248,7 @@ export function Sidebar({
 
     const projectId = pendingProject.id;
     setIsInitializing(true);
+    setInitError(null);
     try {
       const result = await initializeProject(projectId);
       if (result?.success) {
@@ -254,7 +256,11 @@ export function Sidebar({
         // This prevents onOpenChange from triggering skip logic
         setPendingProject(null);
         setShowInitDialog(false);
+      } else {
+        setInitError(result?.error || useProjectStore.getState().error || 'Initialization failed. Please try again.');
       }
+    } catch (error) {
+      setInitError(error instanceof Error ? error.message : 'Initialization failed. Please try again.');
     } finally {
       setIsInitializing(false);
     }
@@ -354,7 +360,7 @@ export function Sidebar({
           isCollapsed ? "justify-center px-2" : "px-4"
         )}>
           {!isCollapsed && (
-            <span className="electron-no-drag text-lg font-bold text-primary">Auto Claude</span>
+            <span className="electron-no-drag text-lg font-bold text-primary">Tarkeeba</span>
           )}
         </div>
 
@@ -443,7 +449,7 @@ export function Sidebar({
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => window.open('https://github.com/AndyMik90/Auto-Claude/issues', '_blank')}
+                  onClick={() => window.open('https://github.com/mohamedjanemr/tarkeeba/issues', '_blank')}
                   aria-label={t('tooltips.help')}
                 >
                   <HelpCircle className="h-4 w-4" />
@@ -498,7 +504,7 @@ export function Sidebar({
         </div>
       </div>
 
-      {/* Initialize Auto Claude Dialog */}
+      {/* Initialize Tarkeeba Dialog */}
       <Dialog open={showInitDialog} onOpenChange={(open) => {
         // Only allow closing if user manually closes (not during initialization)
         if (!open && !isInitializing) {
@@ -533,6 +539,17 @@ export function Sidebar({
                     <p className="text-muted-foreground mt-1">
                       {t('dialogs:initialize.sourcePathNotConfiguredDescription')}
                     </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            {initError && (
+              <div className="mt-4 rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-sm">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+                  <div>
+                    <p className="font-medium text-destructive">Initialization failed</p>
+                    <p className="text-muted-foreground mt-1">{initError}</p>
                   </div>
                 </div>
               </div>

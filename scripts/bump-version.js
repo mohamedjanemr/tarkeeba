@@ -150,6 +150,31 @@ function updateBackendInit(newVersion) {
   return true;
 }
 
+// Keep Python metadata and the npm workspace lockfile aligned with the app.
+function updateVersionMetadata(newVersion) {
+  const rootDir = path.join(__dirname, '..');
+  const pyprojectPath = path.join(rootDir, 'apps', 'backend', 'pyproject.toml');
+  const lockPath = path.join(rootDir, 'package-lock.json');
+
+  if (fs.existsSync(pyprojectPath)) {
+    const pyproject = fs.readFileSync(pyprojectPath, 'utf8');
+    fs.writeFileSync(
+      pyprojectPath,
+      pyproject.replace(/^version\s*=\s*"[^"]*"/m, `version = "${newVersion}"`)
+    );
+  }
+
+  if (fs.existsSync(lockPath)) {
+    const lock = JSON.parse(fs.readFileSync(lockPath, 'utf8'));
+    lock.version = newVersion;
+    if (lock.packages?.['']) lock.packages[''].version = newVersion;
+    if (lock.packages?.['apps/frontend']) {
+      lock.packages['apps/frontend'].version = newVersion;
+    }
+    fs.writeFileSync(lockPath, JSON.stringify(lock, null, 2) + '\n');
+  }
+}
+
 // Check if CHANGELOG.md has an entry for the version
 function checkChangelogEntry(version) {
   const changelogPath = path.join(__dirname, '..', 'CHANGELOG.md');
@@ -189,7 +214,7 @@ function main() {
           'Usage: node scripts/bump-version.js <major|minor|patch|x.y.z>');
   }
 
-  log('\n🚀 Auto Claude Version Bump\n', colors.cyan);
+  log('\n🚀 Tarkeeba Version Bump\n', colors.cyan);
 
   // 1. Check git status
   info('Checking git status...');
@@ -224,6 +249,8 @@ function main() {
   if (updateBackendInit(newVersion)) {
     success('Updated apps/backend/__init__.py');
   }
+  updateVersionMetadata(newVersion);
+  success('Updated Python and lockfile version metadata');
 
   // Note: README.md is NOT updated here - it gets updated by the release workflow
   // after the GitHub release is successfully published. This prevents version
@@ -259,7 +286,7 @@ function main() {
 
   // 7. Create git commit
   info('Creating git commit...');
-  exec('git add apps/frontend/package.json package.json apps/backend/__init__.py');
+  exec('git add apps/frontend/package.json package.json package-lock.json apps/backend/__init__.py apps/backend/pyproject.toml');
   exec(`git commit -m "chore: bump version to ${newVersion}"`);
   success(`Created commit: "chore: bump version to ${newVersion}"`);
 

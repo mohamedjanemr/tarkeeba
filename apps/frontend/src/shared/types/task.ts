@@ -3,6 +3,32 @@
  */
 
 import type { ThinkingLevel, PhaseModelConfig, PhaseThinkingConfig } from './settings';
+
+export type AgentProvider = 'claude' | 'codex';
+export type CodexReasoningEffort = 'low' | 'medium' | 'high' | 'xhigh';
+
+export interface CodexModelInfo {
+  id: string;
+  displayName: string;
+  description?: string;
+  defaultReasoningEffort?: CodexReasoningEffort;
+  supportedReasoningEfforts: CodexReasoningEffort[];
+}
+
+export interface OpenAIProfile {
+  id: string;
+  name: string;
+  codexHome: string;
+  isAuthenticated: boolean;
+  authMethod?: 'chatgpt' | 'api-key';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OpenAIProfileSettings {
+  profiles: OpenAIProfile[];
+  activeProfileId: string | null;
+}
 import type { ExecutionPhase as ExecutionPhaseType, CompletablePhase } from '../constants/phase-protocol';
 
 export type TaskStatus = 'backlog' | 'queue' | 'in_progress' | 'ai_review' | 'human_review' | 'done' | 'pr_created' | 'error';
@@ -146,6 +172,10 @@ export interface TaskDraft {
   complexity: TaskComplexity | '';
   impact: TaskImpact | '';
   profileId?: string;  // Agent profile ID ('auto', 'complex', 'balanced', 'quick', 'custom')
+  provider?: AgentProvider;
+  codexProfileId?: string;
+  codexModel?: string;
+  codexReasoningEffort?: CodexReasoningEffort;
   model: ModelType | '';
   thinkingLevel: ThinkingLevel | '';
   // Auto profile - per-phase configuration
@@ -227,6 +257,10 @@ export interface TaskMetadata {
   requireReviewBeforeCoding?: boolean;  // Require human review of spec/plan before coding starts
 
   // Agent configuration (from agent profile or manual selection)
+  provider?: AgentProvider;  // Execution provider; defaults to Claude for compatibility
+  codexProfileId?: string;  // OpenAI account locked to this task
+  codexModel?: string;  // Codex model ID when provider is codex
+  codexReasoningEffort?: CodexReasoningEffort;
   model?: ModelType;  // Claude model to use (haiku, sonnet, opus) - used when not auto profile
   thinkingLevel?: ThinkingLevel;  // Thinking budget level (low, medium, high)
   // Auto profile - per-phase model configuration

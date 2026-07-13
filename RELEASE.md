@@ -1,254 +1,89 @@
-# Release Process
+# Tarkeeba release runbook
 
-This document describes how releases are created for Auto Claude.
+This fork publishes independently from upstream. The current release candidate is `2.8.0-beta.1`.
 
-## Overview
+## Release topology
 
-Auto Claude uses an automated release pipeline that ensures releases are only published after all builds succeed. This prevents version mismatches between documentation and actual releases.
+- `develop` is the integration and beta branch.
+- `main` is the stable release branch. It still needs to be created on the fork before the first stable release.
+- `.github/workflows/beta-release.yml` builds a manually requested prerelease from `develop`.
+- `.github/workflows/prepare-release.yml` watches version changes merged to `main`, validates the changelog, and creates a tag.
+- `.github/workflows/release.yml` builds and publishes a stable tag for macOS, Windows, and Linux.
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           RELEASE FLOW                                       │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│   develop branch                    main branch                              │
-│   ──────────────                    ───────────                              │
-│        │                                 │                                   │
-│        │  1. bump-version.js             │                                   │
-│        │     (creates commit)            │                                   │
-│        │                                 │                                   │
-│        ▼                                 │                                   │
-│   ┌─────────┐                           │                                   │
-│   │ v2.8.0  │  2. Create PR             │                                   │
-│   │ commit  │ ────────────────────►     │                                   │
-│   └─────────┘                           │                                   │
-│                                          │                                   │
-│                           3. Merge PR    ▼                                   │
-│                                    ┌──────────┐                              │
-│                                    │ v2.8.0   │                              │
-│                                    │ on main  │                              │
-│                                    └────┬─────┘                              │
-│                                         │                                    │
-│                     ┌───────────────────┴───────────────────┐               │
-│                     │     GitHub Actions (automatic)         │               │
-│                     ├───────────────────────────────────────┤               │
-│                     │ 4. prepare-release.yml                 │               │
-│                     │    - Detects version > latest tag      │               │
-│                     │    - Creates tag v2.8.0                │               │
-│                     │                                        │               │
-│                     │ 5. release.yml (triggered by tag)      │               │
-│                     │    - Builds macOS (Intel + ARM)        │               │
-│                     │    - Builds Windows                    │               │
-│                     │    - Builds Linux                      │               │
-│                     │    - Generates changelog               │               │
-│                     │    - Creates GitHub release            │               │
-│                     │    - Updates README                    │               │
-│                     └───────────────────────────────────────┘               │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+The updater, package metadata, documentation, and release workflows target the standalone `mohamedjanemr/tarkeeba` repository.
 
-## For Maintainers: Creating a Release
+## One-time GitHub preparation
 
-### Step 1: Bump the Version
+1. Confirm Actions has read/write workflow permissions under **Settings → Actions → General**.
+2. Create `main` from the tested `develop` commit, then make it the protected stable branch.
+3. Add these repository secrets:
 
-On your development branch (typically `develop` or a feature branch):
+| Secret | Required for | Notes |
+|---|---|---|
+| `PAT_TOKEN` | stable automation | Fine-grained token scoped to this repository with Contents read/write permission |
+| `MAC_CERTIFICATE` | signed macOS builds | Base64-encoded Developer ID Application `.p12` |
+| `MAC_CERTIFICATE_PASSWORD` | signed macOS builds | Password for the `.p12` |
+| `APPLE_ID` | notarization | Apple developer account email |
+| `APPLE_APP_SPECIFIC_PASSWORD` | notarization | App-specific password, not the Apple ID password |
+| `APPLE_TEAM_ID` | notarization | Apple Developer team identifier |
+
+Windows signing is optional for a beta, but strongly recommended before stable distribution. When available, add `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_SIGNING_ACCOUNT`, and `AZURE_CERTIFICATE_PROFILE`.
+
+`SENTRY_DSN`, `SENTRY_TRACES_SAMPLE_RATE`, and `SENTRY_PROFILES_SAMPLE_RATE` are optional.
+
+Never commit certificates, passwords, tokens, `.env` files, or signing material.
+
+## First beta
+
+Run the complete local checks first, then push the release commit to `develop`.
 
 ```bash
-# Navigate to project root
-cd /path/to/auto-claude
-
-# Bump version (choose one)
-node scripts/bump-version.js patch   # 2.7.1 -> 2.7.2 (bug fixes)
-node scripts/bump-version.js minor   # 2.7.1 -> 2.8.0 (new features)
-node scripts/bump-version.js major   # 2.7.1 -> 3.0.0 (breaking changes)
-node scripts/bump-version.js 2.8.0   # Set specific version
+git status --short
+npm run build
+npm test
+npm run test:backend
 ```
 
-This will:
-- Update `apps/frontend/package.json`
-- Update `package.json` (root)
-- Update `apps/backend/__init__.py`
-- Check if `CHANGELOG.md` has an entry for the new version (warns if missing)
-- Create a commit with message `chore: bump version to X.Y.Z`
-
-### Step 2: Update CHANGELOG.md (REQUIRED)
-
-**IMPORTANT: The release will fail if CHANGELOG.md doesn't have an entry for the new version.**
-
-Add release notes to `CHANGELOG.md` at the top of the file:
-
-```markdown
-## 2.8.0 - Your Release Title
-
-### ✨ New Features
-- Feature description
-
-### 🛠️ Improvements
-- Improvement description
-
-### 🐛 Bug Fixes
-- Fix description
-
----
-```
-
-Then amend the version bump commit:
+Run a non-publishing CI rehearsal:
 
 ```bash
-git add CHANGELOG.md
-git commit --amend --no-edit
+gh workflow run beta-release.yml \
+  --repo mohamedjanemr/tarkeeba \
+  --ref develop \
+  -f version=2.8.0-beta.1 \
+  -f dry_run=true
 ```
 
-### Step 3: Push and Create PR
+After every platform succeeds, publish the beta:
 
 ```bash
-# Push your branch
-git push origin your-branch
-
-# Create PR to main (via GitHub UI or gh CLI)
-gh pr create --base main --title "Release v2.8.0"
+gh workflow run beta-release.yml \
+  --repo mohamedjanemr/tarkeeba \
+  --ref develop \
+  -f version=2.8.0-beta.1 \
+  -f dry_run=false
 ```
 
-### Step 4: Merge to Main
+Verify the release assets, SHA256 checksums, macOS signature/notarization, Windows signature status, fresh install, upgrade from Auto-Claude, provider switching, account switching, and one real task with each provider.
 
-Once the PR is approved and merged to `main`, GitHub Actions will automatically:
+## First stable
 
-1. **Detect the version bump** (`prepare-release.yml`)
-2. **Validate CHANGELOG.md** has an entry for the new version (FAILS if missing)
-3. **Extract release notes** from CHANGELOG.md
-4. **Create a git tag** (e.g., `v2.8.0`)
-5. **Trigger the release workflow** (`release.yml`)
-6. **Build binaries** for all platforms:
-   - macOS Intel (x64) - code signed & notarized
-   - macOS Apple Silicon (arm64) - code signed & notarized
-   - Windows (NSIS installer) - code signed
-   - Linux (AppImage + .deb)
-7. **Scan binaries** with VirusTotal
-8. **Create GitHub release** with release notes from CHANGELOG.md
-9. **Update README** with new version badge and download links
+1. Finish beta validation and fix release blockers.
+2. Run `node scripts/bump-version.js 2.8.0` to change all package/backend versions.
+3. Add a `## 2.8.0` changelog entry.
+4. Merge `develop` into `main` through a release PR.
+5. Watch **Prepare Release**, then **Release**, and verify every asset before announcing it.
 
-### Step 5: Verify
+Do not reuse a failed or partially published version number. Cut the next beta or patch version instead.
 
-After merging, check:
-- [GitHub Actions](https://github.com/AndyMik90/Auto-Claude/actions) - ensure all workflows pass
-- [Releases](https://github.com/AndyMik90/Auto-Claude/releases) - verify release was created
-- [README](https://github.com/AndyMik90/Auto-Claude#download) - confirm version updated
+## Compatibility policy for 2.8
 
-## Version Numbering
+- The visible application, app ID, installers, and update feed use Tarkeeba.
+- Production explicitly keeps the legacy `auto-claude-ui` user-data directory so existing installed settings and account profiles continue to load.
+- The updater cache uses the new `tarkeeba-updater` key so pending upstream updates cannot collide with Tarkeeba.
+- Existing `.auto-claude/` project data and `auto-claude/*` task branches remain supported.
+- Internal compatibility identifiers can be migrated only in a later release with an explicit data migration and rollback path.
 
-We follow [Semantic Versioning](https://semver.org/):
+## Fork and license obligations
 
-- **MAJOR** (X.0.0): Breaking changes, incompatible API changes
-- **MINOR** (0.X.0): New features, backwards compatible
-- **PATCH** (0.0.X): Bug fixes, backwards compatible
-
-## Changelog Management
-
-Release notes are managed in `CHANGELOG.md` and used for GitHub releases.
-
-### Changelog Format
-
-Each version entry in `CHANGELOG.md` should follow this format:
-
-```markdown
-## X.Y.Z - Release Title
-
-### ✨ New Features
-- Feature description with context
-
-### 🛠️ Improvements
-- Improvement description
-
-### 🐛 Bug Fixes
-- Fix description
-
----
-```
-
-### Changelog Validation
-
-The release workflow **validates** that `CHANGELOG.md` has an entry for the version being released:
-
-- If the entry is **missing**, the release is **blocked** with a clear error message
-- If the entry **exists**, its content is used for the GitHub release notes
-
-### Writing Good Release Notes
-
-- **Be specific**: Instead of "Fixed bug", write "Fixed crash when opening large files"
-- **Group by impact**: Features first, then improvements, then fixes
-- **Credit contributors**: Mention contributors for significant changes
-- **Link issues**: Reference GitHub issues where relevant (e.g., "Fixes #123")
-
-## Workflows
-
-| Workflow | Trigger | Purpose |
-|----------|---------|---------|
-| `prepare-release.yml` | Push to `main` | Detects version bump, **validates CHANGELOG.md**, creates tag |
-| `release.yml` | Tag `v*` pushed | Builds binaries, extracts changelog, creates release |
-| `update-readme` (in release.yml) | After release | Updates README with new version |
-
-## Troubleshooting
-
-### Release didn't trigger after merge
-
-1. Check if version in `package.json` is greater than latest tag:
-   ```bash
-   git tag -l 'v*' --sort=-version:refname | head -1
-   cat apps/frontend/package.json | grep version
-   ```
-
-2. Ensure the merge commit touched `package.json`:
-   ```bash
-   git diff HEAD~1 --name-only | grep package.json
-   ```
-
-### Release blocked: Missing changelog entry
-
-If you see "CHANGELOG VALIDATION FAILED" in the workflow:
-
-1. The `prepare-release.yml` workflow validated that `CHANGELOG.md` doesn't have an entry for the new version
-2. **Fix**: Add an entry to `CHANGELOG.md` with the format `## X.Y.Z - Title`
-3. Commit and push the changelog update
-4. The workflow will automatically retry when the changes are pushed to `main`
-
-```bash
-# Add changelog entry, then:
-git add CHANGELOG.md
-git commit -m "docs: add changelog for vX.Y.Z"
-git push origin main
-```
-
-### Build failed after tag was created
-
-- The release won't be published if builds fail
-- Fix the issue and create a new patch version
-- Don't reuse failed version numbers
-
-### README shows wrong version
-
-- README is only updated after successful release
-- If release failed, README keeps the previous version (this is intentional)
-- Once you successfully release, README will update automatically
-
-## Manual Release (Emergency Only)
-
-In rare cases where you need to bypass the automated flow:
-
-```bash
-# Create tag manually (NOT RECOMMENDED)
-git tag -a v2.8.0 -m "Release v2.8.0"
-git push origin v2.8.0
-
-# This will trigger release.yml directly
-```
-
-**Warning:** Only do this if you're certain the version in package.json matches the tag.
-
-## Security
-
-- All macOS binaries are code signed with Apple Developer certificate
-- All macOS binaries are notarized by Apple
-- Windows binaries are code signed
-- All binaries are scanned with VirusTotal
-- SHA256 checksums are generated for all artifacts
+Tarkeeba remains AGPL-3.0. Preserve the license, copyright notices, source availability, and upstream contributor history in distributed versions. The product must not imply affiliation with Anthropic, OpenAI, or the upstream Aperant maintainers.

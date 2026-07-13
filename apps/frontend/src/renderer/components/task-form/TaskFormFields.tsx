@@ -11,13 +11,14 @@
  */
 import { useRef, useState, useEffect, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, ChevronUp, Image as ImageIcon, X, Camera, Zap, Info } from 'lucide-react';
+import { ChevronDown, ChevronUp, Image as ImageIcon, X, Camera, Zap, Info, Loader2 } from 'lucide-react';
 import { Label } from '../ui/label';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { Checkbox } from '../ui/checkbox';
 import { Switch } from '../ui/switch';
 import { Button } from '../ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { AgentProfileSelector } from '../AgentProfileSelector';
 import { ClassificationFields } from './ClassificationFields';
 import { useImageUpload, type FileReferenceData } from './useImageUpload';
@@ -35,6 +36,7 @@ import type {
   ModelType,
   ThinkingLevel
 } from '../../../shared/types';
+import type { AgentProvider, CodexModelInfo, CodexReasoningEffort, OpenAIProfile } from '../../../shared/types/task';
 import type { PhaseModelConfig, PhaseThinkingConfig } from '../../../shared/types/settings';
 
 interface TaskFormFieldsProps {
@@ -56,6 +58,14 @@ interface TaskFormFieldsProps {
   onTitleChange: (value: string) => void;
 
   // Agent profile
+  provider: AgentProvider;
+  codexProfileId: string;
+  codexModel: string;
+  codexReasoningEffort: CodexReasoningEffort;
+  onProviderChange: (provider: AgentProvider) => void;
+  onCodexProfileChange: (profileId: string) => void;
+  onCodexModelChange: (model: string) => void;
+  onCodexReasoningEffortChange: (effort: CodexReasoningEffort) => void;
   profileId: string;
   model: ModelType | '';
   thinkingLevel: ThinkingLevel | '';
@@ -107,6 +117,16 @@ interface TaskFormFieldsProps {
   onFileReferenceDrop?: (reference: string, data: FileReferenceData) => void;
 }
 
+const FALLBACK_CODEX_MODELS: CodexModelInfo[] = [
+  { id: 'gpt-5.6-sol', displayName: 'GPT-5.6-Sol', description: 'Latest frontier agentic coding model.', supportedReasoningEfforts: ['low', 'medium', 'high', 'xhigh'] },
+  { id: 'gpt-5.6-terra', displayName: 'GPT-5.6-Terra', description: 'Balanced agentic coding model for everyday work.', supportedReasoningEfforts: ['low', 'medium', 'high', 'xhigh'] },
+  { id: 'gpt-5.6-luna', displayName: 'GPT-5.6-Luna', description: 'Fast and affordable agentic coding model.', supportedReasoningEfforts: ['low', 'medium', 'high', 'xhigh'] },
+  { id: 'gpt-5.5', displayName: 'GPT-5.5', supportedReasoningEfforts: ['low', 'medium', 'high', 'xhigh'] },
+  { id: 'gpt-5.4', displayName: 'GPT-5.4', supportedReasoningEfforts: ['low', 'medium', 'high', 'xhigh'] },
+  { id: 'gpt-5.4-mini', displayName: 'GPT-5.4-Mini', supportedReasoningEfforts: ['low', 'medium', 'high', 'xhigh'] },
+  { id: 'gpt-5.2', displayName: 'GPT-5.2', supportedReasoningEfforts: ['low', 'medium', 'high', 'xhigh'] },
+];
+
 export function TaskFormFields({
   projectPath,
   specId,
@@ -118,6 +138,14 @@ export function TaskFormFields({
   title,
   onTitleChange,
   profileId,
+  provider,
+  codexProfileId,
+  codexModel,
+  codexReasoningEffort,
+  onProviderChange,
+  onCodexProfileChange,
+  onCodexModelChange,
+  onCodexReasoningEffortChange,
   model,
   thinkingLevel,
   phaseModels,
@@ -161,6 +189,47 @@ export function TaskFormFields({
   const [showReferenceImages, setShowReferenceImages] = useState(false);
   const [screenshotModalOpen, setScreenshotModalOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState<ImageAttachment | null>(null);
+  const [codexModels, setCodexModels] = useState<CodexModelInfo[]>(FALLBACK_CODEX_MODELS);
+  const [isLoadingCodexModels, setIsLoadingCodexModels] = useState(false);
+  const [openAIProfiles, setOpenAIProfiles] = useState<OpenAIProfile[]>([]);
+
+  useEffect(() => {
+    if (provider !== 'codex') return;
+    let cancelled = false;
+    window.electronAPI.getOpenAIProfiles().then((result) => {
+      if (cancelled || !result.success || !result.data) return;
+      setOpenAIProfiles(result.data.profiles);
+      if (!codexProfileId && result.data.activeProfileId) {
+        onCodexProfileChange(result.data.activeProfileId);
+      }
+    }).catch((error) => {
+      console.warn('[TaskFormFields] Failed to load OpenAI accounts:', error);
+    });
+    return () => { cancelled = true; };
+  }, [provider, codexProfileId, onCodexProfileChange]);
+
+  useEffect(() => {
+    if (provider !== 'codex') return;
+
+    let cancelled = false;
+    setIsLoadingCodexModels(true);
+    window.electronAPI.listCodexModels(codexProfileId || undefined)
+      .then((result) => {
+        if (!cancelled && result.success && result.data?.length) {
+          setCodexModels(result.data);
+        }
+      })
+      .catch((error) => {
+        console.warn('[TaskFormFields] Failed to discover Codex models, using bundled list:', error);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingCodexModels(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [provider, codexProfileId]);
 
   // Auto-expand reference images section when images are added via paste/drop/capture
   const prevImagesLengthRef = useRef(images.length);
@@ -467,20 +536,90 @@ export function TaskFormFields({
           </p>
         </div>
 
-        {/* Agent Profile Selection */}
-        <AgentProfileSelector
-          profileId={profileId}
-          model={model}
-          thinkingLevel={thinkingLevel}
-          phaseModels={phaseModels}
-          phaseThinking={phaseThinking}
-          onProfileChange={onProfileChange}
-          onModelChange={onModelChange}
-          onThinkingLevelChange={onThinkingLevelChange}
-          onPhaseModelsChange={onPhaseModelsChange}
-          onPhaseThinkingChange={onPhaseThinkingChange}
-          disabled={disabled}
-        />
+        <div className="space-y-3 rounded-lg border border-border p-4">
+          <div className="space-y-2">
+            <Label htmlFor={`${prefix}provider`}>Agent provider</Label>
+            <Select value={provider} onValueChange={(value) => onProviderChange(value as AgentProvider)} disabled={disabled}>
+              <SelectTrigger id={`${prefix}provider`}><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="claude">Claude Code</SelectItem>
+                <SelectItem value="codex">OpenAI Codex (MVP)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {provider === 'codex' ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor={`${prefix}codex-account`}>OpenAI account</Label>
+                <Select value={codexProfileId} onValueChange={onCodexProfileChange} disabled={disabled || openAIProfiles.length === 0}>
+                  <SelectTrigger id={`${prefix}codex-account`}>
+                    <SelectValue placeholder={openAIProfiles.length ? 'Select an OpenAI account' : 'Add an account in Settings'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {openAIProfiles.map((profile) => (
+                      <SelectItem key={profile.id} value={profile.id}>
+                        {profile.name}{profile.isAuthenticated ? '' : ' (sign-in required)'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor={`${prefix}codex-model`}>Codex model</Label>
+                <Select value={codexModel} onValueChange={onCodexModelChange} disabled={disabled || isLoadingCodexModels}>
+                  <SelectTrigger id={`${prefix}codex-model`}>
+                    {isLoadingCodexModels ? (
+                      <span className="flex items-center gap-2 text-muted-foreground">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        Loading models...
+                      </span>
+                    ) : (
+                      <SelectValue placeholder="Select a Codex model" />
+                    )}
+                  </SelectTrigger>
+                  <SelectContent>
+                    {!codexModels.some((modelInfo) => modelInfo.id === codexModel) && codexModel && (
+                      <SelectItem value={codexModel}>{codexModel} (saved model)</SelectItem>
+                    )}
+                    {codexModels.map((modelInfo) => (
+                      <SelectItem key={modelInfo.id} value={modelInfo.id}>
+                        {modelInfo.displayName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor={`${prefix}codex-effort`}>Reasoning effort</Label>
+                <Select value={codexReasoningEffort} onValueChange={(value) => onCodexReasoningEffortChange(value as CodexReasoningEffort)} disabled={disabled}>
+                  <SelectTrigger id={`${prefix}codex-effort`}><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="xhigh">Extra high</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <p className="text-xs text-muted-foreground sm:col-span-2">Uses your existing Codex CLI login and a workspace-write sandbox.</p>
+            </div>
+          ) : (
+            <AgentProfileSelector
+              profileId={profileId}
+              model={model}
+              thinkingLevel={thinkingLevel}
+              phaseModels={phaseModels}
+              phaseThinking={phaseThinking}
+              onProfileChange={onProfileChange}
+              onModelChange={onModelChange}
+              onThinkingLevelChange={onThinkingLevelChange}
+              onPhaseModelsChange={onPhaseModelsChange}
+              onPhaseThinkingChange={onPhaseThinkingChange}
+              disabled={disabled}
+            />
+          )}
+        </div>
 
         {/* Classification Toggle */}
         <button

@@ -34,6 +34,7 @@ import { registerMcpHandlers } from './mcp-handlers';
 import { registerProfileHandlers } from './profile-handlers';
 import { registerScreenshotHandlers } from './screenshot-handlers';
 import { registerTerminalWorktreeIpcHandlers } from './terminal';
+import { registerCodexHandlers } from './codex-handlers';
 import { notificationService } from '../notification-service';
 import { setAgentManagerRef } from './utils';
 
@@ -126,6 +127,9 @@ export function setupIpcHandlers(
   // Screenshot capture handlers
   registerScreenshotHandlers();
 
+  // OpenAI Codex CLI model discovery and account operations
+  registerCodexHandlers();
+
   console.warn('[IPC] All handler modules registered successfully');
 }
 
@@ -153,5 +157,6 @@ export {
   registerClaudeCodeHandlers,
   registerMcpHandlers,
   registerProfileHandlers,
-  registerScreenshotHandlers
+  registerScreenshotHandlers,
+  registerCodexHandlers
 };

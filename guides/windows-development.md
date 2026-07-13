@@ -1,7 +1,7 @@
 # Windows Development Guide
 
 This guide covers Windows-specific considerations when developing
-Auto Claude.
+Tarkeeba.
 
 ## File Encoding
 
@@ -316,8 +316,8 @@ def test_windows_encoding():
 If you encounter Windows-specific issues:
 
 1. Check this guide and [CONTRIBUTING.md](../CONTRIBUTING.md)
-2. Search [existing issues](https://github.com/AndyMik90/Auto-Claude/issues)
-3. Ask in [discussions](https://github.com/AndyMik90/Auto-Claude/discussions)
+2. Search [existing issues](https://github.com/mohamedjanemr/tarkeeba/issues)
+3. Ask in [discussions](https://github.com/mohamedjanemr/tarkeeba/discussions)
 4. Create an issue with `[Windows]` tag
 
 ## Resources
@@ -331,7 +331,7 @@ If you encounter Windows-specific issues:
 
 - [CONTRIBUTING.md](../CONTRIBUTING.md) - General contribution
   guidelines
-- [PR #782](https://github.com/AndyMik90/Auto-Claude/pull/782) -
+- [Upstream PR #782](https://github.com/AndyMik90/Aperant/pull/782) -
   Comprehensive UTF-8 encoding fix
-- [PR #795](https://github.com/AndyMik90/Auto-Claude/pull/795) -
+- [Upstream PR #795](https://github.com/AndyMik90/Aperant/pull/795) -
   Pre-commit hooks for encoding enforcement

@@ -47,7 +47,7 @@ import { maskApiKey } from '../../lib/profile-utils';
 import { loadClaudeProfiles as loadGlobalClaudeProfiles } from '../../stores/claude-profile-store';
 import { useSettingsStore } from '../../stores/settings-store';
 import { useToast } from '../../hooks/use-toast';
-import type { AppSettings, ClaudeProfile, ClaudeAutoSwitchSettings, ProfileUsageSummary } from '../../../shared/types';
+import type { AppSettings, ClaudeProfile, ClaudeAutoSwitchSettings, ProfileUsageSummary, OpenAIProfile } from '../../../shared/types';
 import type { APIProfile } from '@shared/types/profile';
 import {
   AlertDialog,
@@ -75,7 +75,7 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
   const { toast } = useToast();
 
   // Tab state
-  const [activeTab, setActiveTab] = useState<'claude-code' | 'custom-endpoints'>('claude-code');
+  const [activeTab, setActiveTab] = useState<'claude-code' | 'openai' | 'custom-endpoints'>('claude-code');
 
   // ============================================
   // Claude Code (OAuth) state
@@ -94,6 +94,13 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
   const [manualTokenEmail, setManualTokenEmail] = useState('');
   const [showManualToken, setShowManualToken] = useState(false);
   const [savingTokenProfileId, setSavingTokenProfileId] = useState<string | null>(null);
+
+  // OpenAI Codex accounts
+  const [openAIProfiles, setOpenAIProfiles] = useState<OpenAIProfile[]>([]);
+  const [activeOpenAIProfileId, setActiveOpenAIProfileId] = useState<string | null>(null);
+  const [newOpenAIProfileName, setNewOpenAIProfileName] = useState('');
+  const [isLoadingOpenAIProfiles, setIsLoadingOpenAIProfiles] = useState(false);
+  const [busyOpenAIProfileId, setBusyOpenAIProfileId] = useState<string | null>(null);
 
   // Auth terminal state
   const [authTerminal, setAuthTerminal] = useState<{
@@ -249,6 +256,7 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
   useEffect(() => {
     if (isOpen) {
       loadClaudeProfiles();
+      loadOpenAIProfiles();
       loadAutoSwitchSettings();
       loadPriorityOrder();
       // Force refresh usage data when Settings opens to get fresh data
@@ -257,6 +265,63 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, loadProfileUsageData]);
+
+  const loadOpenAIProfiles = async () => {
+    setIsLoadingOpenAIProfiles(true);
+    try {
+      const result = await window.electronAPI.getOpenAIProfiles();
+      if (result.success && result.data) {
+        setOpenAIProfiles(result.data.profiles);
+        setActiveOpenAIProfileId(result.data.activeProfileId);
+        window.dispatchEvent(new CustomEvent('openai-profiles-updated'));
+      }
+    } finally {
+      setIsLoadingOpenAIProfiles(false);
+    }
+  };
+
+  const handleAddOpenAIProfile = async () => {
+    if (!newOpenAIProfileName.trim()) return;
+    const result = await window.electronAPI.createOpenAIProfile(newOpenAIProfileName.trim());
+    if (result.success && result.data) {
+      setNewOpenAIProfileName('');
+      await loadOpenAIProfiles();
+      await handleLoginOpenAIProfile(result.data.id);
+    } else {
+      toast({ variant: 'destructive', title: 'Could not add OpenAI account', description: result.error });
+    }
+  };
+
+  const handleLoginOpenAIProfile = async (profileId: string) => {
+    setBusyOpenAIProfileId(profileId);
+    const result = await window.electronAPI.loginOpenAIProfile(profileId);
+    setBusyOpenAIProfileId(null);
+    if (result.success) {
+      toast({ title: 'OpenAI sign-in opened', description: 'Complete the ChatGPT sign-in in your browser, then verify the account here.' });
+    } else {
+      toast({ variant: 'destructive', title: 'Could not start OpenAI sign-in', description: result.error });
+    }
+  };
+
+  const handleVerifyOpenAIProfile = async (profileId: string) => {
+    setBusyOpenAIProfileId(profileId);
+    const result = await window.electronAPI.verifyOpenAIProfile(profileId);
+    setBusyOpenAIProfileId(null);
+    await loadOpenAIProfiles();
+    if (!result.success || !result.data?.authenticated) {
+      toast({ variant: 'destructive', title: 'OpenAI account is not signed in', description: 'Complete the browser sign-in and try again.' });
+    }
+  };
+
+  const handleSetActiveOpenAIProfile = async (profileId: string) => {
+    const result = await window.electronAPI.setActiveOpenAIProfile(profileId);
+    if (result.success) await loadOpenAIProfiles();
+  };
+
+  const handleDeleteOpenAIProfile = async (profileId: string) => {
+    const result = await window.electronAPI.deleteOpenAIProfile(profileId);
+    if (result.success) await loadOpenAIProfiles();
+  };
 
   // Subscribe to usage updates for real-time data
   useEffect(() => {
@@ -667,11 +732,15 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
     >
       <div className="space-y-6">
         {/* Tabs for Claude Code vs Custom Endpoints */}
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'claude-code' | 'custom-endpoints')}>
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'claude-code' | 'openai' | 'custom-endpoints')}>
           <TabsList className="w-full justify-start">
             <TabsTrigger value="claude-code" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               {t('accounts.tabs.claudeCode')}
+            </TabsTrigger>
+            <TabsTrigger value="openai" className="flex items-center gap-2">
+              <Globe className="h-4 w-4" />
+              OpenAI
             </TabsTrigger>
             <TabsTrigger value="custom-endpoints" className="flex items-center gap-2">
               <Server className="h-4 w-4" />
@@ -1070,6 +1139,57 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
                   )}
                   {tCommon('buttons.add')}
                 </Button>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="openai">
+            <div className="rounded-lg bg-muted/30 border border-border p-4 space-y-4">
+              <div>
+                <h3 className="text-sm font-medium">OpenAI Codex accounts</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Each account is isolated. Switching the active account affects new Codex tasks; running tasks keep their original account.
+                </p>
+              </div>
+
+              {isLoadingOpenAIProfiles ? (
+                <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+              ) : (
+                <div className="space-y-2">
+                  {openAIProfiles.map((profile) => (
+                    <div key={profile.id} className={cn('flex items-center justify-between gap-3 rounded-lg border p-3', profile.id === activeOpenAIProfileId && 'border-primary bg-primary/5')}>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-sm truncate">{profile.name}</span>
+                          {profile.id === activeOpenAIProfileId && <span className="text-[10px] rounded bg-primary/10 text-primary px-1.5 py-0.5">Active</span>}
+                        </div>
+                        <p className={cn('text-xs mt-0.5', profile.isAuthenticated ? 'text-success' : 'text-muted-foreground')}>
+                          {profile.isAuthenticated ? `Connected with ${profile.authMethod === 'api-key' ? 'API key' : 'ChatGPT'}` : 'Sign-in required'}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {!profile.isAuthenticated ? (
+                          <>
+                            <Button size="sm" variant="outline" onClick={() => handleLoginOpenAIProfile(profile.id)} disabled={busyOpenAIProfileId === profile.id}>
+                              <LogIn className="h-3.5 w-3.5 mr-1.5" />Sign in
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => handleVerifyOpenAIProfile(profile.id)} disabled={busyOpenAIProfileId === profile.id}>Verify</Button>
+                          </>
+                        ) : profile.id !== activeOpenAIProfileId ? (
+                          <Button size="sm" variant="outline" onClick={() => handleSetActiveOpenAIProfile(profile.id)}>Use account</Button>
+                        ) : null}
+                        <Button size="icon" variant="ghost" onClick={() => handleDeleteOpenAIProfile(profile.id)} aria-label={`Delete ${profile.name}`}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <Input value={newOpenAIProfileName} onChange={(event) => setNewOpenAIProfileName(event.target.value)} placeholder="Account name, for example Work OpenAI" onKeyDown={(event) => { if (event.key === 'Enter') void handleAddOpenAIProfile(); }} />
+                <Button onClick={handleAddOpenAIProfile} disabled={!newOpenAIProfileName.trim()}><Plus className="h-4 w-4 mr-1.5" />Add account</Button>
               </div>
             </div>
           </TabsContent>

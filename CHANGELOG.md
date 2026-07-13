@@ -1,3 +1,31 @@
+## 2.8.0-beta.1 - Tarkeeba Preview
+
+### ✨ New Features
+
+- **Tarkeeba product identity** — Rebranded the desktop app, installers, application ID, artwork, updater ownership, and release documentation with a provider-neutral identity
+- **OpenAI Codex provider** — Added Codex CLI task execution, provider-aware runner selection, and packaged backend support
+- **OpenAI account profiles** — Added onboarding, authentication status, main-account selection, account swapping, and session-level profile routing
+- **Provider and model selection** — Added dropdown selection for Claude Code and OpenAI Codex models when creating or editing tasks
+- **Current Claude model catalog** — Added supported Claude models released after Opus 4.5, including current Opus, Sonnet, and Haiku options
+- **Usage refresh controls** — Added manual and automatic Claude usage refresh behavior
+
+### 🛠️ Improvements
+
+- Kept `.auto-claude/`, existing branch prefixes, and the legacy frontend storage key compatible so current projects, settings, and account profiles continue to work
+- Isolated development and E2E data from installed production data with distinct application names and user-data paths
+- Updated release metadata and update checks to use the fork repository rather than upstream releases
+- Added a fork-specific beta/stable release runbook, signing-secret checklist, brand guidance, and upstream attribution
+
+### 🐛 Bug Fixes
+
+- Restored project initialization dialog behavior and surfaced initialization failures to the user
+- Fixed packaged Codex runner discovery
+- Fixed provider switching between OpenAI and Claude Code in the main account selector
+- Hid Claude-only usage data while Codex is active instead of showing misleading `N/A` values
+- Fixed ESM path resolution in terminal E2E coverage and stabilized provider-switching tests
+
+---
+
 ## 2.7.6 - Stability & Feature Enhancements
 
 ### ✨ New Features

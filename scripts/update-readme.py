@@ -1,163 +1,79 @@
 #!/usr/bin/env python3
-"""
-Update README.md version badges and download links.
+"""Update Tarkeeba release badges and download links in README.md."""
 
-Usage:
-    python scripts/update-readme.py <version> [--prerelease]
-
-Examples:
-    python scripts/update-readme.py 2.8.0              # Stable release
-    python scripts/update-readme.py 2.8.0-beta.1 --prerelease  # Beta release
-"""
 import argparse
+import os
 import re
 import sys
 
-# Semver pattern: X.Y.Z or X.Y.Z-prerelease.N
 SEMVER_PATTERN = re.compile(r"^\d+\.\d+\.\d+(-[a-zA-Z]+\.\d+)?$")
+PRODUCT_NAME = os.environ.get("TARKEEBA_PRODUCT_NAME", "Tarkeeba")
+REPOSITORY = os.environ.get("GITHUB_REPOSITORY", "mohamedjanemr/tarkeeba")
 
 
-def validate_version(version: str) -> bool:
-    """Validate version string matches semver format."""
-    return bool(SEMVER_PATTERN.match(version))
+def replace_marked_section(text: str, marker: str, content: str) -> str:
+    start = f"<!-- {marker} -->"
+    end = f"<!-- {marker}_END -->"
+    pattern = re.compile(f"({re.escape(start)}).*?({re.escape(end)})", re.DOTALL)
+    if not pattern.search(text):
+        raise ValueError(f"README marker pair not found: {marker}")
+    return pattern.sub(f"\\1\n{content.rstrip()}\n\\2", text)
 
 
-def update_section(text: str, start_marker: str, end_marker: str, replacements: list) -> str:
-    """Update content between markers with given replacements."""
-    pattern = f"({re.escape(start_marker)})(.*?)({re.escape(end_marker)})"
-
-    def replace_section(match):
-        section = match.group(2)
-        for old_pattern, new_value in replacements:
-            section = re.sub(old_pattern, new_value, section)
-        return match.group(1) + section + match.group(3)
-
-    return re.sub(pattern, replace_section, text, flags=re.DOTALL)
+def badge(version: str, prerelease: bool) -> str:
+    channel = "Beta" if prerelease else "Stable"
+    label = channel.lower()
+    color = "orange" if prerelease else "blue"
+    badge_version = version.replace("-", "--")
+    release = f"https://github.com/{REPOSITORY}/releases/tag/v{version}"
+    return f"[![{channel}](https://img.shields.io/badge/{label}-{badge_version}-{color}?style=flat-square)]({release})"
 
 
-def update_readme(version: str, is_prerelease: bool) -> bool:
-    """
-    Update README.md with new version.
+def downloads(version: str) -> str:
+    base = f"https://github.com/{REPOSITORY}/releases/download/v{version}"
+    assets = [
+        ("Windows", f"{PRODUCT_NAME}-{version}-win32-x64.exe"),
+        ("macOS (Apple Silicon)", f"{PRODUCT_NAME}-{version}-darwin-arm64.dmg"),
+        ("macOS (Intel)", f"{PRODUCT_NAME}-{version}-darwin-x64.dmg"),
+        ("Linux", f"{PRODUCT_NAME}-{version}-linux-x86_64.AppImage"),
+        ("Linux (Debian)", f"{PRODUCT_NAME}-{version}-linux-amd64.deb"),
+        ("Linux (Flatpak)", f"{PRODUCT_NAME}-{version}-linux-x86_64.flatpak"),
+    ]
+    rows = ["| Platform | Download |", "|----------|----------|"]
+    rows.extend(f"| **{platform}** | [{asset}]({base}/{asset}) |" for platform, asset in assets)
+    return "\n".join(rows)
 
-    Args:
-        version: Version string (e.g., "2.8.0" or "2.8.0-beta.1")
-        is_prerelease: Whether this is a prerelease version
 
-    Returns:
-        True if changes were made, False otherwise
-    """
-    # Shields.io escapes hyphens as --
-    version_badge = version.replace("-", "--")
+def update_readme(version: str, prerelease: bool) -> bool:
+    with open("README.md", encoding="utf-8") as file:
+        original = file.read()
 
-    # Read README
-    with open("README.md", "r") as f:
-        original_content = f.read()
+    prefix = "BETA" if prerelease else "STABLE"
+    content = replace_marked_section(original, f"{prefix}_VERSION_BADGE", badge(version, prerelease))
+    content = replace_marked_section(content, f"{prefix}_DOWNLOADS", downloads(version))
 
-    content = original_content
-
-    # Semver pattern: matches X.Y.Z or X.Y.Z-prerelease (e.g., 2.7.2, 2.7.2-beta.10)
-    # Prerelease MUST contain a dot (beta.10, alpha.1, rc.1) to avoid matching platform suffixes (win32, darwin)
-    semver = r"\d+\.\d+\.\d+(?:-[a-zA-Z]+\.[a-zA-Z0-9.]+)?"
-    # Shields.io escaped pattern (hyphens as --)
-    semver_badge = r"\d+\.\d+\.\d+(?:--[a-zA-Z]+\.[a-zA-Z0-9.]+)?"
-
-    if is_prerelease:
-        print(f"Updating BETA section to {version} (badge: {version_badge})")
-
-        # Update beta badge
-        content = re.sub(rf"beta-{semver_badge}-orange", f"beta-{version_badge}-orange", content)
-
-        # Update beta version badge link
-        content = update_section(
-            content,
-            "<!-- BETA_VERSION_BADGE -->",
-            "<!-- BETA_VERSION_BADGE_END -->",
-            [(rf"tag/v{semver}\)", f"tag/v{version})")],
-        )
-
-        # Update beta downloads
-        content = update_section(
-            content,
-            "<!-- BETA_DOWNLOADS -->",
-            "<!-- BETA_DOWNLOADS_END -->",
-            [
-                (rf"Auto-Claude-{semver}", f"Auto-Claude-{version}"),
-                (rf"download/v{semver}/", f"download/v{version}/"),
-            ],
-        )
-    else:
-        print(f"Updating STABLE section to {version} (badge: {version_badge})")
-
-        # Update top version badge
-        content = update_section(
-            content,
-            "<!-- TOP_VERSION_BADGE -->",
-            "<!-- TOP_VERSION_BADGE_END -->",
-            [
-                (rf"version-{semver_badge}-blue", f"version-{version_badge}-blue"),
-                (rf"tag/v{semver}\)", f"tag/v{version})"),
-            ],
-        )
-
-        # Update stable badge
-        content = re.sub(rf"stable-{semver_badge}-blue", f"stable-{version_badge}-blue", content)
-
-        # Update stable version badge link
-        content = update_section(
-            content,
-            "<!-- STABLE_VERSION_BADGE -->",
-            "<!-- STABLE_VERSION_BADGE_END -->",
-            [(rf"tag/v{semver}\)", f"tag/v{version})")],
-        )
-
-        # Update stable downloads
-        content = update_section(
-            content,
-            "<!-- STABLE_DOWNLOADS -->",
-            "<!-- STABLE_DOWNLOADS_END -->",
-            [
-                (rf"Auto-Claude-{semver}", f"Auto-Claude-{version}"),
-                (rf"download/v{semver}/", f"download/v{version}/"),
-            ],
-        )
-
-    # Check if changes were made
-    if content == original_content:
-        print("No changes needed")
+    if content == original:
         return False
-
-    # Write updated README
-    with open("README.md", "w") as f:
-        f.write(content)
-
-    print(f"README.md updated for {version} (prerelease={is_prerelease})")
+    with open("README.md", "w", encoding="utf-8") as file:
+        file.write(content)
     return True
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Update README.md version badges and download links")
-    parser.add_argument("version", help="Version string (e.g., 2.8.0 or 2.8.0-beta.1)")
-    parser.add_argument("--prerelease", action="store_true", help="Mark as prerelease version")
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("version")
+    parser.add_argument("--prerelease", action="store_true")
     args = parser.parse_args()
 
-    # Validate version format
-    if not validate_version(args.version):
-        print(f"ERROR: Invalid version format: {args.version}", file=sys.stderr)
-        print("Expected format: X.Y.Z or X.Y.Z-prerelease.N (e.g., 2.8.0 or 2.8.0-beta.1)", file=sys.stderr)
-        sys.exit(1)
-
-    # Auto-detect prerelease if not explicitly set
-    is_prerelease = args.prerelease or ("-" in args.version)
+    if not SEMVER_PATTERN.fullmatch(args.version):
+        parser.error("version must be X.Y.Z or X.Y.Z-prerelease.N")
 
     try:
-        changed = update_readme(args.version, is_prerelease)
-        sys.exit(0 if changed else 0)  # Exit 0 in both cases (no error)
-    except FileNotFoundError:
-        print("ERROR: README.md not found", file=sys.stderr)
-        sys.exit(1)
-    except Exception as e:
-        print(f"ERROR: {e}", file=sys.stderr)
-        sys.exit(1)
+        changed = update_readme(args.version, args.prerelease or "-" in args.version)
+    except (OSError, ValueError) as error:
+        print(f"ERROR: {error}", file=sys.stderr)
+        raise SystemExit(1) from error
+    print(f"README.md {'updated' if changed else 'already current'} for {args.version}")
 
 
 if __name__ == "__main__":

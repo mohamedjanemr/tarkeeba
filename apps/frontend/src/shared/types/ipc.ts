@@ -47,7 +47,10 @@ import type {
   TaskLogStreamChunk,
   ImageAttachment,
   ReviewReason,
-  MergeProgress
+  MergeProgress,
+  CodexModelInfo,
+  OpenAIProfile,
+  OpenAIProfileSettings
 } from './task';
 import type {
   TerminalCreateOptions,
@@ -726,7 +729,7 @@ export interface ElectronAPI {
   openExternal: (url: string) => Promise<void>;
   openTerminal: (dirPath: string) => Promise<IPCResult<void>>;
 
-  // Auto Claude source environment operations
+  // Tarkeeba source environment operations
   getSourceEnv: () => Promise<IPCResult<SourceEnvConfig>>;
   updateSourceEnv: (config: { claudeOAuthToken?: string }) => Promise<IPCResult>;
   checkSourceToken: () => Promise<IPCResult<SourceEnvCheckResult>>;
@@ -927,6 +930,16 @@ export interface ElectronAPI {
   // Screenshot capture operations
   getSources: () => Promise<IPCResult<ScreenshotSource[]> & { devMode?: boolean }>;
   capture: (options: { sourceId: string }) => Promise<IPCResult<string>>;
+
+  // OpenAI Codex CLI
+  listCodexModels: (profileId?: string) => Promise<IPCResult<CodexModelInfo[]>>;
+  getOpenAIProfiles: () => Promise<IPCResult<OpenAIProfileSettings>>;
+  createOpenAIProfile: (name: string) => Promise<IPCResult<OpenAIProfile>>;
+  renameOpenAIProfile: (profileId: string, name: string) => Promise<IPCResult>;
+  deleteOpenAIProfile: (profileId: string) => Promise<IPCResult>;
+  setActiveOpenAIProfile: (profileId: string) => Promise<IPCResult>;
+  loginOpenAIProfile: (profileId: string) => Promise<IPCResult>;
+  verifyOpenAIProfile: (profileId: string) => Promise<IPCResult<{ authenticated: boolean; authMethod?: OpenAIProfile['authMethod'] }>>;
 
   // Queue Routing API (rate limit recovery)
   queue: import('../../preload/api/queue-api').QueueAPI;

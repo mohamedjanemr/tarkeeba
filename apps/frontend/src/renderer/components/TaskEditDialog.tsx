@@ -35,7 +35,7 @@ import { TaskFormFields } from './task-form/TaskFormFields';
 import { type FileReferenceData } from './task-form/useImageUpload';
 import { persistUpdateTask } from '../stores/task-store';
 import { useProjectStore } from '../stores/project-store';
-import type { Task, ImageAttachment, TaskCategory, TaskPriority, TaskComplexity, TaskImpact, ModelType, ThinkingLevel } from '../../shared/types';
+import type { Task, ImageAttachment, TaskCategory, TaskPriority, TaskComplexity, TaskImpact, ModelType, ThinkingLevel, AgentProvider, CodexReasoningEffort } from '../../shared/types';
 import {
   DEFAULT_AGENT_PROFILES,
   DEFAULT_PHASE_MODELS,
@@ -103,6 +103,10 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved }: TaskEditDi
     }
     return settings.selectedAgentProfile || 'auto';
   });
+  const [provider, setProvider] = useState<AgentProvider>(task.metadata?.provider || 'claude');
+  const [codexProfileId, setCodexProfileId] = useState(task.metadata?.codexProfileId || '');
+  const [codexModel, setCodexModel] = useState(task.metadata?.codexModel || 'gpt-5.6-sol');
+  const [codexReasoningEffort, setCodexReasoningEffort] = useState<CodexReasoningEffort>(task.metadata?.codexReasoningEffort || 'high');
   const [model, setModel] = useState<ModelType | ''>(task.metadata?.model || selectedProfile.model);
   const [thinkingLevel, setThinkingLevel] = useState<ThinkingLevel | ''>(
     task.metadata?.thinkingLevel || selectedProfile.thinkingLevel
@@ -143,6 +147,10 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved }: TaskEditDi
       setPriority(task.metadata?.priority || '');
       setComplexity(task.metadata?.complexity || '');
       setImpact(task.metadata?.impact || '');
+      setProvider(task.metadata?.provider || 'claude');
+      setCodexProfileId(task.metadata?.codexProfileId || '');
+      setCodexModel(task.metadata?.codexModel || 'gpt-5.6-sol');
+      setCodexReasoningEffort(task.metadata?.codexReasoningEffort || 'high');
 
       // Reset model configuration
       const taskModel = task.metadata?.model;
@@ -234,6 +242,12 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved }: TaskEditDi
 
     // Build metadata updates
     const metadataUpdates: Partial<typeof task.metadata> = {};
+    metadataUpdates.provider = provider;
+    if (provider === 'codex') {
+      metadataUpdates.codexProfileId = codexProfileId || undefined;
+      metadataUpdates.codexModel = codexModel.trim() || 'gpt-5.6-sol';
+      metadataUpdates.codexReasoningEffort = codexReasoningEffort;
+    }
     if (category) metadataUpdates.category = category;
     if (priority) metadataUpdates.priority = priority;
     if (complexity) metadataUpdates.complexity = complexity;
@@ -300,6 +314,14 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved }: TaskEditDi
         onDescriptionChange={setDescription}
         title={title}
         onTitleChange={setTitle}
+        provider={provider}
+        codexProfileId={codexProfileId}
+        codexModel={codexModel}
+        codexReasoningEffort={codexReasoningEffort}
+        onProviderChange={setProvider}
+        onCodexProfileChange={setCodexProfileId}
+        onCodexModelChange={setCodexModel}
+        onCodexReasoningEffortChange={setCodexReasoningEffort}
         profileId={profileId}
         model={model}
         thinkingLevel={thinkingLevel}

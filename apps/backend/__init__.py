@@ -1,5 +1,5 @@
 """
-Auto Claude Backend - Autonomous Coding Framework
+Tarkeeba Backend - Autonomous Coding Framework
 ==================================================
 
 Multi-agent autonomous coding framework that builds software through
@@ -19,5 +19,5 @@ Quick Start:
 See README.md for full documentation.
 """
 
-__version__ = "2.7.6"
-__author__ = "Auto Claude Team"
+__version__ = "2.8.0-beta.1"
+__author__ = "Tarkeeba Team"

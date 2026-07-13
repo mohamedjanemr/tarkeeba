@@ -58,6 +58,44 @@ import { isMacOS, isWindows } from './platform';
 import { ptyDaemonClient } from './terminal/pty-daemon-client';
 import type { AppSettings, AuthFailureInfo } from '../shared/types';
 
+// Keep source builds and E2E runs isolated from the installed application.
+// This must run before logging, settings, profiles, or Chromium access userData.
+const isE2E = process.env.NODE_ENV === 'test';
+const explicitUserDataPath = process.env.ELECTRON_USER_DATA_PATH;
+const hasCommandLineUserDataPath = app.commandLine.hasSwitch('user-data-dir');
+
+if (isE2E) {
+  app.setName('Tarkeeba E2E');
+  app.name = 'Tarkeeba E2E';
+
+  if (explicitUserDataPath) {
+    app.setPath('userData', explicitUserDataPath);
+  } else if (!hasCommandLineUserDataPath) {
+    app.setPath('userData', join(app.getPath('temp'), `tarkeeba-e2e-${process.pid}`));
+  }
+} else if (is.dev) {
+  app.setName('Tarkeeba Dev');
+  app.name = 'Tarkeeba Dev';
+
+  if (explicitUserDataPath) {
+    app.setPath('userData', explicitUserDataPath);
+  } else if (!hasCommandLineUserDataPath) {
+    app.setPath('userData', join(app.getPath('appData'), 'Tarkeeba-Dev'));
+  }
+} else {
+  app.setName('Tarkeeba');
+  app.name = 'Tarkeeba';
+
+  // Preserve existing projects, settings, and account profiles from Auto-Claude.
+  // The package name is now Tarkeeba so updater caches remain independent, while
+  // this explicit legacy path keeps the user's application data in place.
+  if (explicitUserDataPath) {
+    app.setPath('userData', explicitUserDataPath);
+  } else if (!hasCommandLineUserDataPath) {
+    app.setPath('userData', join(app.getPath('appData'), 'auto-claude-ui'));
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Window sizing constants
 // ─────────────────────────────────────────────────────────────────────────────
@@ -348,13 +386,6 @@ function createWindow(): void {
   });
 }
 
-// Set app name before ready (for dock tooltip on macOS in dev mode)
-app.setName('Auto Claude');
-if (isMacOS()) {
-  // Force the name to appear in dock on macOS
-  app.name = 'Auto Claude';
-}
-
 // Fix Windows GPU cache permission errors (0x5 Access Denied)
 if (isWindows()) {
   app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
@@ -365,7 +396,13 @@ if (isWindows()) {
 // Initialize the application
 app.whenReady().then(() => {
   // Set app user model id for Windows
-  electronApp.setAppUserModelId('com.autoclaude.ui');
+  electronApp.setAppUserModelId(
+    isE2E
+      ? 'io.github.mohamedjanemr.tarkeeba.e2e'
+      : is.dev
+        ? 'io.github.mohamedjanemr.tarkeeba.dev'
+        : 'io.github.mohamedjanemr.tarkeeba'
+  );
 
   // Clear cache on Windows to prevent permission errors from stale cache
   if (isWindows()) {

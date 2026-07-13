@@ -1035,7 +1035,7 @@ async function listTerminalWorktrees(projectPath: string): Promise<TerminalWorkt
 }
 
 /**
- * List "other" worktrees - worktrees not managed by Auto Claude
+ * List "other" worktrees - worktrees not managed by Tarkeeba
  * These are discovered via `git worktree list` excluding:
  * - Main worktree (project root)
  * - .auto-claude/worktrees/terminal/*

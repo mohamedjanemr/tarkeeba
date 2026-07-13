@@ -1,9 +1,9 @@
 {
-  "name": "auto-claude",
-  "version": "2.7.6",
-  "description": "Autonomous multi-agent coding framework powered by Claude AI",
+  "name": "tarkeeba",
+  "version": "2.8.0-beta.1",
+  "description": "Provider-neutral desktop workspace for autonomous coding agents",
   "license": "AGPL-3.0",
-  "author": "Auto Claude Team",
+  "author": "Tarkeeba contributors",
   "workspaces": [
     "apps/*",
     "libs/*"
@@ -32,11 +32,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/AndyMik90/Auto-Claude.git"
+    "url": "https://github.com/mohamedjanemr/tarkeeba.git"
   },
   "keywords": [
     "ai",
     "claude",
+    "codex",
+    "openai",
     "autonomous",
     "coding",
     "agents",
