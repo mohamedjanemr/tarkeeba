@@ -17,10 +17,17 @@ logger = logging.getLogger(__name__)
 # Model shorthand to full model ID mapping
 # Values must match apps/frontend/src/shared/constants/models.ts MODEL_ID_MAP
 MODEL_ID_MAP: dict[str, str] = {
-    "opus": "claude-opus-4-6",
+    "fable": "claude-fable-5",
+    "opus": "claude-opus-4-8",
+    "opus-4.8": "claude-opus-4-8",
+    "opus-4.7": "claude-opus-4-7",
+    "opus-4.6": "claude-opus-4-6",
     "opus-1m": "claude-opus-4-6",
     "opus-4.5": "claude-opus-4-5-20251101",
-    "sonnet": "claude-sonnet-4-5-20250929",
+    "sonnet": "claude-sonnet-5",
+    "sonnet-5": "claude-sonnet-5",
+    "sonnet-4.6": "claude-sonnet-4-6",
+    "sonnet-4.5": "claude-sonnet-4-5-20250929",
     "haiku": "claude-haiku-4-5-20251001",
 }
 
@@ -44,7 +51,14 @@ EFFORT_LEVEL_MAP: dict[str, str] = {"low": "low", "medium": "medium", "high": "h
 
 # Models that support adaptive thinking via effort level (env var)
 # These models get both max_thinking_tokens AND effort_level
-ADAPTIVE_THINKING_MODELS: set[str] = {"claude-opus-4-6"}
+ADAPTIVE_THINKING_MODELS: set[str] = {
+    "claude-fable-5",
+    "claude-opus-4-8",
+    "claude-opus-4-7",
+    "claude-opus-4-6",
+    "claude-sonnet-5",
+    "claude-sonnet-4-6",
+}
 
 # Spec runner phase-specific thinking levels
 # Heavy phases use high for deep analysis
@@ -132,8 +146,8 @@ def resolve_model_id(model: str) -> str:
             "sonnet": "ANTHROPIC_DEFAULT_SONNET_MODEL",
             "opus": "ANTHROPIC_DEFAULT_OPUS_MODEL",
             "opus-1m": "ANTHROPIC_DEFAULT_OPUS_MODEL",
-            # opus-4.5 intentionally omitted — always resolves to its hardcoded
-            # model ID (claude-opus-4-5-20251101) regardless of env var overrides.
+            # Version-pinned and Fable shorthands intentionally omit profile
+            # overrides so that selecting one always resolves to that model.
         }
         env_var = env_var_map.get(model)
         if env_var:
@@ -427,7 +441,7 @@ def get_thinking_kwargs_for_model(model_id: str, thinking_level: str) -> dict:
     """
     Get thinking-related kwargs for create_client() based on model type.
 
-    For adaptive models (Opus 4.6): returns both max_thinking_tokens and effort_level.
+    For adaptive models: returns both max_thinking_tokens and effort_level.
     For other models (Sonnet, Haiku): returns only max_thinking_tokens.
 
     Args:

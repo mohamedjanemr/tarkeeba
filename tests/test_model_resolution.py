@@ -123,6 +123,24 @@ class TestResolveModelId:
         result = resolve_model_id("haiku")
         assert result == MODEL_ID_MAP["haiku"]
 
+    @pytest.mark.parametrize(
+        ("shorthand", "model_id"),
+        [
+            ("fable", "claude-fable-5"),
+            ("opus", "claude-opus-4-8"),
+            ("opus-4.8", "claude-opus-4-8"),
+            ("opus-4.7", "claude-opus-4-7"),
+            ("opus-4.6", "claude-opus-4-6"),
+            ("sonnet", "claude-sonnet-5"),
+            ("sonnet-5", "claude-sonnet-5"),
+            ("sonnet-4.6", "claude-sonnet-4-6"),
+        ],
+    )
+    def test_resolves_current_model_shorthands(
+        self, clean_env, shorthand: str, model_id: str
+    ):
+        assert resolve_model_id(shorthand) == model_id
+
     def test_passes_through_full_model_id(self):
         """Full model IDs are passed through unchanged."""
         custom_model = "glm-4.7"
@@ -387,13 +405,14 @@ class TestOpus1mModelResolution:
         assert result == "claude-opus-4-6"
 
     def test_opus_resolves_to_opus_model_id(self, clean_env):
-        """resolve_model_id('opus') returns claude-opus-4-6."""
+        """resolve_model_id('opus') returns the latest Opus model."""
         result = resolve_model_id("opus")
-        assert result == "claude-opus-4-6"
+        assert result == "claude-opus-4-8"
 
-    def test_opus_1m_and_opus_resolve_to_same_id(self, clean_env):
-        """opus-1m and opus both resolve to the same underlying model ID."""
-        assert resolve_model_id("opus-1m") == resolve_model_id("opus")
+    def test_opus_1m_remains_pinned_to_4_6(self, clean_env):
+        """The legacy 1M option remains pinned to Opus 4.6 for compatibility."""
+        assert resolve_model_id("opus-1m") == "claude-opus-4-6"
+        assert resolve_model_id("opus") == "claude-opus-4-8"
 
     def test_opus_1m_respects_env_override(self):
         """opus-1m respects ANTHROPIC_DEFAULT_OPUS_MODEL environment variable."""
@@ -474,6 +493,19 @@ class TestIsAdaptiveModel:
     def test_adaptive_models_set_contains_opus(self):
         """ADAPTIVE_THINKING_MODELS set contains opus."""
         assert "claude-opus-4-6" in ADAPTIVE_THINKING_MODELS
+
+    @pytest.mark.parametrize(
+        "model_id",
+        [
+            "claude-fable-5",
+            "claude-opus-4-8",
+            "claude-opus-4-7",
+            "claude-sonnet-5",
+            "claude-sonnet-4-6",
+        ],
+    )
+    def test_current_models_are_adaptive(self, model_id: str):
+        assert is_adaptive_model(model_id) is True
 
 
 class TestGetThinkingKwargsForModel:

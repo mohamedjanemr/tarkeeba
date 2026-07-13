@@ -65,11 +65,18 @@ const LOG_PHASE_TO_CONFIG_PHASE: Record<TaskLogPhase, keyof PhaseModelConfig> = 
 
 // Short labels for models
 const MODEL_SHORT_LABELS: Record<ModelTypeShort, string> = {
-  opus: 'Opus',
+  fable: 'Fable 5',
+  opus: 'Opus 4.8',
+  'opus-4.8': 'Opus 4.8',
+  'opus-4.7': 'Opus 4.7',
+  'opus-4.6': 'Opus 4.6',
   'opus-1m': 'Opus (1M)',
   'opus-4.5': 'Opus 4.5',
-  sonnet: 'Sonnet',
-  haiku: 'Haiku'
+  sonnet: 'Sonnet 5',
+  'sonnet-5': 'Sonnet 5',
+  'sonnet-4.6': 'Sonnet 4.6',
+  'sonnet-4.5': 'Sonnet 4.5',
+  haiku: 'Haiku 4.5'
 };
 
 // Short labels for thinking levels

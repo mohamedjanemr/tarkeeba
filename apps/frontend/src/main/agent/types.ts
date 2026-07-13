@@ -1,5 +1,6 @@
 import { ChildProcess } from 'child_process';
 import type { CompletablePhase, ExecutionPhase } from '../../shared/constants/phase-protocol';
+import type { ModelTypeShort } from '../../shared/types/settings';
 import type { TaskEventPayload } from './task-event-schema';
 
 /**
@@ -57,10 +58,10 @@ export interface SpecCreationMetadata {
   // Auto profile - phase-based model and thinking configuration
   isAutoProfile?: boolean;
   phaseModels?: {
-    spec: 'haiku' | 'sonnet' | 'opus' | 'opus-1m' | 'opus-4.5';
-    planning: 'haiku' | 'sonnet' | 'opus' | 'opus-1m' | 'opus-4.5';
-    coding: 'haiku' | 'sonnet' | 'opus' | 'opus-1m' | 'opus-4.5';
-    qa: 'haiku' | 'sonnet' | 'opus' | 'opus-1m' | 'opus-4.5';
+    spec: ModelTypeShort;
+    planning: ModelTypeShort;
+    coding: ModelTypeShort;
+    qa: ModelTypeShort;
   };
   phaseThinking?: {
     spec: 'low' | 'medium' | 'high';
@@ -69,7 +70,7 @@ export interface SpecCreationMetadata {
     qa: 'low' | 'medium' | 'high';
   };
   // Non-auto profile - single model and thinking level
-  model?: 'haiku' | 'sonnet' | 'opus' | 'opus-1m' | 'opus-4.5';
+  model?: ModelTypeShort;
   thinkingLevel?: 'low' | 'medium' | 'high';
   // Workspace mode - whether to use worktree isolation
   useWorktree?: boolean; // If false, use --direct mode (no worktree isolation)

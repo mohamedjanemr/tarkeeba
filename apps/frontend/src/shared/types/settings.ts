@@ -161,7 +161,19 @@ export interface ColorThemeDefinition {
 export type ThinkingLevel = 'low' | 'medium' | 'high';
 
 // Model type shorthand
-export type ModelTypeShort = 'haiku' | 'sonnet' | 'opus' | 'opus-1m' | 'opus-4.5';
+export type ModelTypeShort =
+  | 'fable'
+  | 'haiku'
+  | 'sonnet'
+  | 'sonnet-5'
+  | 'sonnet-4.6'
+  | 'sonnet-4.5'
+  | 'opus'
+  | 'opus-4.8'
+  | 'opus-4.7'
+  | 'opus-4.6'
+  | 'opus-1m'
+  | 'opus-4.5';
 
 // Phase-based model configuration for Auto profile
 // Each phase can use a different model optimized for that task type
