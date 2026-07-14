@@ -1,0 +1,24 @@
+{
+  "dashboard": {
+    "title": "Usage & Cost",
+    "totalSpend": "Total Spend",
+    "totalTokens": "Total Tokens",
+    "activeRunCost": "Active Run Cost"
+  },
+  "warningModal": {
+    "title": "Cost Warning",
+    "description": "This task's predicted cost exceeds your configured spend threshold. Review the estimate before proceeding.",
+    "predictedCostLabel": "Predicted Cost",
+    "thresholdLabel": "Threshold",
+    "proceed": "Proceed",
+    "cancel": "Cancel"
+  },
+  "thresholdSettings": {
+    "title": "Cost Warning Threshold",
+    "description": "Warn me before starting a task predicted to cost more than this amount.",
+    "enableLabel": "Enable cost warnings",
+    "thresholdLabel": "Warning threshold (USD)",
+    "thresholdPlaceholder": "e.g. 5.00",
+    "invalidThreshold": "Enter a threshold greater than $0.00"
+  }
+}
