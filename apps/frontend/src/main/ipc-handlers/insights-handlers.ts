@@ -24,6 +24,7 @@ import type {
 } from "../../shared/types";
 import { projectStore } from "../project-store";
 import { insightsService } from "../insights-service";
+import { buildInsightsTaskMetadata } from "../insights/task-metadata";
 import { safeSendToRenderer } from "./utils";
 
 /**
@@ -166,7 +167,8 @@ export function registerInsightsHandlers(getMainWindow: () => BrowserWindow | nu
       projectId: string,
       title: string,
       description: string,
-      metadata?: TaskMetadata
+      metadata?: TaskMetadata,
+      providerConfig?: InsightsProviderConfig
     ): Promise<IPCResult<Task>> => {
       const project = projectStore.getProject(projectId);
       if (!project) {
@@ -215,10 +217,7 @@ export function registerInsightsHandlers(getMainWindow: () => BrowserWindow | nu
         mkdirSync(specDir, { recursive: true });
 
         // Build metadata with source type
-        const taskMetadata: TaskMetadata = {
-          sourceType: "insights",
-          ...metadata,
-        };
+        const taskMetadata = buildInsightsTaskMetadata(metadata, providerConfig);
 
         // Create initial implementation_plan.json
         const now = new Date().toISOString();

@@ -4,8 +4,29 @@ import {
   buildCodexInsightsPrompt,
   parseCodexInsightsEvent,
 } from '../insights/codex-insights';
+import { buildInsightsTaskMetadata } from '../insights/task-metadata';
 
 describe('Codex Insights adapter', () => {
+  it('preserves the selected Codex configuration on created tasks', () => {
+    expect(buildInsightsTaskMetadata(
+      { category: 'feature', complexity: 'medium' },
+      {
+        provider: 'codex',
+        codexProfileId: 'openai-account-1',
+        codexModel: 'gpt-test',
+        codexReasoningEffort: 'high',
+      }
+    )).toEqual({
+      sourceType: 'insights',
+      category: 'feature',
+      complexity: 'medium',
+      provider: 'codex',
+      codexProfileId: 'openai-account-1',
+      codexModel: 'gpt-test',
+      codexReasoningEffort: 'high',
+    });
+  });
+
   it('builds a read-only ephemeral command with images', () => {
     const args = buildCodexInsightsArgs('/repo', 'gpt-test', 'high', [
       '/tmp/first.png',

@@ -788,7 +788,8 @@ export interface ElectronAPI {
     projectId: string,
     title: string,
     description: string,
-    metadata?: TaskMetadata
+    metadata?: TaskMetadata,
+    providerConfig?: InsightsProviderConfig
   ) => Promise<IPCResult<Task>>;
   listInsightsSessions: (projectId: string, includeArchived?: boolean) => Promise<IPCResult<InsightsSessionSummary[]>>;
   newInsightsSession: (projectId: string) => Promise<IPCResult<InsightsSession>>;
