@@ -191,8 +191,12 @@ def load_images_from_manifest(manifest_path: str) -> list[dict]:
                     image_data = base64.b64encode(img_f.read()).decode("utf-8")
                 images.append(
                     {
-                        "media_type": mime_type,
+                        # The API canonicalizes JPEG as image/jpeg.
+                        "media_type": "image/jpeg"
+                        if mime_type == "image/jpg"
+                        else mime_type,
                         "data": image_data,
+                        "path": str(resolved),
                     }
                 )
                 debug(
@@ -240,6 +244,33 @@ Be conversational and helpful. Focus on providing actionable insights and clear 
 Keep responses concise but informative."""
 
 
+def build_user_message(prompt: str, images: list[dict]) -> dict:
+    """Build a Claude Agent SDK streaming user message with image blocks."""
+    content = [
+        {
+            "type": "image",
+            "source": {
+                "type": "base64",
+                "media_type": image["media_type"],
+                "data": image["data"],
+            },
+        }
+        for image in images
+    ]
+    content.append({"type": "text", "text": prompt})
+
+    return {
+        "type": "user",
+        "message": {"role": "user", "content": content},
+        "parent_tool_use_id": None,
+    }
+
+
+async def stream_user_message(prompt: str, images: list[dict]):
+    """Yield one multimodal message in the Agent SDK streaming input format."""
+    yield build_user_message(prompt, images)
+
+
 async def run_with_sdk(
     project_dir: str,
     message: str,
@@ -275,7 +306,7 @@ async def run_with_sdk(
         conversation_context += f"\n{role}: {msg['content']}\n"
 
     # Build the full prompt with conversation history
-    full_prompt = message
+    full_prompt = message or "Analyze the attached image(s)."
     if conversation_context.strip():
         full_prompt = f"""Previous conversation:
 {conversation_context}
@@ -309,21 +340,15 @@ Current question: {message}"""
 
         # Use async context manager pattern
         async with client:
-            # Build the query - images are stored for reference but SDK doesn't support multi-modal input yet
+            # String queries cannot carry content blocks, so use the Agent SDK's
+            # streaming input format whenever images are attached.
             if images:
                 debug(
                     "insights_runner",
-                    "Images attached but SDK does not support multi-modal input",
+                    "Sending multimodal query",
                     image_count=len(images),
                 )
-
-                # TODO: When the SDK adds support for multi-modal content blocks, update this.
-                image_note = f"\n\n[Note: The user attached {len(images)} image(s), but the current SDK version does not support multi-modal input. Please ask the user to describe the image content instead.]"
-                print(
-                    "Warning: Image attachments cannot be sent to the model in SDK mode. Sending text-only query.",
-                    file=sys.stderr,
-                )
-                await client.query(full_prompt + image_note)
+                await client.query(stream_user_message(full_prompt, images))
             else:
                 # Send the query as plain text
                 await client.query(full_prompt)
@@ -409,12 +434,6 @@ def run_simple(
     """Simple fallback mode without SDK - uses subprocess to call claude CLI."""
     import subprocess
 
-    if images:
-        print(
-            "Warning: Image attachments are not supported in simple mode and will be skipped.",
-            file=sys.stderr,
-        )
-
     system_prompt = build_system_prompt(project_dir)
 
     # Build conversation context
@@ -424,12 +443,21 @@ def run_simple(
         conversation_context += f"\n{role}: {msg['content']}\n"
 
     # Create the full prompt
+    image_context = ""
+    if images:
+        image_paths = "\n".join(f"- {image['path']}" for image in images)
+        image_context = f"""
+
+The user attached the following images. Use the Read tool to inspect each image before answering:
+{image_paths}
+"""
+
     full_prompt = f"""{system_prompt}
 
 Previous conversation:
 {conversation_context}
 
-User: {message}
+User: {message}{image_context}
 Assistant:"""
 
     try:

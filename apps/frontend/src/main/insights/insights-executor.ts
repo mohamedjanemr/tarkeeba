@@ -16,6 +16,7 @@ import type {
 import { MODEL_ID_MAP, MAX_IMAGES_PER_TASK, MAX_IMAGE_SIZE } from '../../shared/constants';
 import { InsightsConfig } from './config';
 import { detectRateLimit, createSDKRateLimitInfo } from '../rate-limit-detector';
+import { killProcessGracefully } from '../platform';
 
 // Safe extension map for image MIME types — prevents path traversal via crafted mimeType
 // SVG excluded: contains active script content and is unsupported by Claude Vision API
@@ -34,6 +35,7 @@ interface ProcessorResult {
   fullResponse: string;
   suggestedTasks?: InsightsChatMessage['suggestedTasks'];
   toolsUsed: InsightsToolUsage[];
+  cancelled?: boolean;
 }
 
 /**
@@ -43,6 +45,7 @@ interface ProcessorResult {
 export class InsightsExecutor extends EventEmitter {
   private config: InsightsConfig;
   private activeSessions: Map<string, ChildProcess> = new Map();
+  private cancelledProcesses = new WeakSet<ChildProcess>();
 
   constructor(config: InsightsConfig) {
     super();
@@ -63,8 +66,11 @@ export class InsightsExecutor extends EventEmitter {
     const existingProcess = this.activeSessions.get(projectId);
     if (!existingProcess) return false;
 
-    existingProcess.kill();
-    this.activeSessions.delete(projectId);
+    this.cancelledProcesses.add(existingProcess);
+    killProcessGracefully(existingProcess, {
+      debugPrefix: '[Insights]',
+      timeoutMs: 2000,
+    });
     return true;
   }
 
@@ -271,8 +277,30 @@ export class InsightsExecutor extends EventEmitter {
       });
 
       proc.on('close', (code) => {
-        this.activeSessions.delete(projectId);
+        if (this.activeSessions.get(projectId) === proc) {
+          this.activeSessions.delete(projectId);
+        }
         cleanupTempFiles();
+
+        const wasCancelled = this.cancelledProcesses.has(proc);
+        if (wasCancelled) {
+          this.emit('stream-chunk', projectId, {
+            type: 'done'
+          } as InsightsStreamChunk);
+
+          this.emit('status', projectId, {
+            phase: 'complete',
+            message: 'Response stopped'
+          } as InsightsChatStatus);
+
+          resolve({
+            fullResponse: fullResponse.trim(),
+            suggestedTasks: suggestedTasks.length > 0 ? suggestedTasks : undefined,
+            toolsUsed,
+            cancelled: true
+          });
+          return;
+        }
 
         // Check for rate limit if process failed
         if (code !== 0) {
@@ -310,7 +338,9 @@ export class InsightsExecutor extends EventEmitter {
       });
 
       proc.on('error', (err) => {
-        this.activeSessions.delete(projectId);
+        if (this.activeSessions.get(projectId) === proc) {
+          this.activeSessions.delete(projectId);
+        }
         cleanupTempFiles();
 
         this.emit('error', projectId, err.message);

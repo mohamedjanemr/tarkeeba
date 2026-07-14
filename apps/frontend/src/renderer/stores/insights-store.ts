@@ -284,6 +284,22 @@ export function sendMessage(projectId: string, message: string, modelConfig?: In
   window.electronAPI.sendInsightsMessage(projectId, message, configToUse, images);
 }
 
+export async function stopMessage(projectId: string): Promise<boolean> {
+  const result = await window.electronAPI.cancelInsightsMessage(projectId);
+  if (!result.success) {
+    useInsightsStore.getState().setStatus({
+      phase: 'error',
+      error: result.error || 'Failed to stop response'
+    });
+    return false;
+  }
+
+  if (!result.data?.cancelled) {
+    useInsightsStore.getState().setStatus({ phase: 'complete', message: '' });
+  }
+  return result.data?.cancelled ?? false;
+}
+
 export async function clearSession(projectId: string, includeArchived?: boolean): Promise<void> {
   const result = await window.electronAPI.clearInsightsSession(projectId);
   if (result.success) {
