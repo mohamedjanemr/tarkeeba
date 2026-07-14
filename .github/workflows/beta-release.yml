@@ -639,6 +639,9 @@ jobs:
 
             This is a **beta release** for testing new features. It may contain bugs or incomplete functionality.
 
+            > [!WARNING]
+            > This preview is distributed without Apple notarization or Windows code signing. macOS Gatekeeper and Windows SmartScreen may warn before launch. Verify the downloaded file against `checksums.sha256` before installing it.
+
             ### How to opt-in to beta updates
             1. Open Tarkeeba
             2. Go to Settings > Updates

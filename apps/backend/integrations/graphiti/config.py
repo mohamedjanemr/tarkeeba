@@ -181,9 +181,7 @@ class GraphitiConfig:
 
         # Anthropic settings
         anthropic_api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-        anthropic_model = os.environ.get(
-            "GRAPHITI_ANTHROPIC_MODEL", "claude-sonnet-5"
-        )
+        anthropic_model = os.environ.get("GRAPHITI_ANTHROPIC_MODEL", "claude-sonnet-5")
 
         # Azure OpenAI settings
         azure_openai_api_key = os.environ.get("AZURE_OPENAI_API_KEY", "")

@@ -159,8 +159,8 @@ Task: {task}
 
 Inspect the repository and any requirements.json or task_metadata.json in the spec directory.
 Create these two files:
-1. {spec_dir / 'spec.md'} — clear requirements, scope, architecture, acceptance criteria, and validation strategy.
-2. {spec_dir / 'implementation_plan.json'} — valid JSON using this shape:
+1. {spec_dir / "spec.md"} — clear requirements, scope, architecture, acceptance criteria, and validation strategy.
+2. {spec_dir / "implementation_plan.json"} — valid JSON using this shape:
    {{"feature": string, "description": string, "status": "pending", "phases": [{{"id": string, "name": string, "subtasks": [{{"id": string, "description": string, "status": "pending", "files_to_modify": [string], "files_to_create": [string], "verification": {{"type": "command", "command": string}}}}]}}]}}
 
 Do not implement code in this turn. Do not alter files outside the spec directory.
@@ -174,7 +174,7 @@ def _build_prompt(project_dir: Path, spec_dir: Path) -> str:
 Project root: {project_dir}
 Spec directory: {spec_dir}
 
-Read AGENTS.md, {spec_dir / 'spec.md'}, and {spec_dir / 'implementation_plan.json'}.
+Read AGENTS.md, {spec_dir / "spec.md"}, and {spec_dir / "implementation_plan.json"}.
 Implement the complete plan in the project root. Work through every pending subtask, run its verification,
 and update each subtask status in implementation_plan.json to completed only after it is verified.
 Keep changes scoped to the specification. Do not merely describe changes: edit files and run tests.
@@ -189,7 +189,7 @@ Project root: {project_dir}
 Spec directory: {spec_dir}
 
 Review the implementation against spec.md and implementation_plan.json. Inspect the git diff, run the
-most relevant tests, and fix defects you find. Then write {spec_dir / 'qa_report.md'} with the checks run,
+most relevant tests, and fix defects you find. Then write {spec_dir / "qa_report.md"} with the checks run,
 findings, fixes, and final result. Update implementation_plan.json with:
 "qa_signoff": {{"status": "approved" or "rejected", "report_file": "qa_report.md", "summary": string}}.
 Approve only when validation passes. Do not leave known defects unfixed unless they are documented and
@@ -201,12 +201,20 @@ def _task_description(spec_dir: Path, fallback: str | None) -> str:
     if fallback:
         return fallback
     requirements = _load_json(spec_dir / "requirements.json")
-    return str(requirements.get("task_description") or requirements.get("description") or spec_dir.name)
+    return str(
+        requirements.get("task_description")
+        or requirements.get("description")
+        or spec_dir.name
+    )
 
 
 def _prepare_workspace(project_dir: Path, source_spec_dir: Path) -> tuple[Path, Path]:
     metadata = _load_json(source_spec_dir / "task_metadata.json")
-    mode = WorkspaceMode.DIRECT if metadata.get("useWorktree") is False else WorkspaceMode.ISOLATED
+    mode = (
+        WorkspaceMode.DIRECT
+        if metadata.get("useWorktree") is False
+        else WorkspaceMode.ISOLATED
+    )
     working_dir, _manager, localized_spec_dir = setup_workspace(
         project_dir,
         source_spec_dir.name,
@@ -220,7 +228,9 @@ def _prepare_workspace(project_dir: Path, source_spec_dir: Path) -> tuple[Path, 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run Tarkeeba tasks with Codex")
-    parser.add_argument("--stage", choices=("spec", "full", "build", "qa"), required=True)
+    parser.add_argument(
+        "--stage", choices=("spec", "full", "build", "qa"), required=True
+    )
     parser.add_argument("--project-dir", type=Path, required=True)
     parser.add_argument("--spec-dir", type=Path, required=True)
     parser.add_argument("--task")
@@ -234,9 +244,13 @@ def main() -> int:
     print(f"Codex provider: model={model}, reasoning_effort={effort}", flush=True)
     try:
         if args.stage in {"spec", "full"}:
-            emit_phase(ExecutionPhase.PLANNING, "Creating specification with Codex", progress=5)
+            emit_phase(
+                ExecutionPhase.PLANNING, "Creating specification with Codex", progress=5
+            )
             _run_codex(
-                prompt=_spec_prompt(project_dir, spec_dir, _task_description(spec_dir, args.task)),
+                prompt=_spec_prompt(
+                    project_dir, spec_dir, _task_description(spec_dir, args.task)
+                ),
                 cwd=project_dir,
                 model=model,
                 effort=effort,
@@ -244,7 +258,11 @@ def main() -> int:
             )
             print("Specification complete", flush=True)
             if args.stage == "spec":
-                emit_phase(ExecutionPhase.PLANNING, "Specification ready for review", progress=100)
+                emit_phase(
+                    ExecutionPhase.PLANNING,
+                    "Specification ready for review",
+                    progress=100,
+                )
                 return 0
 
         source_spec_dir = spec_dir

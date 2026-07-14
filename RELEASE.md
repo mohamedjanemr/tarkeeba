@@ -5,7 +5,7 @@ This fork publishes independently from upstream. The current release candidate i
 ## Release topology
 
 - `develop` is the integration and beta branch.
-- `main` is the stable release branch. It still needs to be created on the fork before the first stable release.
+- `main` is the default and stable release branch.
 - `.github/workflows/beta-release.yml` builds a manually requested prerelease from `develop`.
 - `.github/workflows/prepare-release.yml` watches version changes merged to `main`, validates the changelog, and creates a tag.
 - `.github/workflows/release.yml` builds and publishes a stable tag for macOS, Windows, and Linux.
@@ -14,13 +14,13 @@ The updater, package metadata, documentation, and release workflows target the s
 
 ## One-time GitHub preparation
 
-1. Confirm Actions has read/write workflow permissions under **Settings → Actions → General**.
-2. Create `main` from the tested `develop` commit, then make it the protected stable branch.
-3. Add these repository secrets:
+1. Keep the repository's default workflow permission read-only. Release jobs request `contents: write` only where required.
+2. Protect `main` before the first stable release; keep beta development on `develop`.
+3. Add these repository secrets when signed distribution is enabled:
 
 | Secret | Required for | Notes |
 |---|---|---|
-| `PAT_TOKEN` | stable automation | Fine-grained token scoped to this repository with Contents read/write permission |
+| `PAT_TOKEN` | stable automation | Fine-grained token scoped to this repository with Contents read/write permission; not required for the beta workflow |
 | `MAC_CERTIFICATE` | signed macOS builds | Base64-encoded Developer ID Application `.p12` |
 | `MAC_CERTIFICATE_PASSWORD` | signed macOS builds | Password for the `.p12` |
 | `APPLE_ID` | notarization | Apple developer account email |
@@ -28,6 +28,8 @@ The updater, package metadata, documentation, and release workflows target the s
 | `APPLE_TEAM_ID` | notarization | Apple Developer team identifier |
 
 Windows signing is optional for a beta, but strongly recommended before stable distribution. When available, add `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_SIGNING_ACCOUNT`, and `AZURE_CERTIFICATE_PROFILE`.
+
+The first GitHub beta may be published without signing credentials for direct testing. Mark unsigned macOS and Windows assets clearly in the release notes; expect Gatekeeper and SmartScreen warnings. Do not call an unsigned build production-ready.
 
 `SENTRY_DSN`, `SENTRY_TRACES_SAMPLE_RATE`, and `SENTRY_PROFILES_SAMPLE_RATE` are optional.
 

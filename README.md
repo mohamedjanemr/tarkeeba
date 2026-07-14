@@ -27,7 +27,7 @@ Downloads will appear here after the first stable release.
 
 > ⚠️ Beta releases may contain bugs and breaking changes. [View all releases](https://github.com/mohamedjanemr/tarkeeba/releases)
 >
-> `2.8.0-beta.1` is prepared but not published yet; the links below become active after the release workflow succeeds.
+> `2.8.0-beta.1` is an unsigned preview distributed through GitHub Releases. macOS Gatekeeper and Windows SmartScreen may warn before launch; verify the published SHA256 checksums before installing.
 
 <!-- BETA_VERSION_BADGE -->
 [![Beta](https://img.shields.io/badge/beta-2.8.0--beta.1-orange?style=flat-square)](https://github.com/mohamedjanemr/tarkeeba/releases/tag/v2.8.0-beta.1)
