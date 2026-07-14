@@ -152,6 +152,10 @@ export const IPC_CHANNELS = {
   USAGE_COST_PREDICT: 'usageCost:predict',  // Historical-average cost prediction for a new task
   USAGE_COST_UPDATED: 'usageCost:updated',  // Event: usage data updated (main -> renderer)
 
+  // Pre-run cost warning gate (blocks task/QA spawn until user confirms a predicted-cost-over-threshold warning)
+  COST_WARNING_REQUIRED: 'costWarning:required',  // Event: predicted cost exceeds threshold, awaiting confirmation (main -> renderer)
+  TASK_CONFIRM_COST_WARNING: 'costWarning:confirm',  // Renderer -> Main: user approved/rejected starting the task despite the cost warning
+
   // Settings
   SETTINGS_GET: 'settings:get',
   SETTINGS_SAVE: 'settings:save',
