@@ -582,6 +582,26 @@
       "empty": "Aucune donnée historique de dépense",
       "tooltipCost": "Coût",
       "axisCost": "Coût (USD)"
+    },
+    "accountHeadroom": {
+      "title": "Marge des comptes",
+      "description": "Marge de limite de débit et d'utilisation par compte, y compris le statut de basculement",
+      "active": "Actif",
+      "needsReauth": "Réauthentification requise",
+      "rateLimited": "Limite de débit atteinte",
+      "session": "Session",
+      "weekly": "Hebdomadaire",
+      "empty": "Aucune donnée d'utilisation de compte disponible"
+    },
+    "taskCostBreakdown": {
+      "title": "Répartition des coûts",
+      "description": "Utilisation de jetons et coût estimé par tâche, ventilés par compte et fournisseur",
+      "account": "Compte",
+      "provider": "Fournisseur",
+      "inputTokens": "Entrée",
+      "outputTokens": "Sortie",
+      "cost": "Coût",
+      "empty": "Aucune donnée d'utilisation pour cette tâche"
     }
   },
   "oauth": {
