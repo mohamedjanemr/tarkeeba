@@ -15,6 +15,7 @@ import {
 import type {
   IPCResult,
   IdeationConfig,
+  IdeationProviderConfig,
   IdeationGenerationStatus,
   AppSettings,
 } from "../../../shared/types";
@@ -61,6 +62,7 @@ export function startIdeationGeneration(
   _event: IpcMainEvent,
   projectId: string,
   config: IdeationConfig,
+  providerConfig: IdeationProviderConfig | undefined,
   agentManager: AgentManager,
   mainWindow: BrowserWindow | null
 ): void {
@@ -97,7 +99,7 @@ export function startIdeationGeneration(
   });
 
   // Start ideation generation via agent manager
-  agentManager.startIdeationGeneration(projectId, project.path, configWithSettings, false);
+  agentManager.startIdeationGeneration(projectId, project.path, configWithSettings, false, providerConfig);
 
   // Send initial progress
   safeSendToRenderer(getMainWindow, IPC_CHANNELS.IDEATION_PROGRESS, projectId, {
@@ -114,6 +116,7 @@ export function refreshIdeationSession(
   _event: IpcMainEvent,
   projectId: string,
   config: IdeationConfig,
+  providerConfig: IdeationProviderConfig | undefined,
   agentManager: AgentManager,
   mainWindow: BrowserWindow | null
 ): void {
@@ -140,7 +143,7 @@ export function refreshIdeationSession(
   }
 
   // Start ideation regeneration with refresh flag
-  agentManager.startIdeationGeneration(projectId, project.path, configWithSettings, true);
+  agentManager.startIdeationGeneration(projectId, project.path, configWithSettings, true, providerConfig);
 
   // Send initial progress
   safeSendToRenderer(getMainWindow, IPC_CHANNELS.IDEATION_PROGRESS, projectId, {

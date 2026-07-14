@@ -18,7 +18,12 @@ import {
 } from '../../../stores/ideation-store';
 import { loadTasks } from '../../../stores/task-store';
 import { useIdeationAuth } from './useIdeationAuth';
-import type { Idea, IdeationType } from '../../../../shared/types';
+import type {
+  AgentProvider,
+  Idea,
+  IdeationProviderConfig,
+  IdeationType
+} from '../../../../shared/types';
 import { ALL_IDEATION_TYPES } from '../constants';
 
 interface UseIdeationOptions {
@@ -52,10 +57,53 @@ export function useIdeation(projectId: string, options: UseIdeationOptions = {})
   const [showAddMoreDialog, setShowAddMoreDialog] = useState(false);
   const [typesToAdd, setTypesToAdd] = useState<IdeationType[]>([]);
   const [convertingIdeas, setConvertingIdeas] = useState<Set<string>>(new Set());
+  const [provider, setProvider] = useState<AgentProvider>(() =>
+    localStorage.getItem('auto-claude:agent-provider') === 'codex' ? 'codex' : 'claude'
+  );
+  const [codexProfileId, setCodexProfileId] = useState<string>();
+  const [codexAuthenticated, setCodexAuthenticated] = useState<boolean | null>(null);
   // Ref for synchronous tracking - prevents race condition from stale React state closure
   const convertingIdeaRef = useRef<Set<string>>(new Set());
 
   const { hasToken, isLoading: isCheckingToken, checkAuth } = useIdeationAuth();
+
+  const loadCodexProfile = useCallback(async (preferredProfileId?: string) => {
+    const result = await window.electronAPI.getOpenAIProfiles();
+    if (!result.success) {
+      setCodexAuthenticated(false);
+      return;
+    }
+    const profiles = result.data?.profiles || [];
+    const profileId = preferredProfileId || result.data?.activeProfileId || undefined;
+    setCodexProfileId(profileId);
+    setCodexAuthenticated(Boolean(profiles.find((profile) => profile.id === profileId)?.isAuthenticated));
+  }, []);
+
+  useEffect(() => {
+    const handleProviderChange = (event: Event) => {
+      const detail = (event as CustomEvent<{ provider: AgentProvider; profileId?: string }>).detail;
+      if (!detail) return;
+      setProvider(detail.provider);
+      if (detail.provider === 'codex') void loadCodexProfile(detail.profileId);
+    };
+    const handleProfilesUpdated = () => { void loadCodexProfile(); };
+    void loadCodexProfile();
+    window.addEventListener('agent-provider-changed', handleProviderChange);
+    window.addEventListener('openai-profiles-updated', handleProfilesUpdated);
+    return () => {
+      window.removeEventListener('agent-provider-changed', handleProviderChange);
+      window.removeEventListener('openai-profiles-updated', handleProfilesUpdated);
+    };
+  }, [loadCodexProfile]);
+
+  const providerConfig: IdeationProviderConfig = {
+    provider,
+    codexProfileId,
+    codexModel: 'gpt-5.6-sol',
+    codexReasoningEffort: 'high'
+  };
+  const hasProviderAuth = provider === 'codex' ? codexAuthenticated : hasToken;
+  const isCheckingProviderAuth = provider === 'codex' ? codexAuthenticated === null : isCheckingToken;
 
   // Set up IPC listeners and load ideation on mount
   useEffect(() => {
@@ -65,21 +113,21 @@ export function useIdeation(projectId: string, options: UseIdeationOptions = {})
   }, [projectId]);
 
   const handleGenerate = async () => {
-    if (hasToken === false) {
+    if (provider === 'claude' && hasToken === false) {
       setPendingAction('generate');
       setShowEnvConfigModal(true);
       return;
     }
-    generateIdeation(projectId);
+    generateIdeation(projectId, providerConfig);
   };
 
   const handleRefresh = async () => {
-    if (hasToken === false) {
+    if (provider === 'claude' && hasToken === false) {
       setPendingAction('refresh');
       setShowEnvConfigModal(true);
       return;
     }
-    refreshIdeation(projectId);
+    refreshIdeation(projectId, providerConfig);
   };
 
   const handleStop = async () => {
@@ -93,11 +141,11 @@ export function useIdeation(projectId: string, options: UseIdeationOptions = {})
   const handleEnvConfigured = () => {
     checkAuth();
     if (pendingAction === 'generate') {
-      generateIdeation(projectId);
+      generateIdeation(projectId, providerConfig);
     } else if (pendingAction === 'refresh') {
-      refreshIdeation(projectId);
+      refreshIdeation(projectId, providerConfig);
     } else if (pendingAction === 'append' && typesToAdd.length > 0) {
-      appendIdeation(projectId, typesToAdd);
+      appendIdeation(projectId, typesToAdd, providerConfig);
       setTypesToAdd([]);
     }
     setPendingAction(null);
@@ -118,13 +166,13 @@ export function useIdeation(projectId: string, options: UseIdeationOptions = {})
   const handleAddMoreIdeas = () => {
     if (typesToAdd.length === 0) return;
 
-    if (hasToken === false) {
+    if (provider === 'claude' && hasToken === false) {
       setPendingAction('append');
       setShowEnvConfigModal(true);
       return;
     }
 
-    appendIdeation(projectId, typesToAdd);
+    appendIdeation(projectId, typesToAdd, providerConfig);
     setTypesToAdd([]);
     setShowAddMoreDialog(false);
   };
@@ -259,8 +307,9 @@ export function useIdeation(projectId: string, options: UseIdeationOptions = {})
     showEnvConfigModal,
     showAddMoreDialog,
     typesToAdd,
-    hasToken,
-    isCheckingToken,
+    provider,
+    hasToken: hasProviderAuth,
+    isCheckingToken: isCheckingProviderAuth,
     summary,
     activeIdeas,
     archivedIdeas,

@@ -6,7 +6,7 @@ import { AgentState } from './agent-state';
 import { AgentEvents } from './agent-events';
 import { AgentProcessManager } from './agent-process';
 import { RoadmapConfig } from './types';
-import type { IdeationConfig, Idea } from '../../shared/types';
+import type { IdeationConfig, IdeationProviderConfig, IdeationType, Idea } from '../../shared/types';
 import { AUTO_BUILD_PATHS } from '../../shared/constants';
 import { detectRateLimit, createSDKRateLimitInfo, getBestAvailableProfileEnv } from '../rate-limit-detector';
 import { getAPIProfileEnv } from '../services/profile';
@@ -21,6 +21,15 @@ import type { RawIdea } from '../ipc-handlers/ideation/types';
 import { getPathDelimiter } from '../platform';
 import { debounce } from '../utils/debounce';
 import { writeFileWithRetry } from '../utils/atomic-file';
+import { getOpenAIProfileManager } from '../openai-profile-manager';
+import {
+  buildCodexIdeationArgs,
+  buildCodexIdeationPrompt,
+  DEFAULT_CODEX_IDEATION_EFFORT,
+  DEFAULT_CODEX_IDEATION_MODEL,
+  parseCodexIdeationEvent,
+  parseCodexIdeationResponse,
+} from '../ideation/codex-ideation';
 
 /** Maximum length for status messages displayed in progress UI */
 const STATUS_MESSAGE_MAX_LENGTH = 200;
@@ -249,7 +258,8 @@ export class AgentQueueManager {
     projectId: string,
     projectPath: string,
     config: IdeationConfig,
-    refresh: boolean = false
+    refresh: boolean = false,
+    providerConfig?: IdeationProviderConfig
   ): Promise<void> {
     debugLog('[Agent Queue] Starting ideation generation:', {
       projectId,
@@ -257,6 +267,11 @@ export class AgentQueueManager {
       config,
       refresh
     });
+
+    if (providerConfig?.provider === 'codex') {
+      await this.spawnCodexIdeationProcess(projectId, projectPath, config, providerConfig);
+      return;
+    }
 
     const autoBuildSource = this.processManager.getAutoBuildSourcePath();
 
@@ -316,6 +331,177 @@ export class AgentQueueManager {
 
     // Use projectId as taskId for ideation operations
     await this.spawnIdeationProcess(projectId, projectPath, args);
+  }
+
+  private async spawnCodexIdeationProcess(
+    projectId: string,
+    projectPath: string,
+    config: IdeationConfig,
+    providerConfig: IdeationProviderConfig
+  ): Promise<void> {
+    const profile = getOpenAIProfileManager().getProfile(providerConfig.codexProfileId);
+    if (!profile) {
+      this.emitter.emit('ideation-error', projectId, 'No Codex account is selected');
+      return;
+    }
+    if (!profile.isAuthenticated) {
+      this.emitter.emit('ideation-error', projectId, `Codex account "${profile.name}" is not authenticated`);
+      return;
+    }
+
+    this.processManager.killProcess(projectId);
+    const spawnId = this.state.generateSpawnId();
+    const combinedEnv = this.processManager.getCombinedEnv(projectPath);
+    const executable = combinedEnv.CODEX_CLI_PATH || process.env.CODEX_CLI_PATH || 'codex';
+    const args = buildCodexIdeationArgs(
+      projectPath,
+      providerConfig.codexModel || DEFAULT_CODEX_IDEATION_MODEL,
+      providerConfig.codexReasoningEffort || DEFAULT_CODEX_IDEATION_EFFORT
+    );
+    const env = {
+      ...Object.fromEntries(
+        Object.entries({ ...process.env, ...combinedEnv }).filter(([key]) =>
+          !key.startsWith('CLAUDE_') && !key.startsWith('ANTHROPIC_')
+        )
+      ),
+      CODEX_HOME: profile.codexHome,
+    };
+    normalizeEnvPathKey(env as Record<string, string | undefined>);
+
+    const childProcess = spawn(executable, args, { cwd: projectPath, env });
+    this.state.addProcess(projectId, {
+      taskId: projectId,
+      process: childProcess,
+      startedAt: new Date(),
+      projectPath,
+      spawnId,
+      queueProcessType: 'ideation'
+    });
+
+    this.emitter.emit('ideation-log', projectId, `Generating ideas with Codex account ${profile.name}`);
+    this.emitter.emit('ideation-progress', projectId, {
+      phase: 'analyzing', progress: 10, message: 'Codex is analyzing the repository...'
+    });
+
+    let stdoutBuffer = '';
+    let finalResponse = '';
+    let allOutput = '';
+    let processError: Error | undefined;
+
+    childProcess.stdout?.on('data', (data: Buffer) => {
+      const chunk = data.toString('utf-8');
+      allOutput = (allOutput + chunk).slice(-20000);
+      stdoutBuffer += chunk;
+      const lines = stdoutBuffer.split('\n');
+      stdoutBuffer = lines.pop() || '';
+      for (const line of lines) {
+        const message = parseCodexIdeationEvent(line);
+        if (message) finalResponse = message;
+      }
+    });
+    childProcess.stderr?.on('data', (data: Buffer) => {
+      const chunk = data.toString('utf-8');
+      allOutput = (allOutput + chunk).slice(-20000);
+      for (const line of chunk.split('\n').filter(Boolean)) {
+        this.emitter.emit('ideation-log', projectId, formatStatusMessage(line));
+      }
+    });
+    childProcess.on('error', (error) => { processError = error; });
+
+    childProcess.on('close', async (code: number | null) => {
+      if (this.state.wasSpawnKilled(spawnId)) {
+        this.state.clearKilledSpawn(spawnId);
+        this.emitter.emit('ideation-stopped', projectId);
+        return;
+      }
+      this.state.deleteProcess(projectId);
+
+      if (stdoutBuffer.trim()) {
+        const message = parseCodexIdeationEvent(stdoutBuffer);
+        if (message) finalResponse = message;
+      }
+      if (code !== 0 || processError) {
+        const detected = detectRateLimit(allOutput);
+        if (detected.isRateLimited) {
+          this.emitter.emit('sdk-rate-limit', createSDKRateLimitInfo('ideation', detected, { projectId }));
+        }
+        this.emitter.emit(
+          'ideation-error',
+          projectId,
+          processError?.message || allOutput.trim().split('\n').pop() || `Codex ideation failed with exit code ${code}`
+        );
+        return;
+      }
+
+      try {
+        const ideasByType = parseCodexIdeationResponse(finalResponse, config.enabledTypes);
+        const outputDir = path.join(projectPath, '.auto-claude', 'ideation');
+        await fsPromises.mkdir(outputDir, { recursive: true });
+        const now = new Date().toISOString();
+        const sessionPath = path.join(outputDir, 'ideation.json');
+        let existingSession: Record<string, unknown> | undefined;
+        if (config.append && existsSync(sessionPath)) {
+          existingSession = JSON.parse(await fsPromises.readFile(sessionPath, 'utf-8')) as Record<string, unknown>;
+        }
+
+        const newIdeas = config.enabledTypes.flatMap((type) => ideasByType[type]);
+        const existingIdeas = Array.isArray(existingSession?.ideas)
+          ? existingSession.ideas as Array<Record<string, unknown>>
+          : [];
+        const replacedTypes = new Set<IdeationType>(config.enabledTypes);
+        const preservedIdeas = config.append
+          ? existingIdeas.filter((idea) => !replacedTypes.has(idea.type as IdeationType))
+          : [];
+        const allIdeas = [...preservedIdeas, ...newIdeas];
+
+        for (const type of config.enabledTypes) {
+          await writeFileWithRetry(
+            path.join(outputDir, `${type}_ideas.json`),
+            JSON.stringify({ [type]: ideasByType[type] }, null, 2),
+            { encoding: 'utf-8' }
+          );
+          const ideas = ideasByType[type].map((idea) => transformIdeaFromSnakeCase(idea as RawIdea));
+          this.emitter.emit('ideation-type-complete', projectId, type, ideas);
+        }
+
+        const rawSession = {
+          id: typeof existingSession?.id === 'string' ? existingSession.id : `ideation-${Date.now()}`,
+          project_id: projectPath,
+          config: {
+            enabled_types: config.append
+              ? Array.from(new Set(allIdeas.map((idea) => idea.type).filter((type): type is IdeationType => typeof type === 'string')))
+              : config.enabledTypes,
+            include_roadmap_context: config.includeRoadmapContext,
+            include_kanban_context: config.includeKanbanContext,
+            max_ideas_per_type: config.maxIdeasPerType,
+          },
+          ideas: allIdeas,
+          project_context: existingSession?.project_context || {
+            existing_features: [], tech_stack: [], planned_features: []
+          },
+          generated_at: typeof existingSession?.generated_at === 'string' ? existingSession.generated_at : now,
+          updated_at: now,
+        };
+        await writeFileWithRetry(sessionPath, JSON.stringify(rawSession, null, 2), { encoding: 'utf-8' });
+
+        const session = transformSessionFromSnakeCase(
+          { ...rawSession, ideas: rawSession.ideas as RawIdea[] },
+          projectId
+        );
+        this.emitter.emit('ideation-progress', projectId, {
+          phase: 'complete', progress: 100, message: 'Ideation generation complete'
+        });
+        this.emitter.emit('ideation-complete', projectId, session);
+      } catch (error) {
+        debugError('[Codex Ideation] Failed to process response:', error);
+        this.emitter.emit(
+          'ideation-error', projectId,
+          `Codex returned invalid ideation data: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
+      }
+    });
+
+    childProcess.stdin?.end(buildCodexIdeationPrompt(config));
   }
 
   /**

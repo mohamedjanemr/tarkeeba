@@ -111,7 +111,8 @@ import type {
   InsightsChatStatus,
   InsightsStreamChunk,
   InsightsModelConfig,
-  InsightsProviderConfig
+  InsightsProviderConfig,
+  IdeationProviderConfig
 } from './insights';
 import type {
   CompetitorAnalysis,
@@ -667,8 +668,8 @@ export interface ElectronAPI {
 
   // Ideation operations
   getIdeation: (projectId: string) => Promise<IPCResult<IdeationSession | null>>;
-  generateIdeation: (projectId: string, config: IdeationConfig) => void;
-  refreshIdeation: (projectId: string, config: IdeationConfig) => void;
+  generateIdeation: (projectId: string, config: IdeationConfig, providerConfig?: IdeationProviderConfig) => void;
+  refreshIdeation: (projectId: string, config: IdeationConfig, providerConfig?: IdeationProviderConfig) => void;
   stopIdeation: (projectId: string) => Promise<IPCResult>;
   updateIdeaStatus: (projectId: string, ideaId: string, status: IdeationStatus) => Promise<IPCResult>;
   convertIdeaToTask: (projectId: string, ideaId: string) => Promise<IPCResult<Task>>;

@@ -16,7 +16,7 @@ import { ipcMain } from "electron";
 import type { BrowserWindow } from "electron";
 import { IPC_CHANNELS } from "../../shared/constants";
 import type { AgentManager } from "../agent";
-import type { IdeationGenerationStatus, IdeationSession, Idea } from "../../shared/types";
+import type { IdeationGenerationStatus, IdeationProviderConfig, IdeationSession, Idea } from "../../shared/types";
 import {
   getIdeationSession,
   updateIdeaStatus,
@@ -56,12 +56,12 @@ export function registerIdeationHandlers(
   ipcMain.handle(IPC_CHANNELS.IDEATION_DELETE_MULTIPLE, deleteMultipleIdeas);
 
   // Generation operations
-  ipcMain.on(IPC_CHANNELS.IDEATION_GENERATE, (event, projectId, config) =>
-    startIdeationGeneration(event, projectId, config, agentManager, getMainWindow())
+  ipcMain.on(IPC_CHANNELS.IDEATION_GENERATE, (event, projectId, config, providerConfig?: IdeationProviderConfig) =>
+    startIdeationGeneration(event, projectId, config, providerConfig, agentManager, getMainWindow())
   );
 
-  ipcMain.on(IPC_CHANNELS.IDEATION_REFRESH, (event, projectId, config) =>
-    refreshIdeationSession(event, projectId, config, agentManager, getMainWindow())
+  ipcMain.on(IPC_CHANNELS.IDEATION_REFRESH, (event, projectId, config, providerConfig?: IdeationProviderConfig) =>
+    refreshIdeationSession(event, projectId, config, providerConfig, agentManager, getMainWindow())
   );
 
   ipcMain.handle(IPC_CHANNELS.IDEATION_STOP, (event, projectId) =>

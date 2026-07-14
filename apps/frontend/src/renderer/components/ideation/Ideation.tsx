@@ -36,6 +36,7 @@ export function Ideation({ projectId, onGoToTask }: IdeationProps) {
     showEnvConfigModal,
     showAddMoreDialog,
     typesToAdd,
+    provider,
     hasToken,
     isCheckingToken,
     summary,
@@ -96,6 +97,7 @@ export function Ideation({ projectId, onGoToTask }: IdeationProps) {
           config={config}
           hasToken={hasToken}
           isCheckingToken={isCheckingToken}
+          provider={provider}
           onGenerate={handleGenerate}
           onOpenConfig={() => setShowConfigDialog(true)}
           onToggleIdeationType={toggleIdeationType}
@@ -115,14 +117,14 @@ export function Ideation({ projectId, onGoToTask }: IdeationProps) {
           onConfirmAddMore={() => {}}
         />
 
-        <EnvConfigModal
+        {provider === 'claude' && <EnvConfigModal
           open={showEnvConfigModal}
           onOpenChange={setShowEnvConfigModal}
           onConfigured={handleEnvConfigured}
           title="Claude Authentication Required"
           description="A Claude Code OAuth token is required to generate AI-powered feature ideas."
           projectId={projectId}
-        />
+        />}
       </>
     );
   }
@@ -238,14 +240,14 @@ export function Ideation({ projectId, onGoToTask }: IdeationProps) {
       />
 
       {/* Environment Configuration Modal */}
-      <EnvConfigModal
+      {provider === 'claude' && <EnvConfigModal
         open={showEnvConfigModal}
         onOpenChange={setShowEnvConfigModal}
         onConfigured={handleEnvConfigured}
         title="Claude Authentication Required"
         description="A Claude Code OAuth token is required to generate AI-powered feature ideas."
         projectId={projectId}
-      />
+      />}
     </div>
   );
 }

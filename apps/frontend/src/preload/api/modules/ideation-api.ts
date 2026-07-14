@@ -6,7 +6,8 @@ import type {
   IdeationGenerationStatus,
   Idea,
   Task,
-  IPCResult
+  IPCResult,
+  IdeationProviderConfig
 } from '../../../shared/types';
 import { createIpcListener, invokeIpc, sendIpc, IpcListenerCleanup } from './ipc-utils';
 
@@ -16,8 +17,8 @@ import { createIpcListener, invokeIpc, sendIpc, IpcListenerCleanup } from './ipc
 export interface IdeationAPI {
   // Operations
   getIdeation: (projectId: string) => Promise<IPCResult<IdeationSession | null>>;
-  generateIdeation: (projectId: string, config: IdeationConfig) => void;
-  refreshIdeation: (projectId: string, config: IdeationConfig) => void;
+  generateIdeation: (projectId: string, config: IdeationConfig, providerConfig?: IdeationProviderConfig) => void;
+  refreshIdeation: (projectId: string, config: IdeationConfig, providerConfig?: IdeationProviderConfig) => void;
   stopIdeation: (projectId: string) => Promise<IPCResult>;
   updateIdeaStatus: (projectId: string, ideaId: string, status: IdeationStatus) => Promise<IPCResult>;
   convertIdeaToTask: (projectId: string, ideaId: string) => Promise<IPCResult<Task>>;
@@ -59,11 +60,11 @@ export const createIdeationAPI = (): IdeationAPI => ({
   getIdeation: (projectId: string): Promise<IPCResult<IdeationSession | null>> =>
     invokeIpc(IPC_CHANNELS.IDEATION_GET, projectId),
 
-  generateIdeation: (projectId: string, config: IdeationConfig): void =>
-    sendIpc(IPC_CHANNELS.IDEATION_GENERATE, projectId, config),
+  generateIdeation: (projectId: string, config: IdeationConfig, providerConfig?: IdeationProviderConfig): void =>
+    sendIpc(IPC_CHANNELS.IDEATION_GENERATE, projectId, config, providerConfig),
 
-  refreshIdeation: (projectId: string, config: IdeationConfig): void =>
-    sendIpc(IPC_CHANNELS.IDEATION_REFRESH, projectId, config),
+  refreshIdeation: (projectId: string, config: IdeationConfig, providerConfig?: IdeationProviderConfig): void =>
+    sendIpc(IPC_CHANNELS.IDEATION_REFRESH, projectId, config, providerConfig),
 
   stopIdeation: (projectId: string): Promise<IPCResult> =>
     invokeIpc(IPC_CHANNELS.IDEATION_STOP, projectId),

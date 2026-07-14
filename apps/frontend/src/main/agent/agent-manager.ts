@@ -13,7 +13,7 @@ import {
   TaskExecutionOptions,
   RoadmapConfig
 } from './types';
-import type { IdeationConfig } from '../../shared/types';
+import type { IdeationConfig, IdeationProviderConfig } from '../../shared/types';
 import { resetStuckSubtasks } from '../ipc-handlers/task/plan-file-utils';
 import { AUTO_BUILD_PATHS, getSpecsDir, sanitizeThinkingLevel } from '../../shared/constants';
 import { projectStore } from '../project-store';
@@ -553,9 +553,10 @@ export class AgentManager extends EventEmitter {
     projectId: string,
     projectPath: string,
     config: IdeationConfig,
-    refresh: boolean = false
+    refresh: boolean = false,
+    providerConfig?: IdeationProviderConfig
   ): void {
-    this.queueManager.startIdeationGeneration(projectId, projectPath, config, refresh);
+    this.queueManager.startIdeationGeneration(projectId, projectPath, config, refresh, providerConfig);
   }
 
   /**
