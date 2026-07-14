@@ -10,7 +10,8 @@
   },
   "main": "./out/main/index.js",
   "author": {
-    "name": "Tarkeeba contributors"
+    "name": "Tarkeeba contributors",
+    "email": "mohamedjanemr@users.noreply.github.com"
   },
   "license": "AGPL-3.0",
   "engines": {
