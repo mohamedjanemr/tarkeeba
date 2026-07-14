@@ -263,6 +263,14 @@ const browserMockAPI: ElectronAPI = {
     onQueueBlockedNoProfiles: () => () => {}
   },
 
+  // Usage & Cost dashboard operations
+  getProjectUsageSummary: async () => ({ success: true, data: undefined }),
+  getTaskUsageDetail: async () => ({ success: true, data: null }),
+  predictTaskCost: async () => ({ success: true, data: undefined }),
+  confirmCostWarning: async () => ({ success: true, data: true }),
+  onUsageCostUpdated: () => () => {},
+  onCostWarningRequired: () => () => {},
+
   // Claude Code Operations
   checkClaudeCodeVersion: async () => ({
     success: true,

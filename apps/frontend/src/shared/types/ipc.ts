@@ -951,6 +951,28 @@ export interface ElectronAPI {
 
   // Queue Routing API (rate limit recovery)
   queue: import('../../preload/api/queue-api').QueueAPI;
+
+  // Usage & Cost dashboard operations
+  getProjectUsageSummary: (
+    projectId: string
+  ) => Promise<IPCResult<import('../../preload/api/modules/usage-cost-api').UsageCostProjectSummary>>;
+  getTaskUsageDetail: (
+    projectId: string,
+    specId: string
+  ) => Promise<IPCResult<import('../../preload/api/modules/usage-cost-api').UsageData | null>>;
+  predictTaskCost: (
+    projectId: string,
+    options?: import('../../preload/api/modules/usage-cost-api').HistoricalAverageCostOptions
+  ) => Promise<IPCResult<import('../../preload/api/modules/usage-cost-api').HistoricalAverageCost>>;
+  confirmCostWarning: (taskId: string, approved: boolean) => Promise<IPCResult<boolean>>;
+
+  // Usage & Cost dashboard event listeners
+  onUsageCostUpdated: (callback: (specId: string) => void) => () => void;
+  onCostWarningRequired: (
+    callback: (
+      payload: import('../../preload/api/modules/usage-cost-api').CostWarningRequiredPayload
+    ) => void
+  ) => () => void;
 }
 
 /** Platform information exposed via contextBridge for platform-specific behavior */
