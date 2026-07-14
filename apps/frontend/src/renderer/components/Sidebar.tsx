@@ -19,7 +19,6 @@ import {
   Sparkles,
   GitBranch,
   HelpCircle,
-  Heart,
   Wrench,
   PanelLeft,
   PanelLeftClose
@@ -56,7 +55,6 @@ import {
 import { AddProjectModal } from './AddProjectModal';
 import { GitSetupModal } from './GitSetupModal';
 import { RateLimitIndicator } from './RateLimitIndicator';
-import { ClaudeCodeStatusBadge } from './ClaudeCodeStatusBadge';
 import { UpdateBanner } from './UpdateBanner';
 import type { Project, GitStatus } from '../../shared/types';
 
@@ -422,9 +420,6 @@ export function Sidebar({
 
         {/* Bottom section with Settings, Help, and New Task */}
         <div className={cn("space-y-3 transition-all duration-300", isCollapsed ? "p-2" : "p-4")}>
-          {/* Claude Code Status Badge */}
-          {!isCollapsed && <ClaudeCodeStatusBadge />}
-
           {/* Settings and Help row */}
           <div className={cn(
             "flex items-center",
@@ -458,26 +453,6 @@ export function Sidebar({
               <TooltipContent side={isCollapsed ? "right" : "top"}>{t('tooltips.help')}</TooltipContent>
             </Tooltip>
           </div>
-
-          {/* Sponsor link */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => window.open('https://github.com/sponsors/AndyMik90', '_blank')}
-                className={cn(
-                  'flex w-full items-center text-xs transition-colors',
-                  'text-amber-500/70 hover:text-amber-400',
-                  isCollapsed ? 'justify-center' : 'gap-1.5 px-3'
-                )}
-              >
-                <Heart className="h-3.5 w-3.5" />
-                {!isCollapsed && <span>{t('actions.sponsor')}</span>}
-              </button>
-            </TooltipTrigger>
-            {isCollapsed && (
-              <TooltipContent side="right">{t('actions.sponsor')}</TooltipContent>
-            )}
-          </Tooltip>
 
           {/* New Task button */}
           <Tooltip>
