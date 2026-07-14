@@ -75,6 +75,17 @@ export interface UsageCostProjectSummary {
 }
 
 /**
+ * Payload sent when a task's predicted cost exceeds the configured threshold and the
+ * spawn is blocked pending user confirmation (see AgentManager.checkCostWarningGate).
+ */
+export interface CostWarningRequiredPayload {
+  taskId: string;
+  predictedCostUsd: number;
+  threshold: number;
+  projectId?: string;
+}
+
+/**
  * Usage & Cost dashboard API operations
  */
 export interface UsageCostAPI {
@@ -85,9 +96,13 @@ export interface UsageCostAPI {
     projectId: string,
     options?: HistoricalAverageCostOptions
   ) => Promise<IPCResult<HistoricalAverageCost>>;
+  confirmCostWarning: (taskId: string, approved: boolean) => Promise<IPCResult<boolean>>;
 
   // Event Listeners
   onUsageCostUpdated: (callback: (specId: string) => void) => IpcListenerCleanup;
+  onCostWarningRequired: (
+    callback: (payload: CostWarningRequiredPayload) => void
+  ) => IpcListenerCleanup;
 }
 
 /**
@@ -107,7 +122,15 @@ export const createUsageCostApi = (): UsageCostAPI => ({
   ): Promise<IPCResult<HistoricalAverageCost>> =>
     invokeIpc(IPC_CHANNELS.USAGE_COST_PREDICT, projectId, options),
 
+  confirmCostWarning: (taskId: string, approved: boolean): Promise<IPCResult<boolean>> =>
+    invokeIpc(IPC_CHANNELS.TASK_CONFIRM_COST_WARNING, taskId, approved),
+
   // Event Listeners
   onUsageCostUpdated: (callback: (specId: string) => void): IpcListenerCleanup =>
-    createIpcListener(IPC_CHANNELS.USAGE_COST_UPDATED, callback)
+    createIpcListener(IPC_CHANNELS.USAGE_COST_UPDATED, callback),
+
+  onCostWarningRequired: (
+    callback: (payload: CostWarningRequiredPayload) => void
+  ): IpcListenerCleanup =>
+    createIpcListener(IPC_CHANNELS.COST_WARNING_REQUIRED, callback)
 });
