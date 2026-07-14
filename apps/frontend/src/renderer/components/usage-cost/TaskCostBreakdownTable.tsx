@@ -14,7 +14,7 @@ import { formatCurrency } from './CostSummaryCards';
 import type { UsageEntry, UsageTotals } from '../../../preload/api/modules/usage-cost-api';
 
 /** Formats a token count with locale-aware compact notation (e.g. 12.4K, 1.2M). */
-function formatTokens(value: number): string {
+export function formatTokens(value: number): string {
   return new Intl.NumberFormat(undefined, {
     notation: 'compact',
     compactDisplay: 'short',
@@ -28,7 +28,7 @@ function formatTokens(value: number): string {
  * used across the app's model pickers/config (e.g. "claude-*" -> Anthropic, "gpt-*"/"*codex*" -> OpenAI,
  * "glm-*" -> Z.ai/Zhipu).
  */
-function getProviderLabel(model: string): string {
+export function getProviderLabel(model: string): string {
   const normalized = model.toLowerCase();
   if (normalized.includes('claude')) return 'Anthropic';
   if (normalized.includes('gpt') || normalized.includes('codex') || normalized.startsWith('o1') || normalized.startsWith('o3')) {
@@ -67,7 +67,7 @@ function groupByAccountAndProvider(entries: UsageEntry[]): BreakdownRow[] {
   return Array.from(groups.values()).sort((a, b) => b.cost_usd - a.cost_usd);
 }
 
-function getProviderBadgeVariant(provider: string): 'default' | 'info' | 'purple' | 'success' | 'muted' {
+export function getProviderBadgeVariant(provider: string): 'default' | 'info' | 'purple' | 'success' | 'muted' {
   switch (provider) {
     case 'Anthropic':
       return 'info';

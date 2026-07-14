@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { AllProfilesUsage } from '../../shared/types';
+import { debugError } from '../../shared/utils/debug-logger';
 import type {
   ProjectUsageSummary,
   UsageData,
@@ -13,6 +14,8 @@ interface UsageCostState {
   taskDetail: UsageData | null;
   prediction: HistoricalAverageCost | null;
   accountHeadroom: AllProfilesUsage | null;
+  /** specId of the task currently selected in the dashboard's task picker (drives loadTaskUsageDetail + live refresh). */
+  selectedSpecId: string | null;
   isLoading: boolean;
   error: string | null;
 
@@ -21,6 +24,7 @@ interface UsageCostState {
   setTaskDetail: (taskDetail: UsageData | null) => void;
   setPrediction: (prediction: HistoricalAverageCost | null) => void;
   setAccountHeadroom: (accountHeadroom: AllProfilesUsage | null) => void;
+  setSelectedSpecId: (specId: string | null) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
 }
@@ -31,6 +35,7 @@ export const useUsageCostStore = create<UsageCostState>((set, _get) => ({
   taskDetail: null,
   prediction: null,
   accountHeadroom: null,
+  selectedSpecId: null,
   isLoading: false,
   error: null,
 
@@ -42,6 +47,8 @@ export const useUsageCostStore = create<UsageCostState>((set, _get) => ({
   setPrediction: (prediction) => set({ prediction }),
 
   setAccountHeadroom: (accountHeadroom) => set({ accountHeadroom }),
+
+  setSelectedSpecId: (selectedSpecId) => set({ selectedSpecId }),
 
   setLoading: (loading) => set({ isLoading: loading }),
 
@@ -110,14 +117,18 @@ export function setupUsageCostListeners(projectId: string): () => void {
   const unsubUsageCostUpdated = window.electronAPI.onUsageCostUpdated((specId) => {
     // Refresh the project summary so aggregate totals stay current
     loadProjectUsageSummary(projectId).catch((err) => {
-      console.error('Failed to refresh usage summary after update:', err);
+      debugError('Failed to refresh usage summary after update:', err);
     });
 
-    // If the currently viewed task detail matches the updated spec, refresh it too
-    const currentTaskDetail = useUsageCostStore.getState().taskDetail;
-    if (currentTaskDetail?.spec_id === specId) {
+    // If the currently selected task (via the dashboard's task picker) matches the
+    // updated spec, refresh its detail too so the breakdown table / active-run KPI
+    // update in place while that task is running. Compared against `selectedSpecId`
+    // (set by the picker) rather than `taskDetail.spec_id`, since taskDetail starts
+    // out null on first load and would otherwise never match.
+    const { selectedSpecId } = useUsageCostStore.getState();
+    if (selectedSpecId && selectedSpecId === specId) {
       loadTaskUsageDetail(projectId, specId).catch((err) => {
-        console.error('Failed to refresh task usage detail after update:', err);
+        debugError('Failed to refresh task usage detail after update:', err);
       });
     }
   });

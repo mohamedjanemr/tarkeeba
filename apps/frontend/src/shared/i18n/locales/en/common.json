@@ -602,6 +602,20 @@
       "outputTokens": "Output",
       "cost": "Cost",
       "empty": "No usage data for this task yet"
+    },
+    "taskSelector": {
+      "label": "Task",
+      "placeholder": "Select a task..."
+    },
+    "accountBreakdown": {
+      "title": "Spend by Account",
+      "description": "Total token usage and cost across all tasks, broken down by account",
+      "empty": "No account usage data yet"
+    },
+    "providerBreakdown": {
+      "title": "Spend by Provider",
+      "description": "Total token usage and cost across all tasks, broken down by provider",
+      "empty": "No provider usage data yet"
     }
   },
   "oauth": {
