@@ -23,7 +23,9 @@ describe('OpenAIProfileManager', () => {
 
     expect(manager.getSettings().activeProfileId).toBe(profile.id);
     expect(readFileSync(join(profile.codexHome, 'config.toml'), 'utf8')).toContain('cli_auth_credentials_store = "file"');
-    expect(statSync(profile.codexHome).mode & 0o777).toBe(0o700);
+    if (process.platform !== 'win32') {
+      expect(statSync(profile.codexHome).mode & 0o777).toBe(0o700);
+    }
   });
 
   it('persists active selection and authentication without exposing credentials', () => {
