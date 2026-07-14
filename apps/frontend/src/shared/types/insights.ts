@@ -157,13 +157,22 @@ export interface IdeationSummary {
 // ============================================
 
 import type { ThinkingLevel } from './settings';
-import type { ModelType } from './task';
+import type { AgentProvider, CodexReasoningEffort, ModelType } from './task';
 
 // Model configuration for insights sessions
 export interface InsightsModelConfig {
   profileId: string;           // 'complex' | 'balanced' | 'quick' | 'custom'
   model: ModelType;            // 'haiku' | 'sonnet' | 'opus'
   thinkingLevel: ThinkingLevel;
+}
+
+// Execution provider follows the global coding-agent selector. Claude-specific
+// model settings remain stored separately in InsightsModelConfig.
+export interface InsightsProviderConfig {
+  provider: AgentProvider;
+  codexProfileId?: string;
+  codexModel?: string;
+  codexReasoningEffort?: CodexReasoningEffort;
 }
 
 export type InsightsChatRole = 'user' | 'assistant';

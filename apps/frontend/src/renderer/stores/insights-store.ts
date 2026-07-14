@@ -7,6 +7,7 @@ import type {
   InsightsStreamChunk,
   InsightsToolUsage,
   InsightsModelConfig,
+  InsightsProviderConfig,
   TaskMetadata,
   Task,
   ImageAttachment
@@ -249,7 +250,7 @@ export async function loadInsightsSession(projectId: string, includeArchived?: b
   await loadInsightsSessions(projectId, includeArchived);
 }
 
-export function sendMessage(projectId: string, message: string, modelConfig?: InsightsModelConfig, images?: ImageAttachment[]): void {
+export function sendMessage(projectId: string, message: string, modelConfig?: InsightsModelConfig, images?: ImageAttachment[], providerConfig?: InsightsProviderConfig): void {
   const store = useInsightsStore.getState();
   const session = store.session;
 
@@ -281,7 +282,7 @@ export function sendMessage(projectId: string, message: string, modelConfig?: In
   const configToUse = modelConfig || session?.modelConfig;
 
   // Send to main process
-  window.electronAPI.sendInsightsMessage(projectId, message, configToUse, images);
+  window.electronAPI.sendInsightsMessage(projectId, message, configToUse, images, providerConfig);
 }
 
 export async function stopMessage(projectId: string): Promise<boolean> {

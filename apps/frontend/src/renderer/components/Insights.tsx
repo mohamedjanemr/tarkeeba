@@ -51,7 +51,8 @@ import { createThumbnail, generateImageId } from './ImageUpload';
 import { loadTasks } from '../stores/task-store';
 import { ChatHistorySidebar } from './ChatHistorySidebar';
 import { InsightsModelSelector } from './InsightsModelSelector';
-import type { InsightsChatMessage, InsightsModelConfig, TaskMetadata, ImageAttachment } from '../../shared/types';
+import { CodexInsightsModelSelector } from './CodexInsightsModelSelector';
+import type { AgentProvider, CodexReasoningEffort, InsightsChatMessage, InsightsModelConfig, TaskMetadata, ImageAttachment } from '../../shared/types';
 import {
   TASK_CATEGORY_LABELS,
   TASK_CATEGORY_COLORS,
@@ -124,6 +125,12 @@ export function Insights({ projectId }: InsightsProps) {
   const [viewportEl, setViewportEl] = useState<HTMLElement | null>(null);
   const [screenshotOpen, setScreenshotOpen] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
+  const [provider, setProvider] = useState<AgentProvider>(() =>
+    localStorage.getItem('auto-claude:agent-provider') === 'codex' ? 'codex' : 'claude'
+  );
+  const [codexProfileId, setCodexProfileId] = useState<string>();
+  const [codexModel, setCodexModel] = useState('gpt-5.6-sol');
+  const [codexReasoningEffort, setCodexReasoningEffort] = useState<CodexReasoningEffort>('high');
 
   const pendingImages = useInsightsStore((state) => state.pendingImages);
   const setPendingImages = useInsightsStore((state) => state.setPendingImages);
@@ -182,10 +189,9 @@ export function Insights({ projectId }: InsightsProps) {
 
   // Load session and set up listeners on mount
   useEffect(() => {
-    loadInsightsSession(projectId, showArchived);
+    loadInsightsSession(projectId, useInsightsStore.getState().showArchived);
     const cleanup = setupInsightsListeners();
     return cleanup;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: showArchived is handled by the dedicated effect below; including it here would cause duplicate loads
   }, [projectId]);
 
   // Reload sessions when showArchived changes (skip first run to avoid duplicate load with mount effect)
@@ -213,6 +219,28 @@ export function Insights({ projectId }: InsightsProps) {
     textareaRef.current?.focus();
   }, []);
 
+  useEffect(() => {
+    const loadActiveCodexProfile = async () => {
+      const result = await window.electronAPI.getOpenAIProfiles();
+      if (result.success) setCodexProfileId(result.data?.activeProfileId ?? undefined);
+    };
+    const handleProviderChange = (event: Event) => {
+      const detail = (event as CustomEvent<{ provider: AgentProvider; profileId?: string }>).detail;
+      if (!detail) return;
+      setProvider(detail.provider);
+      if (detail.profileId) setCodexProfileId(detail.profileId);
+    };
+    const handleProfilesUpdated = () => { void loadActiveCodexProfile(); };
+
+    void loadActiveCodexProfile();
+    window.addEventListener('agent-provider-changed', handleProviderChange);
+    window.addEventListener('openai-profiles-updated', handleProfilesUpdated);
+    return () => {
+      window.removeEventListener('agent-provider-changed', handleProviderChange);
+      window.removeEventListener('openai-profiles-updated', handleProfilesUpdated);
+    };
+  }, []);
+
   // Reset task creation state when switching sessions
   // biome-ignore lint/correctness/useExhaustiveDependencies: session?.id is intentionally used as a trigger
   useEffect(() => {
@@ -226,7 +254,13 @@ export function Insights({ projectId }: InsightsProps) {
     if ((!message && !hasImages) || isLoading) return;
 
     setInputValue('');
-    sendMessage(projectId, message, session?.modelConfig, hasImages ? pendingImages : undefined);
+    sendMessage(
+      projectId,
+      message,
+      session?.modelConfig,
+      hasImages ? pendingImages : undefined,
+      { provider, codexProfileId, codexModel, codexReasoningEffort }
+    );
     setPendingImages([]);
     setImageError(null);
     setIsUserAtBottom(true); // Resume auto-scroll when user sends a message
@@ -265,7 +299,7 @@ export function Insights({ projectId }: InsightsProps) {
     };
     setPendingImages([...pendingImages, newImage]);
     setImageError(null);
-  }, [pendingImages, setPendingImages, setImageError, t]);
+  }, [pendingImages, setPendingImages, t]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -440,11 +474,24 @@ export function Insights({ projectId }: InsightsProps) {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <InsightsModelSelector
-              currentConfig={session?.modelConfig}
-              onConfigChange={handleModelConfigChange}
-              disabled={isLoading}
-            />
+            {provider === 'claude' ? (
+              <InsightsModelSelector
+                currentConfig={session?.modelConfig}
+                onConfigChange={handleModelConfigChange}
+                disabled={isLoading}
+              />
+            ) : (
+              <CodexInsightsModelSelector
+                profileId={codexProfileId}
+                model={codexModel}
+                reasoningEffort={codexReasoningEffort}
+                disabled={isLoading}
+                onChange={(nextModel, nextEffort) => {
+                  setCodexModel(nextModel);
+                  setCodexReasoningEffort(nextEffort);
+                }}
+              />
+            )}
             <Button
               variant="outline"
               size="sm"
