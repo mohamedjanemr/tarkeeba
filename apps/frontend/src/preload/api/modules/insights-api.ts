@@ -26,7 +26,8 @@ export interface InsightsAPI {
     projectId: string,
     title: string,
     description: string,
-    metadata?: TaskMetadata
+    metadata?: TaskMetadata,
+    providerConfig?: InsightsProviderConfig
   ) => Promise<IPCResult<Task>>;
   listInsightsSessions: (projectId: string, includeArchived?: boolean) => Promise<IPCResult<InsightsSessionSummary[]>>;
   newInsightsSession: (projectId: string) => Promise<IPCResult<InsightsSession>>;
@@ -75,9 +76,10 @@ export const createInsightsAPI = (): InsightsAPI => ({
     projectId: string,
     title: string,
     description: string,
-    metadata?: TaskMetadata
+    metadata?: TaskMetadata,
+    providerConfig?: InsightsProviderConfig
   ): Promise<IPCResult<Task>> =>
-    invokeIpc(IPC_CHANNELS.INSIGHTS_CREATE_TASK, projectId, title, description, metadata),
+    invokeIpc(IPC_CHANNELS.INSIGHTS_CREATE_TASK, projectId, title, description, metadata, providerConfig),
 
   listInsightsSessions: (projectId: string, includeArchived?: boolean): Promise<IPCResult<InsightsSessionSummary[]>> =>
     invokeIpc(IPC_CHANNELS.INSIGHTS_LIST_SESSIONS, projectId, includeArchived),

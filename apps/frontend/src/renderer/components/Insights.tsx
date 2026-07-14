@@ -398,7 +398,8 @@ export function Insights({ projectId }: InsightsProps) {
         projectId,
         taskData.title,
         taskData.description,
-        taskData.metadata
+        taskData.metadata,
+        { provider, codexProfileId, codexModel, codexReasoningEffort }
       );
 
       if (task) {

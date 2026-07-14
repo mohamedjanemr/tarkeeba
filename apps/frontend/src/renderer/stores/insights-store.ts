@@ -400,13 +400,15 @@ export async function createTaskFromSuggestion(
   projectId: string,
   title: string,
   description: string,
-  metadata?: TaskMetadata
+  metadata?: TaskMetadata,
+  providerConfig?: InsightsProviderConfig
 ): Promise<Task | null> {
   const result = await window.electronAPI.createTaskFromInsights(
     projectId,
     title,
     description,
-    metadata
+    metadata,
+    providerConfig
   );
 
   if (result.success && result.data) {
