@@ -568,6 +568,22 @@
     "codexUnavailableDescription": "This Codex account did not provide usage-limit data.",
     "codexUsageStatus": "Codex usage status"
   },
+  "usageCostDashboard": {
+    "totalSpend": "Total Spend",
+    "totalTokens": "Total Tokens",
+    "activeRunCost": "Active Run Cost",
+    "activeRunCostNone": "No active runs",
+    "acrossSpecs": "Across {{count}} task",
+    "acrossSpecs_other": "Across {{count}} tasks",
+    "inputOutput": "{{input}} in / {{output}} out",
+    "spendOverTime": {
+      "title": "Spend Over Time",
+      "description": "Daily cost for this project",
+      "empty": "No historical spend data yet",
+      "tooltipCost": "Cost",
+      "axisCost": "Cost (USD)"
+    }
+  },
   "oauth": {
     "enterCode": "Manual Code Entry (Fallback)",
     "enterCodeDescription": "This dialog is only needed if the browser didn't redirect automatically. If authentication already completed in your browser, you can close this dialog.",
