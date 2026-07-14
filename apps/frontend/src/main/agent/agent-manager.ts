@@ -202,7 +202,7 @@ export class AgentManager extends EventEmitter {
     if (predictedCostUsd <= threshold) return true;
 
     // Predicted cost exceeds the threshold - block the spawn until the renderer confirms.
-    return new Promise<boolean>((resolve) => {
+    const approved = await new Promise<boolean>((resolve) => {
       const timer = setTimeout(() => {
         this.pendingCostConfirmations.delete(taskId);
         this.emit('error', taskId, 'Cost warning confirmation timed out. Task was not started.');
@@ -210,16 +210,30 @@ export class AgentManager extends EventEmitter {
       }, COST_WARNING_CONFIRMATION_TIMEOUT_MS);
 
       this.pendingCostConfirmations.set(taskId, {
-        resolve: (approved: boolean) => {
+        resolve: (userApproved: boolean) => {
           clearTimeout(timer);
           this.pendingCostConfirmations.delete(taskId);
-          resolve(approved);
+          if (!userApproved) {
+            this.emit('error', taskId, 'Task cancelled: cost warning was not approved.');
+          }
+          resolve(userApproved);
         },
         timer
       });
 
       this.emit('cost-warning-required', taskId, { predictedCostUsd, threshold }, projectId);
     });
+
+    if (!approved) {
+      // The caller already ran storeTaskContext()/registerTaskWithOperationRegistry()
+      // before this gate, and spawnProcess() (whose 'exit' listener normally performs
+      // this cleanup) never runs when the gate blocks - clean up here so a cancelled
+      // or timed-out cost warning doesn't leave an orphaned "running" task behind.
+      this.taskExecutionContext.delete(taskId);
+      getOperationRegistry().unregisterOperation(taskId);
+    }
+
+    return approved;
   }
 
   /**
@@ -468,6 +482,14 @@ export class AgentManager extends EventEmitter {
     // Register with unified OperationRegistry for proactive swap support
     if (!useCodex) {
       this.registerTaskWithOperationRegistry(taskId, 'spec-creation', { projectPath, taskDescription, specDir });
+    }
+
+    // Pre-run cost warning gate: block the spawn if the predicted cost exceeds the
+    // user's configured threshold, until the renderer confirms or cancels. This path
+    // chains straight into task-execution via run.py (see note below), so it needs the
+    // same gate as startTaskExecution()/startQAProcess() to avoid bypassing the warning.
+    if (!(await this.checkCostWarningGate(taskId, projectId))) {
+      return;
     }
 
     // Note: This is spec-creation but it chains to task-execution via run.py
