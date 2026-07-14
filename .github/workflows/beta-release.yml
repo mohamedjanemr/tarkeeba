@@ -111,6 +111,11 @@ jobs:
       - name: Package macOS (Intel)
         run: |
           VERSION="${{ needs.create-tag.outputs.version }}"
+          if [ -z "${CSC_LINK:-}" ]; then
+            echo "::warning::macOS signing skipped - MAC_CERTIFICATE not configured."
+            unset CSC_LINK CSC_KEY_PASSWORD
+            export CSC_IDENTITY_AUTO_DISCOVERY=false
+          fi
           cd apps/frontend && npm run package:mac -- --x64 --config.extraMetadata.version="$VERSION"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -184,6 +189,11 @@ jobs:
       - name: Package macOS (Apple Silicon)
         run: |
           VERSION="${{ needs.create-tag.outputs.version }}"
+          if [ -z "${CSC_LINK:-}" ]; then
+            echo "::warning::macOS signing skipped - MAC_CERTIFICATE not configured."
+            unset CSC_LINK CSC_KEY_PASSWORD
+            export CSC_IDENTITY_AUTO_DISCOVERY=false
+          fi
           cd apps/frontend && npm run package:mac -- --arm64 --config.extraMetadata.version="$VERSION"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -638,6 +648,9 @@ jobs:
             ## Beta Release v${{ needs.create-tag.outputs.version }}
 
             This is a **beta release** for testing new features. It may contain bugs or incomplete functionality.
+
+            > [!WARNING]
+            > This preview is distributed without Apple notarization or Windows code signing. macOS Gatekeeper and Windows SmartScreen may warn before launch. Verify the downloaded file against `checksums.sha256` before installing it.
 
             ### How to opt-in to beta updates
             1. Open Tarkeeba

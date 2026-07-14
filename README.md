@@ -4,7 +4,7 @@
 
 Tarkeeba currently supports Anthropic Claude Code and OpenAI Codex, including model selection and separate account profiles for each provider.
 
-![Tarkeeba Kanban Board](.github/assets/Tarkeeba-Kanban.png)
+![Tarkeeba Roadmap](.github/assets/Tarkeeba-roadmap.png)
 
 [![License](https://img.shields.io/badge/license-AGPL--3.0-green?style=flat-square)](./agpl-3.0.txt)
 [![CI](https://img.shields.io/github/actions/workflow/status/mohamedjanemr/tarkeeba/ci.yml?branch=develop&style=flat-square&label=CI)](https://github.com/mohamedjanemr/tarkeeba/actions)
@@ -27,7 +27,7 @@ Downloads will appear here after the first stable release.
 
 > ⚠️ Beta releases may contain bugs and breaking changes. [View all releases](https://github.com/mohamedjanemr/tarkeeba/releases)
 >
-> `2.8.0-beta.1` is prepared but not published yet; the links below become active after the release workflow succeeds.
+> `2.8.0-beta.1` is an unsigned preview distributed through GitHub Releases. macOS Gatekeeper and Windows SmartScreen may warn before launch; verify the published SHA256 checksums before installing.
 
 <!-- BETA_VERSION_BADGE -->
 [![Beta](https://img.shields.io/badge/beta-2.8.0--beta.1-orange?style=flat-square)](https://github.com/mohamedjanemr/tarkeeba/releases/tag/v2.8.0-beta.1)
@@ -93,16 +93,16 @@ Visual task management from planning through completion. Create tasks and monito
 ### Agent Terminals
 AI-powered terminals with one-click task context injection. Spawn multiple agents for parallel work.
 
-![Agent Terminals](.github/assets/Tarkeeba-Agents-terminals.png)
-
 ### Roadmap
 AI-assisted feature planning with competitor analysis and audience targeting.
 
-![Roadmap](.github/assets/Tarkeeba-roadmap.png)
+### Ideation
+AI-generated improvement ideas across code quality, UI/UX, documentation, security, and performance.
+
+![Tarkeeba Ideation](.github/assets/Tarkeeba-ideation.png)
 
 ### Additional Features
 - **Insights** - Chat interface for exploring your codebase
-- **Ideation** - Discover improvements, performance issues, and vulnerabilities
 - **Changelog** - Generate release notes from completed tasks
 
 ---
