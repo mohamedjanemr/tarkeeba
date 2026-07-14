@@ -1,8 +1,9 @@
 import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
-import { ipcMain } from 'electron';
+import { BrowserWindow, ipcMain } from 'electron';
 import { IPC_CHANNELS } from '../../shared/constants';
-import type { CodexModelInfo, CodexReasoningEffort, IPCResult, OpenAIProfile, OpenAIProfileSettings } from '../../shared/types';
+import type { CodexModelInfo, CodexReasoningEffort, CodexUsageResult, IPCResult, OpenAIProfile, OpenAIProfileSettings } from '../../shared/types';
+import { getCodexUsageService } from '../codex-usage-service';
 import { getAugmentedEnv } from '../env-utils';
 import { getOpenAIProfileManager } from '../openai-profile-manager';
 
@@ -41,6 +42,42 @@ export function registerCodexHandlers(): void {
       return { authenticated: false };
     }
   };
+
+  ipcMain.handle(
+    IPC_CHANNELS.CODEX_USAGE_GET,
+    async (_, profileId?: unknown, forceRefresh?: unknown): Promise<IPCResult<CodexUsageResult>> => {
+      if (profileId !== undefined && typeof profileId !== 'string') {
+        return { success: false, error: 'Invalid Codex account ID' };
+      }
+
+      let result: CodexUsageResult;
+      try {
+        result = await getCodexUsageService().getUsage(profileId, forceRefresh === true);
+      } catch {
+        result = {
+          status: 'unavailable',
+          profileId,
+          fetchedAt: new Date().toISOString(),
+          reason: 'unavailable',
+          message: 'Codex usage is temporarily unavailable.',
+        };
+      }
+
+      const resolvedProfileId = result.status === 'available'
+        ? result.snapshot.profileId
+        : result.profileId;
+      if (resolvedProfileId) {
+        for (const window of BrowserWindow.getAllWindows()) {
+          window.webContents.send(IPC_CHANNELS.CODEX_USAGE_UPDATED, {
+            profileId: resolvedProfileId,
+            result,
+          });
+        }
+      }
+
+      return { success: true, data: result };
+    }
+  );
 
   ipcMain.handle(IPC_CHANNELS.CODEX_PROFILES_GET, async (): Promise<IPCResult<OpenAIProfileSettings>> => {
     return { success: true, data: getOpenAIProfileManager().getSettings() };

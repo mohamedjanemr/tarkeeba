@@ -377,6 +377,16 @@ const browserMockAPI: ElectronAPI = {
       }
     ]
   }),
+  getCodexUsage: async () => ({
+    success: true,
+    data: {
+      status: 'unavailable' as const,
+      fetchedAt: new Date().toISOString(),
+      reason: 'no-profile' as const,
+      message: 'No Codex account is selected.'
+    }
+  }),
+  onCodexUsageUpdated: () => () => undefined,
   getOpenAIProfiles: async () => ({ success: true, data: { profiles: [], activeProfileId: null } }),
   createOpenAIProfile: async (name: string) => ({
     success: true,

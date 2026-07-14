@@ -560,7 +560,13 @@
     "clickToOpenSettings": "Click to open Settings →",
     "sessionShort": "5-hour session usage",
     "weeklyShort": "7-day weekly usage",
-    "swap": "Swap"
+    "swap": "Swap",
+    "codexQuota": "Codex Usage",
+    "codexPrimary": "Primary quota",
+    "codexSecondary": "Secondary quota",
+    "codexUnavailable": "Codex usage unavailable",
+    "codexUnavailableDescription": "This Codex account did not provide usage-limit data.",
+    "codexUsageStatus": "Codex usage status"
   },
   "oauth": {
     "enterCode": "Manual Code Entry (Fallback)",

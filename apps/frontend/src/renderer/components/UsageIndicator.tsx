@@ -23,6 +23,7 @@ import { useTranslation } from 'react-i18next';
 import { formatTimeRemaining, localizeUsageWindowLabel, hasHardcodedText } from '../../shared/utils/format-time';
 import type { ClaudeUsageSnapshot, ProfileUsageSummary } from '../../shared/types/agent';
 import type { AppSection } from './settings/AppSettings';
+import { CodexUsageIndicator } from './CodexUsageIndicator';
 
 /**
  * Usage threshold constants for color coding
@@ -87,16 +88,28 @@ export function UsageIndicator() {
   const [activeProvider, setActiveProvider] = useState<'claude' | 'codex'>(() =>
     localStorage.getItem('auto-claude:agent-provider') === 'codex' ? 'codex' : 'claude'
   );
+  const [activeCodexProfileId, setActiveCodexProfileId] = useState<string>();
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const refreshInFlightRef = useRef(false);
 
   useEffect(() => {
-    const handleProviderChange = (event: Event) => {
-      const provider = (event as CustomEvent<{ provider: 'claude' | 'codex' }>).detail?.provider;
-      if (provider) setActiveProvider(provider);
+    const loadActiveCodexProfile = async () => {
+      const result = await window.electronAPI.getOpenAIProfiles();
+      if (result.success) setActiveCodexProfileId(result.data?.activeProfileId ?? undefined);
     };
+    const handleProviderChange = (event: Event) => {
+      const detail = (event as CustomEvent<{ provider: 'claude' | 'codex'; profileId?: string }>).detail;
+      if (detail?.provider) setActiveProvider(detail.provider);
+      if (detail?.profileId) setActiveCodexProfileId(detail.profileId);
+    };
+    const handleProfilesUpdated = () => { void loadActiveCodexProfile(); };
+    void loadActiveCodexProfile();
     window.addEventListener('agent-provider-changed', handleProviderChange);
-    return () => window.removeEventListener('agent-provider-changed', handleProviderChange);
+    window.addEventListener('openai-profiles-updated', handleProfilesUpdated);
+    return () => {
+      window.removeEventListener('agent-provider-changed', handleProviderChange);
+      window.removeEventListener('openai-profiles-updated', handleProfilesUpdated);
+    };
   }, []);
 
   /**
@@ -311,6 +324,7 @@ export function UsageIndicator() {
    * overlapping requests from the button and the auto-refresh timer.
    */
   const refreshUsage = useCallback(async () => {
+    if (activeProvider !== 'claude') return;
     if (refreshInFlightRef.current) return;
 
     refreshInFlightRef.current = true;
@@ -343,11 +357,11 @@ export function UsageIndicator() {
       refreshInFlightRef.current = false;
       setIsRefreshing(false);
     }
-  }, []);
+  }, [activeProvider]);
 
   // Keep the visible breakdown current without polling while it is closed.
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || activeProvider !== 'claude') return;
 
     void refreshUsage();
     const intervalId = window.setInterval(() => {
@@ -355,7 +369,7 @@ export function UsageIndicator() {
     }, AUTO_REFRESH_INTERVAL_MS);
 
     return () => window.clearInterval(intervalId);
-  }, [isOpen, refreshUsage]);
+  }, [isOpen, activeProvider, refreshUsage]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -377,6 +391,7 @@ export function UsageIndicator() {
     : (hasHardcodedText(usage?.weeklyResetTime) ? undefined : usage?.weeklyResetTime);
 
   useEffect(() => {
+    if (activeProvider !== 'claude') return;
     // Listen for usage updates from main process
     const unsubscribe = window.electronAPI.onUsageUpdated((snapshot: ClaudeUsageSnapshot) => {
       setUsage(snapshot);
@@ -428,10 +443,17 @@ export function UsageIndicator() {
       unsubscribe();
       unsubscribeAllProfiles?.();
     };
-  }, []);
+  }, [activeProvider]);
 
-  // OpenAI does not expose Claude-style usage windows through the Codex CLI.
-  if (activeProvider === 'codex') return null;
+  if (activeProvider === 'codex') {
+    return (
+      <CodexUsageIndicator
+        key={activeCodexProfileId ?? 'active'}
+        profileId={activeCodexProfileId}
+        onOpenAccounts={handleOpenAccounts}
+      />
+    );
+  }
 
   // Show loading state
   if (isLoading) {
@@ -453,6 +475,7 @@ export function UsageIndicator() {
         <Tooltip>
           <TooltipTrigger asChild>
             <button
+              type="button"
               className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border cursor-help ${
                 needsReauth
                   ? 'bg-red-500/10 border-red-500/20 text-red-500'
@@ -482,6 +505,7 @@ export function UsageIndicator() {
                     {t('common:usage.reauthRequiredDescription')}
                   </p>
                   <button
+                    type="button"
                     onClick={handleOpenAccounts}
                     className="text-[10px] text-primary mt-1 font-medium underline hover:text-primary/80 cursor-pointer"
                   >
@@ -540,6 +564,7 @@ export function UsageIndicator() {
     <Popover open={isOpen} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <button
+          type="button"
           className={`flex items-center gap-1 px-2 py-1.5 rounded-md border transition-all hover:opacity-80 ${badgeColorClasses}`}
           aria-label={t('common:usage.usageStatusAriaLabel')}
           onMouseEnter={handleMouseEnter}
@@ -790,6 +815,7 @@ export function UsageIndicator() {
                       {/* Swap button - only show for authenticated profiles */}
                       {profile.isAuthenticated && (
                         <button
+                          type="button"
                           onClick={(e) => handleSwapProfile(e, profile.profileId)}
                           className="text-[9px] px-1.5 py-0.5 bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground rounded transition-colors ml-auto"
                         >
