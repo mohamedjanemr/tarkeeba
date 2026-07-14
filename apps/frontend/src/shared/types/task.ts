@@ -29,6 +29,46 @@ export interface OpenAIProfileSettings {
   profiles: OpenAIProfile[];
   activeProfileId: string | null;
 }
+
+/** Renderer-safe quota information returned by the Codex app-server. */
+export interface CodexUsageWindow {
+  kind: 'primary' | 'secondary';
+  percentUsed: number;
+  durationMinutes?: number;
+  resetAt?: string;
+}
+
+export interface CodexUsageSnapshot {
+  profileId: string;
+  profileName: string;
+  fetchedAt: string;
+  windows: CodexUsageWindow[];
+}
+
+export type CodexUsageUnavailableReason =
+  | 'no-profile'
+  | 'not-authenticated'
+  | 'unsupported'
+  | 'timeout'
+  | 'malformed-response'
+  | 'no-rate-limits'
+  | 'unavailable';
+
+export type CodexUsageResult =
+  | { status: 'available'; snapshot: CodexUsageSnapshot }
+  | {
+      status: 'unavailable';
+      profileId?: string;
+      profileName?: string;
+      fetchedAt: string;
+      reason: CodexUsageUnavailableReason;
+      message: string;
+    };
+
+export interface CodexUsageUpdatedEvent {
+  profileId: string;
+  result: CodexUsageResult;
+}
 import type { ExecutionPhase as ExecutionPhaseType, CompletablePhase } from '../constants/phase-protocol';
 
 export type TaskStatus = 'backlog' | 'queue' | 'in_progress' | 'ai_review' | 'human_review' | 'done' | 'pr_created' | 'error';

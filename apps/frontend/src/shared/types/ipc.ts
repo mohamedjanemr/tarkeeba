@@ -50,7 +50,9 @@ import type {
   MergeProgress,
   CodexModelInfo,
   OpenAIProfile,
-  OpenAIProfileSettings
+  OpenAIProfileSettings,
+  CodexUsageResult,
+  CodexUsageUpdatedEvent
 } from './task';
 import type {
   TerminalCreateOptions,
@@ -936,6 +938,8 @@ export interface ElectronAPI {
 
   // OpenAI Codex CLI
   listCodexModels: (profileId?: string) => Promise<IPCResult<CodexModelInfo[]>>;
+  getCodexUsage: (profileId?: string, forceRefresh?: boolean) => Promise<IPCResult<CodexUsageResult>>;
+  onCodexUsageUpdated: (callback: (event: CodexUsageUpdatedEvent) => void) => () => void;
   getOpenAIProfiles: () => Promise<IPCResult<OpenAIProfileSettings>>;
   createOpenAIProfile: (name: string) => Promise<IPCResult<OpenAIProfile>>;
   renameOpenAIProfile: (profileId: string, name: string) => Promise<IPCResult>;

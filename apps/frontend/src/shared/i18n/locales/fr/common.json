@@ -560,7 +560,13 @@
     "clickToOpenSettings": "Cliquez pour ouvrir les Paramètres →",
     "sessionShort": "Utilisation session 5 heures",
     "weeklyShort": "Utilisation hebdomadaire 7 jours",
-    "swap": "Changer"
+    "swap": "Changer",
+    "codexQuota": "Utilisation de Codex",
+    "codexPrimary": "Quota principal",
+    "codexSecondary": "Quota secondaire",
+    "codexUnavailable": "Utilisation de Codex indisponible",
+    "codexUnavailableDescription": "Ce compte Codex n’a fourni aucune donnée de limite d’utilisation.",
+    "codexUsageStatus": "État de l’utilisation de Codex"
   },
   "oauth": {
     "enterCode": "Saisie manuelle du code (secours)",

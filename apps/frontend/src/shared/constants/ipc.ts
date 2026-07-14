@@ -591,6 +591,8 @@ export const IPC_CHANNELS = {
   CODEX_PROFILE_SET_ACTIVE: 'codex:profiles:setActive',
   CODEX_PROFILE_LOGIN: 'codex:profiles:login',
   CODEX_PROFILE_VERIFY: 'codex:profiles:verify',
+  CODEX_USAGE_GET: 'codex:usage:get',
+  CODEX_USAGE_UPDATED: 'codex:usage:updated',
 
   // Queue routing (rate limit recovery)
   QUEUE_GET_RUNNING_TASKS_BY_PROFILE: 'queue:getRunningTasksByProfile',
