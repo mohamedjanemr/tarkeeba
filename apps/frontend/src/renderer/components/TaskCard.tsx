@@ -331,7 +331,7 @@ export const TaskCard = memo(function TaskCard({
   return (
     <Card
       className={cn(
-        'card-surface task-card-enhanced cursor-pointer',
+        'card-surface task-card-enhanced w-full min-w-0 max-w-full overflow-hidden cursor-pointer',
         isRunning && !isStuck && 'ring-2 ring-primary border-primary task-running-pulse',
         isStuck && 'ring-2 ring-warning border-warning task-stuck-pulse',
         isArchived && 'opacity-60 hover:opacity-80',
@@ -356,7 +356,7 @@ export const TaskCard = memo(function TaskCard({
           <div className={isSelectable ? 'flex-1 min-w-0' : undefined}>
             {/* Title - full width, no wrapper */}
             <h3
-              className="font-semibold text-sm text-foreground line-clamp-2 leading-snug"
+              className="font-semibold text-sm text-foreground line-clamp-2 break-words leading-snug"
               title={displayTitle}
             >
               {displayTitle}
@@ -364,7 +364,7 @@ export const TaskCard = memo(function TaskCard({
 
         {/* Description - sanitized to handle markdown content (memoized) */}
         {sanitizedDescription && (
-          <p className="mt-2 text-xs text-muted-foreground line-clamp-2">
+          <p className="mt-2 text-xs text-muted-foreground line-clamp-2 break-words">
             {sanitizedDescription}
           </p>
         )}

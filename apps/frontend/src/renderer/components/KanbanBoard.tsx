@@ -386,7 +386,7 @@ const DroppableColumn = memo(function DroppableColumn({ status, tasks, onTaskCli
       <div
         ref={setNodeRef}
         className={cn(
-          'flex flex-1 flex-col rounded-xl border border-white/5 bg-linear-to-b from-secondary/30 to-transparent backdrop-blur-sm transition-all duration-200',
+          'flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-white/5 bg-linear-to-b from-secondary/30 to-transparent backdrop-blur-sm transition-all duration-200',
           !columnWidth && 'min-w-80 max-w-[30rem]',
           getColumnBorderColor(),
           'border-t-2',
@@ -555,13 +555,16 @@ const DroppableColumn = memo(function DroppableColumn({ status, tasks, onTaskCli
       </div>
 
       {/* Task list */}
-      <div className="flex-1 min-h-0">
-        <ScrollArea className="h-full px-3 pb-3 pt-2">
+      <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
+        <ScrollArea
+          className="h-full min-w-0 px-3 pb-3 pt-2"
+          viewportClassName="overflow-x-hidden [&>div]:!block [&>div]:!w-full [&>div]:!min-w-0"
+        >
           <SortableContext
             items={taskIds}
             strategy={verticalListSortingStrategy}
           >
-            <div className="space-y-3 min-h-[120px]">
+            <div className="min-h-[120px] min-w-0 w-full space-y-3">
               {tasks.length === 0 ? (
                 <div
                   className={cn(
