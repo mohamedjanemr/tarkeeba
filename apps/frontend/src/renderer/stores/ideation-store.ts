@@ -6,7 +6,8 @@ import type {
   IdeationGenerationStatus,
   IdeationType,
   IdeationConfig,
-  IdeationSummary
+  IdeationSummary,
+  IdeationProviderConfig
 } from '../../shared/types';
 import { DEFAULT_IDEATION_CONFIG } from '../../shared/constants';
 
@@ -396,7 +397,7 @@ export async function loadIdeation(projectId: string): Promise<void> {
   }
 }
 
-export function generateIdeation(projectId: string): void {
+export function generateIdeation(projectId: string, providerConfig?: IdeationProviderConfig): void {
   const store = useIdeationStore.getState();
   const config = store.config;
 
@@ -443,7 +444,7 @@ export function generateIdeation(projectId: string): void {
   }, GENERATION_TIMEOUT_MS);
   generationTimeoutIds.set(projectId, timeoutId);
 
-  window.electronAPI.generateIdeation(projectId, config);
+  window.electronAPI.generateIdeation(projectId, config, providerConfig);
 }
 
 export async function stopIdeation(projectId: string): Promise<boolean> {
@@ -479,7 +480,7 @@ export async function stopIdeation(projectId: string): Promise<boolean> {
   return result.success;
 }
 
-export async function refreshIdeation(projectId: string): Promise<void> {
+export async function refreshIdeation(projectId: string, providerConfig?: IdeationProviderConfig): Promise<void> {
   const store = useIdeationStore.getState();
   const config = store.config;
 
@@ -495,7 +496,7 @@ export async function refreshIdeation(projectId: string): Promise<void> {
     progress: 0,
     message: `Refreshing ${config.enabledTypes.length} ideation types in parallel...`
   });
-  window.electronAPI.refreshIdeation(projectId, config);
+  window.electronAPI.refreshIdeation(projectId, config, providerConfig);
 }
 
 export async function dismissAllIdeasForProject(projectId: string): Promise<boolean> {
@@ -544,7 +545,11 @@ export async function deleteMultipleIdeasForProject(projectId: string, ideaIds: 
  * This allows users to add more categories (like security, performance) while keeping
  * their existing ideas intact.
  */
-export function appendIdeation(projectId: string, typesToAdd: IdeationType[]): void {
+export function appendIdeation(
+  projectId: string,
+  typesToAdd: IdeationType[],
+  providerConfig?: IdeationProviderConfig
+): void {
   const store = useIdeationStore.getState();
   const config = store.config;
 
@@ -569,7 +574,7 @@ export function appendIdeation(projectId: string, typesToAdd: IdeationType[]): v
     enabledTypes: typesToAdd,
     append: true
   };
-  window.electronAPI.generateIdeation(projectId, appendConfig);
+  window.electronAPI.generateIdeation(projectId, appendConfig, providerConfig);
 }
 
 // Selectors

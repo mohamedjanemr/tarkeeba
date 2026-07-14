@@ -30,6 +30,13 @@ export interface IdeationConfig {
   thinkingLevel?: string;  // Thinking level (low, medium, high)
 }
 
+export interface IdeationProviderConfig {
+  provider: AgentProvider;
+  codexProfileId?: string;
+  codexModel?: string;
+  codexReasoningEffort?: CodexReasoningEffort;
+}
+
 export interface IdeaBase {
   id: string;
   title: string;

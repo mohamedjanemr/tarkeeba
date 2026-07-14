@@ -6,6 +6,7 @@ import {
   IDEATION_TYPE_LABELS
 } from '../../../shared/constants';
 import type { IdeationType, IdeationConfig } from '../../../shared/types';
+import type { AgentProvider } from '../../../shared/types';
 import { TypeIcon } from './TypeIcon';
 import { ALL_IDEATION_TYPES } from './constants';
 
@@ -13,6 +14,7 @@ interface IdeationEmptyStateProps {
   config: IdeationConfig;
   hasToken: boolean | null;
   isCheckingToken: boolean;
+  provider: AgentProvider;
   onGenerate: () => void;
   onOpenConfig: () => void;
   onToggleIdeationType: (type: IdeationType) => void;
@@ -22,6 +24,7 @@ export function IdeationEmptyState({
   config,
   hasToken,
   isCheckingToken,
+  provider,
   onGenerate,
   onOpenConfig,
   onToggleIdeationType
@@ -67,7 +70,11 @@ export function IdeationEmptyState({
           </div>
         </div>
 
-        <Button onClick={onGenerate} size="lg" disabled={isCheckingToken}>
+        <Button
+          onClick={onGenerate}
+          size="lg"
+          disabled={isCheckingToken || (provider === 'codex' && hasToken === false)}
+        >
           <Sparkles className="h-4 w-4 mr-2" />
           Generate Ideas
         </Button>
@@ -76,7 +83,9 @@ export function IdeationEmptyState({
         {hasToken === false && !isCheckingToken && (
           <p className="mt-3 text-sm text-muted-foreground">
             <AlertCircle className="h-4 w-4 inline-block mr-1 text-warning" />
-            Claude token not configured. You'll be prompted to enter it when generating.
+            {provider === 'codex'
+              ? 'The selected Codex account is not authenticated. Choose or sign in to an account from the provider menu.'
+              : "Claude token not configured. You'll be prompted to enter it when generating."}
           </p>
         )}
       </Card>
