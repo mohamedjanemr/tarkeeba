@@ -49,6 +49,8 @@ def capture_usage_from_result(
     if account is not None:
         kwargs["account"] = account
 
+    source = "sdk_reported" if cost_usd is not None else "estimated"
+
     task_logger.record_usage(
         model=model,
         input_tokens=input_tokens,
@@ -56,6 +58,6 @@ def capture_usage_from_result(
         cache_read_tokens=cache_read_tokens,
         cache_creation_tokens=cache_creation_tokens,
         cost_usd=cost_usd,
-        source="sdk_reported",
+        source=source,
         **kwargs,
     )
