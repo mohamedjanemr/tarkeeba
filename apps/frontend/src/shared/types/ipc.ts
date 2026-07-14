@@ -108,7 +108,8 @@ import type {
   InsightsSessionSummary,
   InsightsChatStatus,
   InsightsStreamChunk,
-  InsightsModelConfig
+  InsightsModelConfig,
+  InsightsProviderConfig
 } from './insights';
 import type {
   CompetitorAnalysis,
@@ -780,7 +781,7 @@ export interface ElectronAPI {
 
   // Insights operations
   getInsightsSession: (projectId: string) => Promise<IPCResult<InsightsSession | null>>;
-  sendInsightsMessage: (projectId: string, message: string, modelConfig?: InsightsModelConfig, images?: ImageAttachment[]) => void;
+  sendInsightsMessage: (projectId: string, message: string, modelConfig?: InsightsModelConfig, images?: ImageAttachment[], providerConfig?: InsightsProviderConfig) => void;
   cancelInsightsMessage: (projectId: string) => Promise<IPCResult<{ cancelled: boolean }>>;
   clearInsightsSession: (projectId: string) => Promise<IPCResult>;
   createTaskFromInsights: (

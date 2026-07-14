@@ -11,12 +11,21 @@ import type {
   InsightsStreamChunk,
   InsightsToolUsage,
   InsightsModelConfig,
+  InsightsProviderConfig,
   ImageAttachment
 } from '../../shared/types';
 import { MODEL_ID_MAP, MAX_IMAGES_PER_TASK, MAX_IMAGE_SIZE } from '../../shared/constants';
 import { InsightsConfig } from './config';
 import { detectRateLimit, createSDKRateLimitInfo } from '../rate-limit-detector';
 import { killProcessGracefully } from '../platform';
+import { getOpenAIProfileManager } from '../openai-profile-manager';
+import {
+  buildCodexInsightsArgs,
+  buildCodexInsightsPrompt,
+  DEFAULT_CODEX_INSIGHTS_EFFORT,
+  DEFAULT_CODEX_INSIGHTS_MODEL,
+  parseCodexInsightsEvent,
+} from './codex-insights';
 
 // Safe extension map for image MIME types — prevents path traversal via crafted mimeType
 // SVG excluded: contains active script content and is unsupported by Claude Vision API
@@ -83,18 +92,30 @@ export class InsightsExecutor extends EventEmitter {
     message: string,
     conversationHistory: Array<{ role: string; content: string }>,
     modelConfig?: InsightsModelConfig,
-    images?: ImageAttachment[]
+    images?: ImageAttachment[],
+    providerConfig?: InsightsProviderConfig
   ): Promise<ProcessorResult> {
     // Cancel any existing session
     this.cancelSession(projectId);
 
+    const useCodex = providerConfig?.provider === 'codex';
+    const codexProfile = useCodex
+      ? getOpenAIProfileManager().getProfile(providerConfig.codexProfileId)
+      : undefined;
+    if (useCodex && !codexProfile) throw new Error('No Codex account is selected');
+    if (useCodex && !codexProfile?.isAuthenticated) {
+      throw new Error(`Codex account "${codexProfile?.name}" is not authenticated`);
+    }
+
     const autoBuildSource = this.config.getAutoBuildSourcePath();
-    if (!autoBuildSource) {
+    if (!useCodex && !autoBuildSource) {
       throw new Error('Tarkeeba source not found');
     }
 
-    const runnerPath = path.join(autoBuildSource, 'runners', 'insights_runner.py');
-    if (!existsSync(runnerPath)) {
+    const runnerPath = autoBuildSource
+      ? path.join(autoBuildSource, 'runners', 'insights_runner.py')
+      : '';
+    if (!useCodex && !existsSync(runnerPath)) {
       throw new Error('insights_runner.py not found in auto-claude directory');
     }
 
@@ -124,6 +145,7 @@ export class InsightsExecutor extends EventEmitter {
 
     // Write image files and manifest if images are provided
     const imagesTempFiles: string[] = [];
+    const imageTempPaths: string[] = [];
     let imagesManifestFile: string | undefined;
 
     // Defense-in-depth: cap image count and filter oversized images in the executor
@@ -156,6 +178,7 @@ export class InsightsExecutor extends EventEmitter {
           );
           await writeFile(imagePath, Buffer.from(image.data, 'base64'), { mode: 0o600 });
           imagesTempFiles.push(imagePath);
+          imageTempPaths.push(imagePath);
           manifest.push({ path: imagePath, mimeType: image.mimeType });
         }
 
@@ -184,32 +207,48 @@ export class InsightsExecutor extends EventEmitter {
       }
     }
 
-    // Build command arguments
-    const args = [
-      runnerPath,
-      '--project-dir', projectPath,
-      '--message', message,
-      '--history-file', historyFile
-    ];
+    let executable: string;
+    let args: string[];
+    let cwd: string;
+    let spawnEnv = processEnv;
+    let stdinPrompt: string | undefined;
 
-    // Add images manifest file if images were provided
-    if (imagesManifestFile) {
-      args.push('--images-file', imagesManifestFile);
+    if (useCodex) {
+      executable = processEnv.CODEX_CLI_PATH || 'codex';
+      args = buildCodexInsightsArgs(
+        projectPath,
+        providerConfig.codexModel || DEFAULT_CODEX_INSIGHTS_MODEL,
+        providerConfig.codexReasoningEffort || DEFAULT_CODEX_INSIGHTS_EFFORT,
+        imageTempPaths
+      );
+      cwd = projectPath;
+      stdinPrompt = buildCodexInsightsPrompt(message, conversationHistory);
+      spawnEnv = {
+        ...Object.fromEntries(
+          Object.entries(processEnv).filter(([key]) =>
+            !key.startsWith('CLAUDE_') && !key.startsWith('ANTHROPIC_')
+          )
+        ),
+        CODEX_HOME: codexProfile?.codexHome as string,
+      };
+    } else {
+      executable = this.config.getPythonPath();
+      args = [
+        runnerPath,
+        '--project-dir', projectPath,
+        '--message', message,
+        '--history-file', historyFile
+      ];
+      if (imagesManifestFile) args.push('--images-file', imagesManifestFile);
+      if (modelConfig) {
+        const modelId = MODEL_ID_MAP[modelConfig.model] || MODEL_ID_MAP['sonnet'];
+        args.push('--model', modelId);
+        args.push('--thinking-level', modelConfig.thinkingLevel);
+      }
+      cwd = autoBuildSource as string;
     }
 
-    // Add model config if provided
-    if (modelConfig) {
-      const modelId = MODEL_ID_MAP[modelConfig.model] || MODEL_ID_MAP['sonnet'];
-      args.push('--model', modelId);
-      args.push('--thinking-level', modelConfig.thinkingLevel);
-    }
-
-    // Spawn Python process
-    const proc = spawn(this.config.getPythonPath(), args, {
-      cwd: autoBuildSource,
-      env: processEnv
-    });
-
+    const proc = spawn(executable, args, { cwd, env: spawnEnv });
     this.activeSessions.set(projectId, proc);
 
     // Shared cleanup for temp files used across close/error handlers
@@ -239,32 +278,61 @@ export class InsightsExecutor extends EventEmitter {
       const toolsUsed: InsightsToolUsage[] = [];
       let allInsightsOutput = '';
       let stderrOutput = '';
+      let stdoutBuffer = '';
+      let codexReportedError = false;
+
+      const handleTextLine = (line: string) => {
+        if (line.startsWith('__TASK_SUGGESTION__:')) {
+          this.handleTaskSuggestion(projectId, line, (task) => {
+            if (task) suggestedTasks.push(task);
+          });
+        } else if (line.startsWith('__TOOL_START__:')) {
+          this.handleToolStart(projectId, line, toolsUsed);
+        } else if (line.startsWith('__TOOL_END__:')) {
+          this.handleToolEnd(projectId, line);
+        } else if (line.trim()) {
+          fullResponse += line + '\n';
+          this.emit('stream-chunk', projectId, {
+            type: 'text',
+            content: line + '\n'
+          } as InsightsStreamChunk);
+        }
+      };
+
+      const handleCodexLine = (line: string) => {
+        const event = parseCodexInsightsEvent(line);
+        if (!event) return;
+        if (event.type === 'text' && event.content) {
+          for (const textLine of event.content.split('\n')) handleTextLine(textLine);
+        } else if (event.type === 'tool_start' && event.tool) {
+          toolsUsed.push({ ...event.tool, timestamp: new Date() });
+          this.emit('stream-chunk', projectId, {
+            type: 'tool_start',
+            tool: event.tool
+          } as InsightsStreamChunk);
+        } else if (event.type === 'tool_end' && event.tool) {
+          this.emit('stream-chunk', projectId, {
+            type: 'tool_end',
+            tool: event.tool
+          } as InsightsStreamChunk);
+        } else if (event.type === 'error' && event.error) {
+          codexReportedError = true;
+          stderrOutput = (stderrOutput + event.error).slice(-2000);
+        }
+      };
 
       proc.stdout?.on('data', (data: Buffer) => {
         const text = data.toString('utf-8');
         // Collect output for rate limit detection (keep last 10KB)
         allInsightsOutput = (allInsightsOutput + text).slice(-10000);
 
-        // Process output lines
-        const lines = text.split('\n');
-        for (const line of lines) {
-          if (line.startsWith('__TASK_SUGGESTION__:')) {
-            this.handleTaskSuggestion(projectId, line, (task) => {
-              if (task) {
-                suggestedTasks.push(task);
-              }
-            });
-          } else if (line.startsWith('__TOOL_START__:')) {
-            this.handleToolStart(projectId, line, toolsUsed);
-          } else if (line.startsWith('__TOOL_END__:')) {
-            this.handleToolEnd(projectId, line);
-          } else if (line.trim()) {
-            fullResponse += line + '\n';
-            this.emit('stream-chunk', projectId, {
-              type: 'text',
-              content: line + '\n'
-            } as InsightsStreamChunk);
-          }
+        if (useCodex) {
+          stdoutBuffer += text;
+          const lines = stdoutBuffer.split('\n');
+          stdoutBuffer = lines.pop() ?? '';
+          for (const line of lines) handleCodexLine(line);
+        } else {
+          for (const line of text.split('\n')) handleTextLine(line);
         }
       });
 
@@ -277,6 +345,7 @@ export class InsightsExecutor extends EventEmitter {
       });
 
       proc.on('close', (code) => {
+        if (useCodex && stdoutBuffer.trim()) handleCodexLine(stdoutBuffer);
         if (this.activeSessions.get(projectId) === proc) {
           this.activeSessions.delete(projectId);
         }
@@ -307,7 +376,7 @@ export class InsightsExecutor extends EventEmitter {
           this.handleRateLimit(projectId, allInsightsOutput);
         }
 
-        if (code === 0) {
+        if (code === 0 && !codexReportedError) {
           this.emit('stream-chunk', projectId, {
             type: 'done'
           } as InsightsStreamChunk);
@@ -326,7 +395,7 @@ export class InsightsExecutor extends EventEmitter {
           const stderrSummary = stderrOutput.trim()
             ? `\n\nError output:\n${stderrOutput.slice(-500)}`
             : '';
-          const error = `Process exited with code ${code}${stderrSummary}`;
+          const error = `${useCodex ? 'Codex' : 'Process'} exited with code ${code}${stderrSummary}`;
           this.emit('stream-chunk', projectId, {
             type: 'error',
             error
@@ -346,6 +415,15 @@ export class InsightsExecutor extends EventEmitter {
         this.emit('error', projectId, err.message);
         reject(err);
       });
+
+      if (stdinPrompt && proc.stdin) {
+        // A missing/early-exiting CLI can close stdin before the prompt is
+        // written; the process error/close handlers above report the failure.
+        proc.stdin.on('error', () => {
+          // The process-level handlers report the actionable failure.
+        });
+        proc.stdin.end(stdinPrompt);
+      }
     });
   }
 
