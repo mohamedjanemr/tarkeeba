@@ -11,6 +11,7 @@ import { CostSummaryCards } from './CostSummaryCards';
 import { SpendOverTimeChart } from './SpendOverTimeChart';
 import { AccountHeadroomPanel } from './AccountHeadroomPanel';
 import { TaskCostBreakdownTable } from './TaskCostBreakdownTable';
+import { SpendThresholdSettings } from './SpendThresholdSettings';
 import { useUsageCostStore, loadProjectUsageSummary, setupUsageCostListeners } from '../../stores/usage-cost-store';
 
 interface UsageCostDashboardProps {
@@ -59,6 +60,8 @@ export function UsageCostDashboard({ projectId }: UsageCostDashboardProps) {
         </div>
 
         <TaskCostBreakdownTable />
+
+        <SpendThresholdSettings />
       </div>
     </div>
   );
