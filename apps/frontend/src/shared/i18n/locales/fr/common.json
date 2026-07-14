@@ -568,6 +568,22 @@
     "codexUnavailableDescription": "Ce compte Codex n’a fourni aucune donnée de limite d’utilisation.",
     "codexUsageStatus": "État de l’utilisation de Codex"
   },
+  "usageCostDashboard": {
+    "totalSpend": "Dépense totale",
+    "totalTokens": "Total des jetons",
+    "activeRunCost": "Coût de l'exécution active",
+    "activeRunCostNone": "Aucune exécution active",
+    "acrossSpecs": "Sur {{count}} tâche",
+    "acrossSpecs_other": "Sur {{count}} tâches",
+    "inputOutput": "{{input}} entrée / {{output}} sortie",
+    "spendOverTime": {
+      "title": "Dépense dans le temps",
+      "description": "Coût quotidien pour ce projet",
+      "empty": "Aucune donnée historique de dépense",
+      "tooltipCost": "Coût",
+      "axisCost": "Coût (USD)"
+    }
+  },
   "oauth": {
     "enterCode": "Saisie manuelle du code (secours)",
     "enterCodeDescription": "Ce dialogue n'est nécessaire que si le navigateur n'a pas redirigé automatiquement. Si l'authentification est déjà terminée dans votre navigateur, vous pouvez fermer ce dialogue.",
