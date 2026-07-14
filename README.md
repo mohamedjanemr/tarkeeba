@@ -4,7 +4,7 @@
 
 Tarkeeba currently supports Anthropic Claude Code and OpenAI Codex, including model selection and separate account profiles for each provider.
 
-![Tarkeeba Kanban Board](.github/assets/Tarkeeba-Kanban.png)
+![Tarkeeba Roadmap](.github/assets/Tarkeeba-roadmap.png)
 
 [![License](https://img.shields.io/badge/license-AGPL--3.0-green?style=flat-square)](./agpl-3.0.txt)
 [![CI](https://img.shields.io/github/actions/workflow/status/mohamedjanemr/tarkeeba/ci.yml?branch=develop&style=flat-square&label=CI)](https://github.com/mohamedjanemr/tarkeeba/actions)
@@ -93,16 +93,16 @@ Visual task management from planning through completion. Create tasks and monito
 ### Agent Terminals
 AI-powered terminals with one-click task context injection. Spawn multiple agents for parallel work.
 
-![Agent Terminals](.github/assets/Tarkeeba-Agents-terminals.png)
-
 ### Roadmap
 AI-assisted feature planning with competitor analysis and audience targeting.
 
-![Roadmap](.github/assets/Tarkeeba-roadmap.png)
+### Ideation
+AI-generated improvement ideas across code quality, UI/UX, documentation, security, and performance.
+
+![Tarkeeba Ideation](.github/assets/Tarkeeba-ideation.png)
 
 ### Additional Features
 - **Insights** - Chat interface for exploring your codebase
-- **Ideation** - Discover improvements, performance issues, and vulnerabilities
 - **Changelog** - Generate release notes from completed tasks
 
 ---
