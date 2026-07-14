@@ -602,6 +602,20 @@
       "outputTokens": "Sortie",
       "cost": "Coût",
       "empty": "Aucune donnée d'utilisation pour cette tâche"
+    },
+    "taskSelector": {
+      "label": "Tâche",
+      "placeholder": "Sélectionner une tâche..."
+    },
+    "accountBreakdown": {
+      "title": "Dépense par compte",
+      "description": "Utilisation de jetons et coût total pour toutes les tâches, ventilés par compte",
+      "empty": "Aucune donnée d'utilisation de compte disponible"
+    },
+    "providerBreakdown": {
+      "title": "Dépense par fournisseur",
+      "description": "Utilisation de jetons et coût total pour toutes les tâches, ventilés par fournisseur",
+      "empty": "Aucune donnée d'utilisation de fournisseur disponible"
     }
   },
   "oauth": {
