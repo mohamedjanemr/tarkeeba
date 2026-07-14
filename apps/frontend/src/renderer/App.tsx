@@ -35,6 +35,7 @@ import { AppSettingsDialog, type AppSection } from './components/settings/AppSet
 import type { ProjectSettingsSection } from './components/settings/ProjectSettingsContent';
 import { TerminalGrid } from './components/TerminalGrid';
 import { Roadmap } from './components/Roadmap';
+import { UsageCostDashboard } from './components/usage-cost/UsageCostDashboard';
 import { Context } from './components/Context';
 import { Ideation } from './components/Ideation';
 import { Insights } from './components/Insights';
@@ -951,6 +952,9 @@ export function App() {
                 )}
                 {activeView === 'worktrees' && (activeProjectId || selectedProjectId) && (
                   <Worktrees projectId={activeProjectId || selectedProjectId!} />
+                )}
+                {activeView === 'usage-cost' && (activeProjectId || selectedProjectId) && (
+                  <UsageCostDashboard projectId={activeProjectId || selectedProjectId!} />
                 )}
                 {activeView === 'agent-tools' && <AgentTools />}
               </>
