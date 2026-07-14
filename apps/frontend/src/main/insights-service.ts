@@ -223,17 +223,21 @@ export class InsightsService extends EventEmitter {
         images
       );
 
-      // Add assistant message to session
-      const assistantMessage: InsightsChatMessage = {
-        id: `msg-${Date.now()}`,
-        role: 'assistant',
-        content: result.fullResponse,
-        timestamp: new Date(),
-        suggestedTasks: result.suggestedTasks,
-        toolsUsed: result.toolsUsed.length > 0 ? result.toolsUsed : undefined
-      };
+      // Keep any partial response produced before the user stopped generation.
+      // Avoid creating an empty assistant message when cancellation happened
+      // before the first token arrived.
+      if (result.fullResponse || result.suggestedTasks || result.toolsUsed.length > 0) {
+        const assistantMessage: InsightsChatMessage = {
+          id: `msg-${Date.now()}`,
+          role: 'assistant',
+          content: result.fullResponse,
+          timestamp: new Date(),
+          suggestedTasks: result.suggestedTasks,
+          toolsUsed: result.toolsUsed.length > 0 ? result.toolsUsed : undefined
+        };
 
-      session.messages.push(assistantMessage);
+        session.messages.push(assistantMessage);
+      }
       session.updatedAt = new Date();
       this.sessionManager.saveSession(projectPath, session);
 
@@ -243,6 +247,13 @@ export class InsightsService extends EventEmitter {
       // Error already emitted by executor
       console.error('[InsightsService] Error executing insights:', error);
     }
+  }
+
+  /**
+   * Stop the active response for a project.
+   */
+  cancelMessage(projectId: string): boolean {
+    return this.executor.cancelSession(projectId);
   }
 
   /**

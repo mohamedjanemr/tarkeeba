@@ -493,6 +493,7 @@ export const IPC_CHANNELS = {
   // Insights operations
   INSIGHTS_GET_SESSION: 'insights:getSession',
   INSIGHTS_SEND_MESSAGE: 'insights:sendMessage',
+  INSIGHTS_CANCEL_MESSAGE: 'insights:cancelMessage',
   INSIGHTS_CLEAR_SESSION: 'insights:clearSession',
   INSIGHTS_CREATE_TASK: 'insights:createTask',
   INSIGHTS_LIST_SESSIONS: 'insights:listSessions',

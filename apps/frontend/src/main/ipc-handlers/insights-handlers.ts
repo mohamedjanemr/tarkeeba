@@ -131,6 +131,21 @@ export function registerInsightsHandlers(getMainWindow: () => BrowserWindow | nu
   );
 
   ipcMain.handle(
+    IPC_CHANNELS.INSIGHTS_CANCEL_MESSAGE,
+    async (_, projectId: string): Promise<IPCResult<{ cancelled: boolean }>> => {
+      const project = projectStore.getProject(projectId);
+      if (!project) {
+        return { success: false, error: "Project not found" };
+      }
+
+      return {
+        success: true,
+        data: { cancelled: insightsService.cancelMessage(projectId) },
+      };
+    }
+  );
+
+  ipcMain.handle(
     IPC_CHANNELS.INSIGHTS_CLEAR_SESSION,
     async (_, projectId: string): Promise<IPCResult> => {
       const project = projectStore.getProject(projectId);

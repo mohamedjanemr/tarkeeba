@@ -16,7 +16,8 @@ import {
   PanelLeftClose,
   PanelLeft,
   Camera,
-  X
+  X,
+  Square
 } from 'lucide-react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -31,6 +32,7 @@ import {
   useInsightsStore,
   loadInsightsSession,
   sendMessage,
+  stopMessage,
   newSession,
   switchSession,
   deleteSession,
@@ -228,6 +230,11 @@ export function Insights({ projectId }: InsightsProps) {
     setPendingImages([]);
     setImageError(null);
     setIsUserAtBottom(true); // Resume auto-scroll when user sends a message
+  };
+
+  const handleStop = async () => {
+    await stopMessage(projectId);
+    textareaRef.current?.focus();
   };
 
   const handleScreenshotCapture = useCallback(async (imageData: string) => {
@@ -592,27 +599,22 @@ export function Insights({ projectId }: InsightsProps) {
               <Camera className="h-4 w-4" />
             </Button>
             <Button
-              onClick={handleSend}
-              disabled={(!inputValue.trim() && pendingImages.length === 0) || isLoading}
+              onClick={isLoading ? handleStop : handleSend}
+              disabled={!isLoading && !inputValue.trim() && pendingImages.length === 0}
               className="h-9 w-9"
               size="icon"
+              variant={isLoading ? 'destructive' : 'default'}
+              title={isLoading ? 'Stop response' : 'Send message'}
+              aria-label={isLoading ? 'Stop response' : 'Send message'}
             >
               {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Square className="h-3.5 w-3.5 fill-current" />
               ) : (
                 <Send className="h-4 w-4" />
               )}
             </Button>
           </div>
         </div>
-
-        {/* Image analysis warning */}
-        {pendingImages.length > 0 && (
-          <div className="mt-1 flex items-center gap-1.5 rounded-md bg-amber-500/10 px-2 py-1 text-xs text-amber-500">
-            <AlertCircle className="h-3 w-3 shrink-0" />
-            <span>{t('insights.images.analysisUnsupported')}</span>
-          </div>
-        )}
 
         {/* Image error */}
         {imageError && (
@@ -710,7 +712,7 @@ function MessageBubble({
 
         {/* Image attachments for user messages */}
         {isUser && message.images && message.images.length > 0 && (
-          <div className="space-y-1.5">
+          <div>
             <div className="flex flex-wrap gap-2">
               {message.images
                 .filter(img => img.thumbnail || img.data)
@@ -723,7 +725,6 @@ function MessageBubble({
                   />
                 ))}
             </div>
-            <p className="text-xs text-muted-foreground italic">{t('insights.images.notAnalyzed')}</p>
           </div>
         )}
 
