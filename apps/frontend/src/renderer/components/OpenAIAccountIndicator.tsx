@@ -50,7 +50,6 @@ export function OpenAIAccountIndicator() {
   return (
     <Select value={selectedValue} onValueChange={handleChange}>
       <SelectTrigger className="h-8 w-auto min-w-36 gap-1.5 border-sky-500/20 bg-sky-500/10 text-sky-500" aria-label="Active coding agent">
-        {activeProvider === 'codex' ? <Bot className="h-3.5 w-3.5 shrink-0" /> : <Code2 className="h-3.5 w-3.5 shrink-0" />}
         <SelectValue placeholder="Select coding agent" />
       </SelectTrigger>
       <SelectContent align="end">
