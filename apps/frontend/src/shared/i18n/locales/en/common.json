@@ -582,6 +582,26 @@
       "empty": "No historical spend data yet",
       "tooltipCost": "Cost",
       "axisCost": "Cost (USD)"
+    },
+    "accountHeadroom": {
+      "title": "Account Headroom",
+      "description": "Rate-limit and usage headroom per account, including failover status",
+      "active": "Active",
+      "needsReauth": "Needs re-auth",
+      "rateLimited": "Rate limited",
+      "session": "Session",
+      "weekly": "Weekly",
+      "empty": "No account usage data available"
+    },
+    "taskCostBreakdown": {
+      "title": "Cost Breakdown",
+      "description": "Per-task token usage and estimated cost, broken down by account and provider",
+      "account": "Account",
+      "provider": "Provider",
+      "inputTokens": "Input",
+      "outputTokens": "Output",
+      "cost": "Cost",
+      "empty": "No usage data for this task yet"
     }
   },
   "oauth": {
