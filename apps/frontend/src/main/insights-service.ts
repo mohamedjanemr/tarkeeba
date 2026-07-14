@@ -4,6 +4,7 @@ import type {
   InsightsSessionSummary,
   InsightsChatMessage,
   InsightsModelConfig,
+  InsightsProviderConfig,
   ImageAttachment
 } from '../shared/types';
 import { MAX_IMAGES_PER_TASK } from '../shared/constants';
@@ -147,14 +148,15 @@ export class InsightsService extends EventEmitter {
     projectPath: string,
     message: string,
     modelConfig?: InsightsModelConfig,
-    images?: ImageAttachment[]
+    images?: ImageAttachment[],
+    providerConfig?: InsightsProviderConfig
   ): Promise<void> {
     // Cancel any existing session
     this.executor.cancelSession(projectId);
 
     // Validate auto-claude source
     const autoBuildSource = this.config.getAutoBuildSourcePath();
-    if (!autoBuildSource) {
+    if (providerConfig?.provider !== 'codex' && !autoBuildSource) {
       this.emit('error', projectId, 'Tarkeeba source not found');
       return;
     }
@@ -220,7 +222,8 @@ export class InsightsService extends EventEmitter {
         message,
         conversationHistory,
         configToUse,
-        images
+        images,
+        providerConfig
       );
 
       // Keep any partial response produced before the user stopped generation.
@@ -244,8 +247,12 @@ export class InsightsService extends EventEmitter {
       // Emit session-updated event for real-time UI updates
       this.emit('session-updated', projectId, session);
     } catch (error) {
-      // Error already emitted by executor
       console.error('[InsightsService] Error executing insights:', error);
+      this.emit(
+        'error',
+        projectId,
+        error instanceof Error ? error.message : String(error)
+      );
     }
   }
 
