@@ -352,6 +352,9 @@ class TestCaptureUsageFromResult:
             input_tokens=0,
             output_tokens=0,
         )
+        # source should reflect that the cost was estimated (no SDK-reported
+        # total_cost_usd), not mislabeled as sdk_reported.
+        assert entry["source"] == "estimated"
 
     def test_account_omitted_when_not_provided(self, tmp_path):
         """When account is not passed, record_usage() should fall back to

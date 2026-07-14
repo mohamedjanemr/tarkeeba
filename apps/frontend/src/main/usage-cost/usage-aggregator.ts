@@ -283,7 +283,6 @@ export class UsageAggregator extends EventEmitter {
         return JSON.parse(content) as ImplementationPlan;
       } catch {
         // Tolerate partial/mid-write JSON; try the next path (e.g. worktree copy)
-        continue;
       }
     }
     return null;
