@@ -15,9 +15,15 @@ import {
 } from './types';
 import type { IdeationConfig, IdeationProviderConfig } from '../../shared/types';
 import { resetStuckSubtasks } from '../ipc-handlers/task/plan-file-utils';
-import { AUTO_BUILD_PATHS, getSpecsDir, sanitizeThinkingLevel } from '../../shared/constants';
+import { AUTO_BUILD_PATHS, DEFAULT_APP_SETTINGS, getSpecsDir, sanitizeThinkingLevel } from '../../shared/constants';
 import { projectStore } from '../project-store';
 import { getOpenAIProfileManager } from '../openai-profile-manager';
+import { readSettingsFile } from '../settings-utils';
+import type { AppSettings } from '../../shared/types/settings';
+import { usageAggregator } from '../usage-cost/usage-aggregator';
+
+/** How long to wait for the renderer to confirm/reject a pre-run cost warning before auto-cancelling. */
+const COST_WARNING_CONFIRMATION_TIMEOUT_MS = 5 * 60 * 1000;
 
 /**
  * Main AgentManager - orchestrates agent process lifecycle
@@ -41,6 +47,16 @@ export class AgentManager extends EventEmitter {
     projectId?: string;
     /** Generation counter to prevent stale cleanup after restart */
     generation: number;
+  }> = new Map();
+
+  /**
+   * Pending pre-run cost-warning confirmations, keyed by taskId. Populated by
+   * checkCostWarningGate() while awaiting a TASK_CONFIRM_COST_WARNING response
+   * from the renderer, and resolved by resolveCostWarningConfirmation().
+   */
+  private pendingCostConfirmations: Map<string, {
+    resolve: (approved: boolean) => void;
+    timer: NodeJS.Timeout;
   }> = new Map();
 
   constructor() {
@@ -146,6 +162,77 @@ export class AgentManager extends EventEmitter {
       this.emit('error', taskId, `OpenAI account "${profile.name}" requires sign-in. Open Settings > Accounts > OpenAI.`);
       return false;
     }
+    return true;
+  }
+
+  /**
+   * Pre-run cost-warning gate: predicts the task's cost via the usage-aggregator's
+   * historical average (the same data source powering the Usage & Cost dashboard's
+   * predictive spend feature) and, when it exceeds the user-configured threshold,
+   * blocks the spawn until the renderer confirms via TASK_CONFIRM_COST_WARNING.
+   *
+   * Fails open (returns true) whenever the gate can't be evaluated - e.g. no
+   * projectId, warnings disabled, or a prediction error - so a broken prediction
+   * never blocks task execution.
+   *
+   * @returns true if execution should proceed, false if it should be aborted.
+   */
+  private async checkCostWarningGate(taskId: string, projectId?: string): Promise<boolean> {
+    if (!projectId) return true;
+
+    const project = projectStore.getProject(projectId);
+    if (!project) return true;
+
+    const rawSettings = (readSettingsFile() || {}) as Partial<AppSettings>;
+    const settings: AppSettings = { ...DEFAULT_APP_SETTINGS, ...rawSettings } as AppSettings;
+
+    if (!settings.costWarningEnabled) return true;
+
+    const threshold = settings.spendWarningThresholdUsd;
+    if (threshold === undefined || threshold === null || threshold <= 0) return true;
+
+    let predictedCostUsd = 0;
+    try {
+      predictedCostUsd = usageAggregator.getHistoricalAverageCost(project).mean;
+    } catch (error) {
+      console.error('[AgentManager] Failed to predict task cost for cost-warning gate:', error);
+      return true;
+    }
+
+    if (predictedCostUsd <= threshold) return true;
+
+    // Predicted cost exceeds the threshold - block the spawn until the renderer confirms.
+    return new Promise<boolean>((resolve) => {
+      const timer = setTimeout(() => {
+        this.pendingCostConfirmations.delete(taskId);
+        this.emit('error', taskId, 'Cost warning confirmation timed out. Task was not started.');
+        resolve(false);
+      }, COST_WARNING_CONFIRMATION_TIMEOUT_MS);
+
+      this.pendingCostConfirmations.set(taskId, {
+        resolve: (approved: boolean) => {
+          clearTimeout(timer);
+          this.pendingCostConfirmations.delete(taskId);
+          resolve(approved);
+        },
+        timer
+      });
+
+      this.emit('cost-warning-required', taskId, { predictedCostUsd, threshold }, projectId);
+    });
+  }
+
+  /**
+   * Resolve a pending pre-run cost-warning confirmation, invoked from the
+   * TASK_CONFIRM_COST_WARNING IPC handler once the user approves or rejects.
+   *
+   * @returns true if a pending confirmation was found and resolved, false otherwise
+   * (e.g. it already timed out or the taskId is unknown).
+   */
+  resolveCostWarningConfirmation(taskId: string, approved: boolean): boolean {
+    const pending = this.pendingCostConfirmations.get(taskId);
+    if (!pending) return false;
+    pending.resolve(approved);
     return true;
   }
 
@@ -479,6 +566,12 @@ export class AgentManager extends EventEmitter {
       this.registerTaskWithOperationRegistry(taskId, 'task-execution', { projectPath, specId, options });
     }
 
+    // Pre-run cost warning gate: block the spawn if the predicted cost exceeds the
+    // user's configured threshold, until the renderer confirms or cancels.
+    if (!(await this.checkCostWarningGate(taskId, projectId))) {
+      return;
+    }
+
     // Use projectPath as cwd instead of autoBuildSource to avoid cross-drive file access
     // issues on Windows. The script path (runPath) is absolute so Python finds its modules
     // via sys.path[0] which is set to the script's directory. (#1661)
@@ -527,6 +620,12 @@ export class AgentManager extends EventEmitter {
     const args = useCodex
       ? [runPath, '--stage', 'qa', '--spec-dir', specDir, '--project-dir', projectPath]
       : [runPath, '--spec', specId, '--project-dir', projectPath, '--qa'];
+
+    // Pre-run cost warning gate: block the spawn if the predicted cost exceeds the
+    // user's configured threshold, until the renderer confirms or cancels.
+    if (!(await this.checkCostWarningGate(taskId, projectId))) {
+      return;
+    }
 
     // Use projectPath as cwd instead of autoBuildSource to avoid cross-drive issues on Windows (#1661)
     await this.processManager.spawnProcess(taskId, projectPath, args, combinedEnv, 'qa-process', projectId);
