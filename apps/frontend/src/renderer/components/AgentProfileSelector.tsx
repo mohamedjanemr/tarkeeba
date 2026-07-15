@@ -42,6 +42,12 @@ interface AgentProfileSelectorProps {
   phaseModels?: PhaseModelConfig;
   /** Phase thinking configuration (for auto profile) */
   phaseThinking?: PhaseThinkingConfig;
+  /** Globally configured profile whose saved phase overrides should be reused */
+  configuredProfileId?: string;
+  /** Saved phase model overrides for the globally configured profile */
+  configuredPhaseModels?: PhaseModelConfig;
+  /** Saved phase thinking overrides for the globally configured profile */
+  configuredPhaseThinking?: PhaseThinkingConfig;
   /** Called when profile selection changes */
   onProfileChange: (profileId: string, model: ModelType, thinkingLevel: ThinkingLevel) => void;
   /** Called when model changes (in custom mode) */
@@ -77,6 +83,9 @@ export function AgentProfileSelector({
   thinkingLevel,
   phaseModels,
   phaseThinking,
+  configuredProfileId,
+  configuredPhaseModels,
+  configuredPhaseThinking,
   onProfileChange,
   onModelChange,
   onThinkingLevelChange,
@@ -103,12 +112,19 @@ export function AgentProfileSelector({
       const profile = DEFAULT_AGENT_PROFILES.find(p => p.id === selectedId);
       if (profile) {
         onProfileChange(profile.id, profile.model, profile.thinkingLevel);
-        // Initialize phase configs with profile defaults if callbacks provided
-        if (onPhaseModelsChange && profile.phaseModels) {
-          onPhaseModelsChange(profile.phaseModels);
+        // Reuse saved custom phase settings when selecting the globally configured
+        // profile. Other profiles start from their built-in preset defaults.
+        const selectedPhaseModels = selectedId === configuredProfileId
+          ? configuredPhaseModels || profile.phaseModels
+          : profile.phaseModels;
+        const selectedPhaseThinking = selectedId === configuredProfileId
+          ? configuredPhaseThinking || profile.phaseThinking
+          : profile.phaseThinking;
+        if (onPhaseModelsChange && selectedPhaseModels) {
+          onPhaseModelsChange(selectedPhaseModels);
         }
-        if (onPhaseThinkingChange && profile.phaseThinking) {
-          onPhaseThinkingChange(profile.phaseThinking);
+        if (onPhaseThinkingChange && selectedPhaseThinking) {
+          onPhaseThinkingChange(selectedPhaseThinking);
         }
       }
     }
