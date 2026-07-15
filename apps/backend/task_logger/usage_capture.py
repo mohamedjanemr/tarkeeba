@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 def capture_usage_from_result(
     msg,
-    task_logger: "TaskLogger | None",
+    task_logger: TaskLogger | None,
     model: str,
     account: str | None = None,
 ) -> None:
