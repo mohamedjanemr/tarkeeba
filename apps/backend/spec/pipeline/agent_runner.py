@@ -14,7 +14,12 @@ configure_safe_encoding()
 
 import os
 
-from core.error_utils import safe_receive_messages
+from core.error_utils import (
+    RateLimitError,
+    is_rate_limit_error,
+    is_session_limit_message,
+    safe_receive_messages,
+)
 from debug import debug, debug_detailed, debug_error, debug_section, debug_success
 from security.tool_input_validator import get_safe_tool_input
 from task_logger import (
@@ -188,6 +193,8 @@ class AgentRunner:
                                         LogPhase.PLANNING,
                                         print_to_console=False,
                                     )
+                                if is_session_limit_message(block.text):
+                                    raise RateLimitError(block.text)
                             elif block_type == "ToolUseBlock" and hasattr(
                                 block, "name"
                             ):
@@ -255,6 +262,11 @@ class AgentRunner:
                             model=resolved_model or "default",
                             account=os.environ.get("CLAUDE_CONFIG_DIR"),
                         )
+                        result_text = str(getattr(msg, "result", "") or "")
+                        if getattr(msg, "is_error", False) and is_rate_limit_error(
+                            RuntimeError(result_text)
+                        ):
+                            raise RateLimitError(result_text)
 
                 print()
                 debug_success(
@@ -266,6 +278,17 @@ class AgentRunner:
                 )
                 return True, response_text
 
+        except RateLimitError as e:
+            debug_error(
+                "agent_runner",
+                f"Agent session rate limited: {e}",
+                exception_type=type(e).__name__,
+            )
+            if self.task_logger:
+                self.task_logger.log_error(
+                    f"Spec creation paused: {e}", LogPhase.PLANNING
+                )
+            raise
         except Exception as e:
             debug_error(
                 "agent_runner",
@@ -274,6 +297,8 @@ class AgentRunner:
             )
             if self.task_logger:
                 self.task_logger.log_error(f"Agent error: {e}", LogPhase.PLANNING)
+            if is_rate_limit_error(e):
+                raise RateLimitError(str(e)) from e
             return False, str(e)
 
     @staticmethod

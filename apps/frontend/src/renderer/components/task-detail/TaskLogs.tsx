@@ -22,8 +22,8 @@ import { Badge } from '../ui/badge';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '../ui/collapsible';
 import { cn } from '../../lib/utils';
 import { useSettingsStore } from '../../stores/settings-store';
-import type { Task, TaskLogs, TaskLogPhase, TaskPhaseLog, TaskLogEntry, TaskMetadata } from '../../../shared/types';
-import type { PhaseModelConfig, ThinkingLevel, ModelTypeShort } from '../../../shared/types/settings';
+import type { Task, TaskLogs, TaskLogPhase, TaskPhaseLog, TaskLogEntry } from '../../../shared/types';
+import { getPhaseConfigDisplays, type PhaseConfigDisplay } from './phase-config-display';
 
 interface TaskLogsProps {
   task: Task;
@@ -54,67 +54,6 @@ const PHASE_COLORS: Record<TaskLogPhase, string> = {
   coding: 'text-info bg-info/10 border-info/30',
   validation: 'text-purple-500 bg-purple-500/10 border-purple-500/30'
 };
-
-// Map log phases to config phase keys
-// Note: 'planning' log phase covers both spec creation and implementation planning
-const LOG_PHASE_TO_CONFIG_PHASE: Record<TaskLogPhase, keyof PhaseModelConfig> = {
-  planning: 'spec',  // Planning log phase primarily shows spec creation
-  coding: 'coding',
-  validation: 'qa'
-};
-
-// Short labels for models
-const MODEL_SHORT_LABELS: Record<ModelTypeShort, string> = {
-  fable: 'Fable 5',
-  opus: 'Opus 4.8',
-  'opus-4.8': 'Opus 4.8',
-  'opus-4.7': 'Opus 4.7',
-  'opus-4.6': 'Opus 4.6',
-  'opus-1m': 'Opus (1M)',
-  'opus-4.5': 'Opus 4.5',
-  sonnet: 'Sonnet 5',
-  'sonnet-5': 'Sonnet 5',
-  'sonnet-4.6': 'Sonnet 4.6',
-  'sonnet-4.5': 'Sonnet 4.5',
-  haiku: 'Haiku 4.5'
-};
-
-// Short labels for thinking levels
-const THINKING_SHORT_LABELS: Record<ThinkingLevel, string> = {
-  low: 'Low',
-  medium: 'Med',
-  high: 'High'
-};
-
-// Helper to get model and thinking info for a log phase
-function getPhaseConfig(
-  metadata: TaskMetadata | undefined,
-  logPhase: TaskLogPhase
-): { model: string; thinking: string } | null {
-  if (!metadata) return null;
-
-  const configPhase = LOG_PHASE_TO_CONFIG_PHASE[logPhase];
-
-  // Auto profile with per-phase config
-  if (metadata.isAutoProfile && metadata.phaseModels && metadata.phaseThinking) {
-    const model = metadata.phaseModels[configPhase];
-    const thinking = metadata.phaseThinking[configPhase];
-    return {
-      model: MODEL_SHORT_LABELS[model] || model,
-      thinking: THINKING_SHORT_LABELS[thinking] || thinking
-    };
-  }
-
-  // Non-auto profile with single model/thinking
-  if (metadata.model && metadata.thinkingLevel) {
-    return {
-      model: MODEL_SHORT_LABELS[metadata.model] || metadata.model,
-      thinking: THINKING_SHORT_LABELS[metadata.thinkingLevel] || metadata.thinkingLevel
-    };
-  }
-
-  return null;
-}
 
 export function TaskLogs({
   task,
@@ -149,7 +88,7 @@ export function TaskLogs({
                 isExpanded={expandedPhases.has(phase)}
                 onToggle={() => onTogglePhase(phase)}
                 isTaskStuck={isStuck}
-                phaseConfig={getPhaseConfig(task.metadata, phase)}
+                phaseConfigs={getPhaseConfigDisplays(task.metadata, phase)}
               />
             ))}
             <div ref={logsEndRef} />
@@ -179,10 +118,10 @@ interface PhaseLogSectionProps {
   isExpanded: boolean;
   onToggle: () => void;
   isTaskStuck?: boolean;
-  phaseConfig?: { model: string; thinking: string } | null;
+  phaseConfigs?: PhaseConfigDisplay[];
 }
 
-function PhaseLogSection({ phase, phaseLog, isExpanded, onToggle, isTaskStuck, phaseConfig }: PhaseLogSectionProps) {
+function PhaseLogSection({ phase, phaseLog, isExpanded, onToggle, isTaskStuck, phaseConfigs = [] }: PhaseLogSectionProps) {
   const Icon = PHASE_ICONS[phase];
   const logOrder = useSettingsStore(s => s.settings.logOrder);
   const status = phaseLog?.status || 'pending';
@@ -267,19 +206,24 @@ function PhaseLogSection({ phase, phaseLog, isExpanded, onToggle, isTaskStuck, p
           </div>
           <div className="flex items-center gap-2">
             {/* Model and thinking level indicator */}
-            {phaseConfig && (
-              <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                <div className="flex items-center gap-0.5" title={`Model: ${phaseConfig.model}`}>
+            {phaseConfigs.map((phaseConfig, index) => (
+              <div
+                key={`${phaseConfig.label || phase}-${phaseConfig.model}`}
+                className="flex items-center gap-1.5 text-[10px] text-muted-foreground"
+              >
+                {index > 0 && <span className="text-muted-foreground/50">•</span>}
+                {phaseConfig.label && <span className="font-medium">{phaseConfig.label}:</span>}
+                <div className="flex items-center gap-0.5" title={`${phaseConfig.label || 'Phase'} model: ${phaseConfig.model}`}>
                   <Cpu className="h-3 w-3" />
                   <span>{phaseConfig.model}</span>
                 </div>
                 <span className="text-muted-foreground/50">|</span>
-                <div className="flex items-center gap-0.5" title={`Thinking: ${phaseConfig.thinking}`}>
+                <div className="flex items-center gap-0.5" title={`${phaseConfig.label || 'Phase'} thinking: ${phaseConfig.thinking}`}>
                   <Brain className="h-3 w-3" />
                   <span>{phaseConfig.thinking}</span>
                 </div>
               </div>
-            )}
+            ))}
             {getStatusBadge()}
           </div>
         </button>

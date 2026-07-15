@@ -19,6 +19,26 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+class RateLimitError(RuntimeError):
+    """Raised when an AI provider reports an exhausted usage/session limit."""
+
+
+def is_session_limit_message(message: str) -> bool:
+    """Return whether assistant text is a provider-generated session-limit notice.
+
+    Claude Code can surface subscription limits as a normal assistant text block
+    instead of an SDK exception. Keep this matcher intentionally specific so an
+    agent discussing rate limiting in application code is not treated as an
+    exhausted account.
+    """
+    message_lower = message.lower()
+    return (
+        "you've hit your session limit" in message_lower
+        or "you have hit your session limit" in message_lower
+        or "your session limit has been reached" in message_lower
+    )
+
+
 def is_tool_concurrency_error(error: Exception) -> bool:
     """
     Check if an error is a 400 tool concurrency error from Claude API.
@@ -66,6 +86,7 @@ def is_rate_limit_error(error: Exception) -> bool:
         for p in [
             "limit reached",
             "rate limit",
+            "session limit",
             "too many requests",
             "usage limit",
             "quota exceeded",

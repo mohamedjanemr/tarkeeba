@@ -11,6 +11,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from analysis.analyzers import analyze_project
+from core.error_utils import RateLimitError
 from core.task_event import TaskEventEmitter
 from core.workspace.models import SpecNumberLock
 from phase_config import get_thinking_budget
@@ -188,6 +189,8 @@ class SpecOrchestrator:
             if summary:
                 self._phase_summaries[phase_name] = summary
 
+        except RateLimitError:
+            raise
         except Exception as e:
             # Don't fail the pipeline if summarization fails
             print_status(f"Phase summarization skipped: {e}", "warning")
@@ -245,6 +248,24 @@ class SpecOrchestrator:
 
         try:
             return await self._run_phases(interactive, auto_approve, task_logger, ui)
+        except RateLimitError as e:
+            error_message = str(e)
+            task_logger.log_error(
+                f"Spec creation stopped by provider limit: {error_message}",
+                LogPhase.PLANNING,
+            )
+            TaskEventEmitter.from_spec_dir(self.spec_dir).emit(
+                "PLANNING_FAILED",
+                {"error": error_message, "recoverable": True},
+            )
+            if not self._planning_phase_ended:
+                self._planning_phase_ended = True
+                task_logger.end_phase(
+                    LogPhase.PLANNING,
+                    success=False,
+                    message="Spec creation paused by provider usage limit",
+                )
+            return False
         except Exception as e:
             # Emit PLANNING_FAILED so the frontend XState machine transitions to error state
             # instead of leaving the task stuck in "planning" forever
