@@ -864,9 +864,7 @@ def cmd_update_memory(args):
         parameters["name"] = args.name
 
     if not set_parts:
-        output_error(
-            "Nothing to update (provide --content/--summary or --name)"
-        )
+        output_error("Nothing to update (provide --content/--summary or --name)")
         return
 
     # Missing database → nothing to update, but not an error

@@ -31,7 +31,6 @@ if str(BACKEND_DIR) not in sys.path:
 
 import query_memory  # noqa: E402
 
-
 # =============================================================================
 # Helpers
 # =============================================================================
@@ -130,9 +129,7 @@ class TestResolveGroupId:
 
     def test_explicit_group_id_wins(self, tmp_path):
         """An explicit --group-id overrides --project-dir."""
-        args = argparse.Namespace(
-            group_id="explicit_group", project_dir=str(tmp_path)
-        )
+        args = argparse.Namespace(group_id="explicit_group", project_dir=str(tmp_path))
 
         assert query_memory.resolve_group_id(args) == "explicit_group"
 
