@@ -11,6 +11,7 @@ Usage:
     python query_memory.py search <db-path> <database> <query> [--limit N]
     python query_memory.py semantic-search <db-path> <database> <query> [--limit N]
     python query_memory.py get-entities <db-path> <database> [--limit N]
+    python query_memory.py get-relationships <db-path> <database> [--limit N]
 
 Output:
     JSON to stdout with structure: {"success": bool, "data": ..., "error": ...}
@@ -571,6 +572,80 @@ def cmd_get_entities(args):
             output_error(f"Query failed: {e}")
 
 
+def cmd_get_relationships(args):
+    """Get entity-to-entity relationships from the reified graph.
+
+    Lists relationships stored as reified RelatesToNode_ nodes connecting two
+    Entity nodes: (a:Entity)-[:RELATES_TO]->(r:RelatesToNode_)-[:RELATES_TO]->(b:Entity).
+
+    Gracefully returns an empty list if the RelatesToNode_/Entity tables do not
+    exist yet (e.g. a fresh or missing database).
+    """
+    if not apply_monkeypatch():
+        output_error("Neither kuzu nor LadybugDB is installed")
+        return
+
+    conn, error = get_db_connection(args.db_path, args.database)
+    if not conn:
+        # Database missing or not connectable yet -> no relationships to return
+        output_json(True, data={"relationships": [], "count": 0})
+        return
+
+    try:
+        limit = args.limit or 20
+        group_id = resolve_group_id(args)
+
+        # Optionally scope to a single project's group_id
+        where_clause = "WHERE r.group_id = $group_id\n            " if group_id else ""
+
+        # Query reified relationship nodes with parameterized query
+        query = f"""
+            MATCH (a:Entity)-[:RELATES_TO]->(r:RelatesToNode_)-[:RELATES_TO]->(b:Entity)
+            {where_clause}RETURN a.name as source, b.name as target, r.fact as fact,
+                   r.uuid as uuid, r.created_at as created_at
+            ORDER BY r.created_at DESC
+            LIMIT $limit
+        """
+
+        parameters = {"limit": limit}
+        if group_id:
+            parameters["group_id"] = group_id
+        result = conn.execute(query, parameters=parameters)
+
+        # Process results without pandas
+        relationships = []
+        while result.has_next():
+            row = result.get_next()
+            # Row order: source, target, fact, uuid, created_at
+            source_val = serialize_value(row[0]) if len(row) > 0 else ""
+            target_val = serialize_value(row[1]) if len(row) > 1 else ""
+            fact_val = serialize_value(row[2]) if len(row) > 2 else ""
+            uuid_val = serialize_value(row[3]) if len(row) > 3 else None
+            created_at_val = serialize_value(row[4]) if len(row) > 4 else None
+
+            relationship = {
+                "id": uuid_val or "unknown",
+                "source": source_val or "",
+                "target": target_val or "",
+                "fact": fact_val or "",
+                "timestamp": created_at_val or datetime.now().isoformat(),
+            }
+            relationships.append(relationship)
+
+        output_json(
+            True, data={"relationships": relationships, "count": len(relationships)}
+        )
+
+    except Exception as e:
+        # Tables might not exist yet
+        if ("RelatesToNode_" in str(e) or "Entity" in str(e)) and (
+            "not exist" in str(e).lower() or "cannot" in str(e).lower()
+        ):
+            output_json(True, data={"relationships": [], "count": 0})
+        else:
+            output_error(f"Query failed: {e}")
+
+
 def cmd_add_episode(args):
     """
     Add a new episode to the memory database.
@@ -794,6 +869,17 @@ def main():
     )
     add_scope_args(entities_parser)
 
+    # get-relationships command
+    relationships_parser = subparsers.add_parser(
+        "get-relationships", help="Get entity-to-entity relationships"
+    )
+    relationships_parser.add_argument("db_path", help="Path to database directory")
+    relationships_parser.add_argument("database", help="Database name")
+    relationships_parser.add_argument(
+        "--limit", type=int, default=20, help="Maximum results"
+    )
+    add_scope_args(relationships_parser)
+
     # add-episode command (for saving memories from Electron app)
     add_parser = subparsers.add_parser(
         "add-episode",
@@ -829,6 +915,7 @@ def main():
         "search": cmd_search,
         "semantic-search": cmd_semantic_search,
         "get-entities": cmd_get_entities,
+        "get-relationships": cmd_get_relationships,
         "add-episode": cmd_add_episode,
     }
 
