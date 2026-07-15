@@ -17,7 +17,8 @@
     "gitlabMRs": "MRs GitLab",
     "worktrees": "Worktrees",
     "agentTools": "Aperçu MCP",
-    "usageCost": "Utilisation et coûts"
+    "usageCost": "Utilisation et coûts",
+    "memory": "Mémoire"
   },
   "actions": {
     "settings": "Paramètres",

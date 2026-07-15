@@ -1,0 +1,37 @@
+{
+  "title": "Mémoire",
+  "subtitle": "Parcourez ce que les agents retiennent de ce projet",
+  "tabs": {
+    "entities": "Entités",
+    "relationships": "Relations",
+    "timeline": "Chronologie"
+  },
+  "search": {
+    "placeholder": "Rechercher dans la mémoire..."
+  },
+  "actions": {
+    "edit": "Modifier",
+    "delete": "Supprimer",
+    "confirmDelete": "Êtes-vous sûr de vouloir supprimer cette entrée de mémoire ? Cette action est irréversible.",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "refresh": "Actualiser"
+  },
+  "empty": {
+    "disabled": "La mémoire n'est pas activée pour ce projet. Activez le système de mémoire Graphiti dans les paramètres pour commencer à capturer des insights.",
+    "noData": "Aucune entrée de mémoire pour l'instant. Au fur et à mesure que les agents travaillent sur votre projet, les insights appris apparaîtront ici.",
+    "noResults": "Aucune entrée ne correspond à votre recherche."
+  },
+  "detail": {
+    "type": "Type",
+    "name": "Nom",
+    "summary": "Résumé",
+    "createdAt": "Créé le",
+    "updatedAt": "Mis à jour le",
+    "source": "Source",
+    "relationship": "Relation",
+    "from": "De",
+    "to": "À",
+    "fact": "Fait"
+  }
+}

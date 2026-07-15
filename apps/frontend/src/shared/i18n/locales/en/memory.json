@@ -1,0 +1,37 @@
+{
+  "title": "Memory",
+  "subtitle": "Browse what agents remember about this project",
+  "tabs": {
+    "entities": "Entities",
+    "relationships": "Relationships",
+    "timeline": "Timeline"
+  },
+  "search": {
+    "placeholder": "Search memory..."
+  },
+  "actions": {
+    "edit": "Edit",
+    "delete": "Delete",
+    "confirmDelete": "Are you sure you want to delete this memory entry? This action cannot be undone.",
+    "save": "Save",
+    "cancel": "Cancel",
+    "refresh": "Refresh"
+  },
+  "empty": {
+    "disabled": "Memory is not enabled for this project. Enable the Graphiti memory system in settings to start capturing insights.",
+    "noData": "No memory entries yet. As agents work on your project, learned insights will appear here.",
+    "noResults": "No entries match your search."
+  },
+  "detail": {
+    "type": "Type",
+    "name": "Name",
+    "summary": "Summary",
+    "createdAt": "Created",
+    "updatedAt": "Updated",
+    "source": "Source",
+    "relationship": "Relationship",
+    "from": "From",
+    "to": "To",
+    "fact": "Fact"
+  }
+}
