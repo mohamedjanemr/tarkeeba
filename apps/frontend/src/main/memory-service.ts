@@ -20,7 +20,24 @@ import { findPythonCommand, parsePythonCommand } from './python-detector';
 import { getConfiguredPythonPath, pythonEnvManager } from './python-env-manager';
 import { getMemoriesDir } from './config-paths';
 import { isWindows } from './platform';
-import type { MemoryEpisode } from '../shared/types';
+import type {
+  MemoryEntity,
+  MemoryEpisode,
+  MemoryKind,
+  MemoryRelationship,
+  MemoryTimelineEntry,
+} from '../shared/types';
+
+/**
+ * Fields that can be updated on a memory entry.
+ * `content` targets Episodic nodes, `summary` targets Entity nodes, and
+ * `name` is an optional rename applicable to either kind.
+ */
+export interface MemoryUpdatePayload {
+  content?: string;
+  summary?: string;
+  name?: string;
+}
 
 interface MemoryServiceConfig {
   dbPath: string;
@@ -74,6 +91,17 @@ interface MemoryQueryResult {
   }>;
   count: number;
   query?: string;
+}
+
+interface RelationshipQueryResult {
+  relationships: Array<{
+    id: string;
+    source: string;
+    target: string;
+    fact: string;
+    timestamp: string;
+  }>;
+  count: number;
 }
 
 interface StatusResult {
@@ -612,6 +640,280 @@ export class MemoryService {
     return {
       memories,
       searchType: data.search_type || 'semantic',
+    };
+  }
+
+  /**
+   * Browse entity memories scoped to a single project.
+   *
+   * Passes --project-dir so query_memory.py computes the project's group_id and
+   * filters the Entity nodes to that project only.
+   *
+   * @param projectDir Absolute path to the project root (used to derive group_id)
+   * @param limit Maximum number of results
+   */
+  async browseEntities(projectDir: string, limit: number = 20): Promise<MemoryEntity[]> {
+    const result = await executeQuery('get-entities', [
+      this.config.dbPath,
+      this.config.database,
+      '--limit',
+      String(limit),
+      '--project-dir',
+      projectDir,
+    ]);
+
+    if (!result.success || !result.data) {
+      console.error('Failed to browse entities:', result.error);
+      return [];
+    }
+
+    const data = result.data as { entities: MemoryQueryResult['memories']; count: number };
+    return data.entities.map((e) => ({
+      id: e.id,
+      name: e.name,
+      type: e.type,
+      summary: e.content,
+      timestamp: e.timestamp,
+      groupId: e.group_id,
+    }));
+  }
+
+  /**
+   * Browse episodic memories scoped to a single project.
+   *
+   * @param projectDir Absolute path to the project root (used to derive group_id)
+   * @param limit Maximum number of results
+   */
+  async browseEpisodes(
+    projectDir: string,
+    limit: number = 20
+  ): Promise<MemoryTimelineEntry[]> {
+    const result = await executeQuery('get-memories', [
+      this.config.dbPath,
+      this.config.database,
+      '--limit',
+      String(limit),
+      '--project-dir',
+      projectDir,
+    ]);
+
+    if (!result.success || !result.data) {
+      console.error('Failed to browse episodes:', result.error);
+      return [];
+    }
+
+    const data = result.data as MemoryQueryResult;
+    return data.memories.map((m) => ({
+      id: m.id,
+      type: this.mapMemoryType(m.type),
+      timestamp: m.timestamp,
+      content: m.content,
+      session_number: m.session_number,
+      group_id: m.group_id,
+    }));
+  }
+
+  /**
+   * List entity-to-entity relationships scoped to a single project.
+   *
+   * @param projectDir Absolute path to the project root (used to derive group_id)
+   * @param limit Maximum number of results
+   */
+  async getRelationships(
+    projectDir: string,
+    limit: number = 20
+  ): Promise<MemoryRelationship[]> {
+    const result = await executeQuery('get-relationships', [
+      this.config.dbPath,
+      this.config.database,
+      '--limit',
+      String(limit),
+      '--project-dir',
+      projectDir,
+    ]);
+
+    if (!result.success || !result.data) {
+      console.error('Failed to get relationships:', result.error);
+      return [];
+    }
+
+    const data = result.data as RelationshipQueryResult;
+    return data.relationships.map((r) => ({
+      id: r.id,
+      source: r.source,
+      target: r.target,
+      fact: r.fact,
+      timestamp: r.timestamp,
+    }));
+  }
+
+  /**
+   * Get a chronological insight timeline for a single project.
+   *
+   * Backed by the episodic memories (returned newest-first by query_memory.py),
+   * which form the per-project record of learned insights.
+   *
+   * @param projectDir Absolute path to the project root (used to derive group_id)
+   * @param limit Maximum number of results
+   */
+  async getTimeline(
+    projectDir: string,
+    limit: number = 20
+  ): Promise<MemoryTimelineEntry[]> {
+    const result = await executeQuery('get-memories', [
+      this.config.dbPath,
+      this.config.database,
+      '--limit',
+      String(limit),
+      '--project-dir',
+      projectDir,
+    ]);
+
+    if (!result.success || !result.data) {
+      console.error('Failed to get timeline:', result.error);
+      return [];
+    }
+
+    const data = result.data as MemoryQueryResult;
+    return data.memories.map((m) => ({
+      id: m.id,
+      type: this.mapMemoryType(m.type),
+      timestamp: m.timestamp,
+      content: m.content,
+      session_number: m.session_number,
+      group_id: m.group_id,
+    }));
+  }
+
+  /**
+   * Keyword-search memories scoped to a single project.
+   *
+   * @param projectDir Absolute path to the project root (used to derive group_id)
+   * @param searchQuery The search query
+   * @param limit Maximum number of results
+   */
+  async searchScoped(
+    projectDir: string,
+    searchQuery: string,
+    limit: number = 20
+  ): Promise<MemoryEpisode[]> {
+    const result = await executeQuery('search', [
+      this.config.dbPath,
+      this.config.database,
+      searchQuery,
+      '--limit',
+      String(limit),
+      '--project-dir',
+      projectDir,
+    ]);
+
+    if (!result.success || !result.data) {
+      console.error('Failed to search scoped memories:', result.error);
+      return [];
+    }
+
+    const data = result.data as MemoryQueryResult;
+    return data.memories.map((m) => ({
+      id: m.id,
+      type: this.mapMemoryType(m.type),
+      timestamp: m.timestamp,
+      content: m.content,
+      session_number: m.session_number,
+      score: m.score,
+    }));
+  }
+
+  /**
+   * Delete a single memory node (episodic or entity) by uuid.
+   *
+   * @param projectDir Absolute project path used to enforce group isolation
+   * @param uuid UUID of the node to delete
+   * @param kind Node kind ('episodic' or 'entity')
+   */
+  async deleteEntry(
+    projectDir: string,
+    uuid: string,
+    kind: MemoryKind
+  ): Promise<{ success: boolean; deleted?: boolean; id?: string; error?: string }> {
+    const result = await executeQuery('delete-memory', [
+      this.config.dbPath,
+      this.config.database,
+      '--uuid',
+      uuid,
+      '--kind',
+      kind,
+      '--project-dir',
+      projectDir,
+    ]);
+
+    if (!result.success) {
+      console.error('Failed to delete memory entry:', result.error);
+      return { success: false, error: result.error };
+    }
+
+    const data = result.data as { deleted: boolean; id: string };
+    return { success: true, deleted: data.deleted, id: data.id };
+  }
+
+  /**
+   * Update a single memory node (episodic or entity) by uuid.
+   *
+   * @param projectDir Absolute project path used to enforce group isolation
+   * @param uuid UUID of the node to update
+   * @param kind Node kind ('episodic' or 'entity')
+   * @param payload Fields to update (content for episodic, summary for entity, optional name)
+   */
+  async updateEntry(
+    projectDir: string,
+    uuid: string,
+    kind: MemoryKind,
+    payload: MemoryUpdatePayload
+  ): Promise<{ success: boolean; record?: MemoryEpisode; error?: string }> {
+    const args = [
+      this.config.dbPath,
+      this.config.database,
+      '--uuid',
+      uuid,
+      '--kind',
+      kind,
+      '--project-dir',
+      projectDir,
+    ];
+
+    if (payload.content !== undefined) {
+      args.push('--content', payload.content);
+    }
+    if (payload.summary !== undefined) {
+      args.push('--summary', payload.summary);
+    }
+    if (payload.name !== undefined) {
+      args.push('--name', payload.name);
+    }
+
+    const result = await executeQuery('update-memory', args);
+
+    if (!result.success) {
+      console.error('Failed to update memory entry:', result.error);
+      return { success: false, error: result.error };
+    }
+
+    const data = result.data as {
+      updated: boolean;
+      record?: { id: string; name: string; type: string; timestamp: string; content: string };
+    };
+
+    if (!data.record) {
+      return { success: true };
+    }
+
+    return {
+      success: true,
+      record: {
+        id: data.record.id,
+        type: this.mapMemoryType(data.record.type),
+        timestamp: data.record.timestamp,
+        content: data.record.content,
+      },
     };
   }
 

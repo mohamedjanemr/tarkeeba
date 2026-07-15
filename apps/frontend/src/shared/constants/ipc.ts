@@ -462,6 +462,16 @@ export const IPC_CHANNELS = {
   MEMORY_TEST_CONNECTION: 'memory:testConnection',
   MEMORY_MCP_STATUS: 'memory:mcpStatus',
 
+  // Memory browser (per-project insight timeline)
+  MEMORY_ENABLED: 'memory:enabled',
+  MEMORY_BROWSE_ENTITIES: 'memory:browseEntities',
+  MEMORY_BROWSE_EPISODES: 'memory:browseEpisodes',
+  MEMORY_RELATIONSHIPS: 'memory:relationships',
+  MEMORY_SEARCH: 'memory:search',
+  MEMORY_TIMELINE: 'memory:timeline',
+  MEMORY_DELETE_ENTRY: 'memory:deleteEntry',
+  MEMORY_UPDATE_ENTRY: 'memory:updateEntry',
+
   // Graphiti validation
   GRAPHITI_VALIDATE_LLM: 'graphiti:validateLlm',
   GRAPHITI_TEST_CONNECTION: 'graphiti:testConnection',

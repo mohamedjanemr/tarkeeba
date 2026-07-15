@@ -1,0 +1,58 @@
+{
+  "title": "Memory",
+  "subtitle": "Browse what agents remember about this project",
+  "tabs": {
+    "entities": "Entities",
+    "relationships": "Relationships",
+    "timeline": "Timeline"
+  },
+  "search": {
+    "placeholder": "Search memory...",
+    "button": "Search",
+    "clear": "Clear",
+    "noResults": "No entries match your search.",
+    "results": "{{count}} results"
+  },
+  "actions": {
+    "edit": "Edit",
+    "delete": "Delete",
+    "prune": "Prune",
+    "save": "Save",
+    "cancel": "Cancel",
+    "refresh": "Refresh"
+  },
+  "empty": {
+    "disabled": {
+      "title": "Memory is not enabled",
+      "description": "Memory is not enabled for this project. Enable the Graphiti memory system in settings to start capturing insights."
+    },
+    "entities": "No entities yet. As agents work on your project, learned entities will appear here.",
+    "relationships": "No relationships yet. Connections between entities will appear here as memory grows.",
+    "timeline": "No insights yet. A chronological timeline of what agents learn will appear here."
+  },
+  "detail": {
+    "episodeTitle": "Memory Entry",
+    "name": "Name",
+    "summary": "Summary",
+    "content": "Content",
+    "empty": "No content available.",
+    "confirmDelete": "Are you sure you want to prune this memory entry? This action cannot be undone."
+  },
+  "timeline": {
+    "session": "Session {{number}}"
+  },
+  "types": {
+    "session_insight": "Session Insight",
+    "codebase_discovery": "Codebase Discovery",
+    "codebase_map": "Codebase Map",
+    "pattern": "Pattern",
+    "gotcha": "Gotcha",
+    "task_outcome": "Task Outcome",
+    "qa_result": "QA Result",
+    "historical_context": "Historical Context",
+    "pr_review": "PR Review",
+    "pr_finding": "PR Finding",
+    "pr_pattern": "PR Pattern",
+    "pr_gotcha": "PR Gotcha"
+  }
+}

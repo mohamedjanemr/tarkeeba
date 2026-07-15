@@ -4,6 +4,7 @@
 .env.*.local
 
 # Virtual environment
+.venv
 .venv/
 .venv*/
 venv/
@@ -64,6 +65,11 @@ tests/
 
 # Exception: Allow colocated tests within integrations/graphiti
 !integrations/graphiti/tests/
+
+# Exception: Allow the memory-browser query CLI tests (keep other dev tests ignored)
+!tests/
+tests/*
+!tests/test_query_memory_browser.py
 
 # Tarkeeba data directory
 .auto-claude/

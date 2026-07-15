@@ -13,7 +13,12 @@ import type {
   GraphitiConnectionTestResult,
   GitStatus,
   KanbanPreferences,
-  GitBranchDetail
+  GitBranchDetail,
+  MemoryEntity,
+  MemoryRelationship,
+  MemoryTimelineEntry,
+  MemoryEpisode,
+  MemoryKind
 } from '../../shared/types';
 
 // Tab state interface (persisted in main process)
@@ -49,6 +54,38 @@ export interface ProjectAPI {
   getMemoryStatus: (projectId: string) => Promise<IPCResult<unknown>>;
   searchMemories: (projectId: string, query: string) => Promise<IPCResult<unknown>>;
   getRecentMemories: (projectId: string, limit?: number) => Promise<IPCResult<unknown>>;
+
+  // Memory Browser (per-project insight timeline)
+  getMemoryEnabled: (projectId: string) => Promise<IPCResult<boolean>>;
+  browseMemoryEntities: (projectId: string, limit?: number) => Promise<IPCResult<MemoryEntity[]>>;
+  browseMemoryEpisodes: (
+    projectId: string,
+    limit?: number
+  ) => Promise<IPCResult<MemoryTimelineEntry[]>>;
+  getMemoryRelationships: (
+    projectId: string,
+    limit?: number
+  ) => Promise<IPCResult<MemoryRelationship[]>>;
+  searchMemory: (
+    projectId: string,
+    query: string,
+    limit?: number
+  ) => Promise<IPCResult<MemoryEpisode[]>>;
+  getMemoryTimeline: (
+    projectId: string,
+    limit?: number
+  ) => Promise<IPCResult<MemoryTimelineEntry[]>>;
+  deleteMemoryEntry: (
+    projectId: string,
+    uuid: string,
+    kind: MemoryKind
+  ) => Promise<IPCResult<{ deleted?: boolean; id?: string }>>;
+  updateMemoryEntry: (
+    projectId: string,
+    uuid: string,
+    kind: MemoryKind,
+    payload: { content?: string; summary?: string; name?: string }
+  ) => Promise<IPCResult<{ record?: MemoryEpisode }>>;
 
   // Environment Configuration
   getProjectEnv: (projectId: string) => Promise<IPCResult<ProjectEnvConfig>>;
@@ -207,6 +244,53 @@ export const createProjectAPI = (): ProjectAPI => ({
 
   getRecentMemories: (projectId: string, limit?: number) =>
     ipcRenderer.invoke(IPC_CHANNELS.CONTEXT_GET_MEMORIES, projectId, limit),
+
+  // Memory Browser (per-project insight timeline)
+  getMemoryEnabled: (projectId: string): Promise<IPCResult<boolean>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MEMORY_ENABLED, projectId),
+
+  browseMemoryEntities: (projectId: string, limit?: number): Promise<IPCResult<MemoryEntity[]>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MEMORY_BROWSE_ENTITIES, projectId, limit),
+
+  browseMemoryEpisodes: (
+    projectId: string,
+    limit?: number
+  ): Promise<IPCResult<MemoryTimelineEntry[]>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MEMORY_BROWSE_EPISODES, projectId, limit),
+
+  getMemoryRelationships: (
+    projectId: string,
+    limit?: number
+  ): Promise<IPCResult<MemoryRelationship[]>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MEMORY_RELATIONSHIPS, projectId, limit),
+
+  searchMemory: (
+    projectId: string,
+    query: string,
+    limit?: number
+  ): Promise<IPCResult<MemoryEpisode[]>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MEMORY_SEARCH, projectId, query, limit),
+
+  getMemoryTimeline: (
+    projectId: string,
+    limit?: number
+  ): Promise<IPCResult<MemoryTimelineEntry[]>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MEMORY_TIMELINE, projectId, limit),
+
+  deleteMemoryEntry: (
+    projectId: string,
+    uuid: string,
+    kind: MemoryKind
+  ): Promise<IPCResult<{ deleted?: boolean; id?: string }>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MEMORY_DELETE_ENTRY, projectId, uuid, kind),
+
+  updateMemoryEntry: (
+    projectId: string,
+    uuid: string,
+    kind: MemoryKind,
+    payload: { content?: string; summary?: string; name?: string }
+  ): Promise<IPCResult<{ record?: MemoryEpisode }>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MEMORY_UPDATE_ENTRY, projectId, uuid, kind, payload),
 
   // Environment Configuration
   getProjectEnv: (projectId: string): Promise<IPCResult<ProjectEnvConfig>> =>

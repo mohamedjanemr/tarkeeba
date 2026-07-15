@@ -11,6 +11,7 @@ Usage:
     python query_memory.py search <db-path> <database> <query> [--limit N]
     python query_memory.py semantic-search <db-path> <database> <query> [--limit N]
     python query_memory.py get-entities <db-path> <database> [--limit N]
+    python query_memory.py get-relationships <db-path> <database> [--limit N]
 
 Output:
     JSON to stdout with structure: {"success": bool, "data": ..., "error": ...}
@@ -18,12 +19,54 @@ Output:
 
 import argparse
 import asyncio
+import hashlib
 import json
 import os
 import re
 import sys
 from datetime import datetime
 from pathlib import Path
+
+
+def compute_project_group_id(project_dir: str) -> str:
+    """Compute the project-scoped group_id for a project directory.
+
+    Replicates GraphitiMemory.group_id in PROJECT mode so the memory browser
+    can scope queries to a single project. Format:
+        project_{name}_{md5(resolve(project_dir))[:8]}
+
+    Args:
+        project_dir: Path to the project root directory.
+
+    Returns:
+        The project-scoped group_id string.
+    """
+    path = Path(project_dir)
+    project_name = path.name
+    path_hash = hashlib.md5(
+        str(path.resolve()).encode(), usedforsecurity=False
+    ).hexdigest()[:8]
+    return f"project_{project_name}_{path_hash}"
+
+
+def resolve_group_id(args) -> str | None:
+    """Resolve the group_id filter from CLI args.
+
+    Precedence:
+        1. Explicit --group-id passthrough (used as-is)
+        2. --project-dir (computed via compute_project_group_id)
+        3. None (unscoped / backward compatible)
+
+    Returns:
+        The group_id to filter by, or None for unscoped queries.
+    """
+    group_id = getattr(args, "group_id", None)
+    if group_id:
+        return group_id
+    project_dir = getattr(args, "project_dir", None)
+    if project_dir:
+        return compute_project_group_id(project_dir)
+    return None
 
 
 # Apply LadybugDB monkeypatch BEFORE any graphiti imports
@@ -173,18 +216,25 @@ def cmd_get_memories(args):
 
     try:
         limit = args.limit or 20
+        group_id = resolve_group_id(args)
+
+        # Optionally scope to a single project's group_id
+        where_clause = "WHERE e.group_id = $group_id\n            " if group_id else ""
 
         # Query episodic nodes with parameterized query
-        query = """
+        query = f"""
             MATCH (e:Episodic)
-            RETURN e.uuid as uuid, e.name as name, e.created_at as created_at,
+            {where_clause}RETURN e.uuid as uuid, e.name as name, e.created_at as created_at,
                    e.content as content, e.source_description as description,
                    e.group_id as group_id
             ORDER BY e.created_at DESC
             LIMIT $limit
         """
 
-        result = conn.execute(query, parameters={"limit": limit})
+        parameters = {"limit": limit}
+        if group_id:
+            parameters["group_id"] = group_id
+        result = conn.execute(query, parameters=parameters)
 
         # Process results without pandas (iterate through result set directly)
         memories = []
@@ -241,13 +291,17 @@ def cmd_search(args):
     try:
         limit = args.limit or 20
         search_query = args.query.lower()
+        group_id = resolve_group_id(args)
+
+        # Optionally scope to a single project's group_id
+        group_clause = "e.group_id = $group_id\n              AND " if group_id else ""
 
         # Search in episodic nodes using CONTAINS with parameterized query
-        query = """
+        query = f"""
             MATCH (e:Episodic)
-            WHERE toLower(e.name) CONTAINS $search_query
+            WHERE {group_clause}(toLower(e.name) CONTAINS $search_query
                OR toLower(e.content) CONTAINS $search_query
-               OR toLower(e.source_description) CONTAINS $search_query
+               OR toLower(e.source_description) CONTAINS $search_query)
             RETURN e.uuid as uuid, e.name as name, e.created_at as created_at,
                    e.content as content, e.source_description as description,
                    e.group_id as group_id
@@ -255,9 +309,10 @@ def cmd_search(args):
             LIMIT $limit
         """
 
-        result = conn.execute(
-            query, parameters={"search_query": search_query, "limit": limit}
-        )
+        parameters = {"search_query": search_query, "limit": limit}
+        if group_id:
+            parameters["group_id"] = group_id
+        result = conn.execute(query, parameters=parameters)
 
         # Process results without pandas
         memories = []
@@ -377,12 +432,13 @@ async def _async_semantic_search(args):
             # Perform semantic search using Graphiti
             limit = args.limit or 20
             search_query = args.query
+            group_id = resolve_group_id(args)
 
-            # Use Graphiti's search method
-            search_results = await client.graphiti.search(
-                query=search_query,
-                num_results=limit,
-            )
+            # Use Graphiti's search method, optionally scoped to one project
+            search_kwargs = {"query": search_query, "num_results": limit}
+            if group_id:
+                search_kwargs["group_ids"] = [group_id]
+            search_results = await client.graphiti.search(**search_kwargs)
 
             # Transform results to our format
             memories = []
@@ -464,17 +520,24 @@ def cmd_get_entities(args):
 
     try:
         limit = args.limit or 20
+        group_id = resolve_group_id(args)
+
+        # Optionally scope to a single project's group_id
+        where_clause = "WHERE e.group_id = $group_id\n            " if group_id else ""
 
         # Query entity nodes with parameterized query
-        query = """
+        query = f"""
             MATCH (e:Entity)
-            RETURN e.uuid as uuid, e.name as name, e.summary as summary,
+            {where_clause}RETURN e.uuid as uuid, e.name as name, e.summary as summary,
                    e.created_at as created_at
             ORDER BY e.created_at DESC
             LIMIT $limit
         """
 
-        result = conn.execute(query, parameters={"limit": limit})
+        parameters = {"limit": limit}
+        if group_id:
+            parameters["group_id"] = group_id
+        result = conn.execute(query, parameters=parameters)
 
         # Process results without pandas
         entities = []
@@ -505,6 +568,80 @@ def cmd_get_entities(args):
             "not exist" in str(e).lower() or "cannot" in str(e).lower()
         ):
             output_json(True, data={"entities": [], "count": 0})
+        else:
+            output_error(f"Query failed: {e}")
+
+
+def cmd_get_relationships(args):
+    """Get entity-to-entity relationships from the reified graph.
+
+    Lists relationships stored as reified RelatesToNode_ nodes connecting two
+    Entity nodes: (a:Entity)-[:RELATES_TO]->(r:RelatesToNode_)-[:RELATES_TO]->(b:Entity).
+
+    Gracefully returns an empty list if the RelatesToNode_/Entity tables do not
+    exist yet (e.g. a fresh or missing database).
+    """
+    if not apply_monkeypatch():
+        output_error("Neither kuzu nor LadybugDB is installed")
+        return
+
+    conn, error = get_db_connection(args.db_path, args.database)
+    if not conn:
+        # Database missing or not connectable yet -> no relationships to return
+        output_json(True, data={"relationships": [], "count": 0})
+        return
+
+    try:
+        limit = args.limit or 20
+        group_id = resolve_group_id(args)
+
+        # Optionally scope to a single project's group_id
+        where_clause = "WHERE r.group_id = $group_id\n            " if group_id else ""
+
+        # Query reified relationship nodes with parameterized query
+        query = f"""
+            MATCH (a:Entity)-[:RELATES_TO]->(r:RelatesToNode_)-[:RELATES_TO]->(b:Entity)
+            {where_clause}RETURN a.name as source, b.name as target, r.fact as fact,
+                   r.uuid as uuid, r.created_at as created_at
+            ORDER BY r.created_at DESC
+            LIMIT $limit
+        """
+
+        parameters = {"limit": limit}
+        if group_id:
+            parameters["group_id"] = group_id
+        result = conn.execute(query, parameters=parameters)
+
+        # Process results without pandas
+        relationships = []
+        while result.has_next():
+            row = result.get_next()
+            # Row order: source, target, fact, uuid, created_at
+            source_val = serialize_value(row[0]) if len(row) > 0 else ""
+            target_val = serialize_value(row[1]) if len(row) > 1 else ""
+            fact_val = serialize_value(row[2]) if len(row) > 2 else ""
+            uuid_val = serialize_value(row[3]) if len(row) > 3 else None
+            created_at_val = serialize_value(row[4]) if len(row) > 4 else None
+
+            relationship = {
+                "id": uuid_val or "unknown",
+                "source": source_val or "",
+                "target": target_val or "",
+                "fact": fact_val or "",
+                "timestamp": created_at_val or datetime.now().isoformat(),
+            }
+            relationships.append(relationship)
+
+        output_json(
+            True, data={"relationships": relationships, "count": len(relationships)}
+        )
+
+    except Exception as e:
+        # Tables might not exist yet
+        if ("RelatesToNode_" in str(e) or "Entity" in str(e)) and (
+            "not exist" in str(e).lower() or "cannot" in str(e).lower()
+        ):
+            output_json(True, data={"relationships": [], "count": 0})
         else:
             output_error(f"Query failed: {e}")
 
@@ -621,6 +758,177 @@ def cmd_add_episode(args):
         output_error(f"Failed to add episode: {e}")
 
 
+def cmd_delete_memory(args):
+    """
+    Delete a single memory node (episodic or entity) by uuid.
+
+    Issues a parameterized, single-node DETACH DELETE against the matching node
+    so relationships are cleaned up alongside it. Follows the parameterized /
+    single-node-match conventions in security/database_validators.py.
+
+    Args:
+        args.db_path: Path to database directory
+        args.database: Database name
+        args.uuid: UUID of the node to delete
+        args.kind: Node kind ("episodic" or "entity")
+
+    Guards against missing databases and tables, always reporting JSON rather
+    than crashing.
+    """
+    if not apply_monkeypatch():
+        output_error("Neither kuzu nor LadybugDB is installed")
+        return
+
+    kind = (args.kind or "").lower()
+    label = {"episodic": "Episodic", "entity": "Entity"}.get(kind)
+    if not label:
+        output_error(f"Invalid --kind '{args.kind}' (expected 'episodic' or 'entity')")
+        return
+
+    # Missing database → nothing to delete, but not an error
+    full_path = Path(args.db_path) / args.database
+    if not full_path.exists():
+        output_json(True, data={"deleted": False, "id": args.uuid})
+        return
+
+    conn, error = get_db_connection(args.db_path, args.database)
+    if not conn:
+        output_error(error or "Failed to connect to database")
+        return
+
+    try:
+        group_id = resolve_group_id(args)
+        # Parameterized, single-node match then DETACH DELETE to remove the node
+        # together with any attached relationships.
+        scope_clause = " WHERE e.group_id = $group_id" if group_id else ""
+        query = f"MATCH (e:{label} {{uuid: $uuid}}){scope_clause} DETACH DELETE e"
+        parameters = {"uuid": args.uuid}
+        if group_id:
+            parameters["group_id"] = group_id
+        conn.execute(query, parameters=parameters)
+        output_json(True, data={"deleted": True, "id": args.uuid})
+
+    except Exception as e:
+        # Table might not exist yet → treat as nothing to delete
+        if label in str(e) and (
+            "not exist" in str(e).lower() or "cannot" in str(e).lower()
+        ):
+            output_json(True, data={"deleted": False, "id": args.uuid})
+        else:
+            output_error(f"Delete failed: {e}")
+
+
+def cmd_update_memory(args):
+    """
+    Update a single memory node (episodic or entity) by uuid.
+
+    For episodic nodes the new value targets the ``content`` field; for entity
+    nodes it targets the ``summary`` field. An optional ``--name`` updates the
+    node name for either kind. Uses a parameterized, single-node MATCH then SET
+    following the conventions in security/database_validators.py.
+
+    Args:
+        args.db_path: Path to database directory
+        args.database: Database name
+        args.uuid: UUID of the node to update
+        args.kind: Node kind ("episodic" or "entity")
+        args.content: New content (episodic only)
+        args.summary: New summary (entity only)
+        args.name: Optional new name
+
+    Returns the updated record {id, name, type, timestamp, content}. Guards
+    against missing databases and tables, always reporting JSON rather than
+    crashing.
+    """
+    if not apply_monkeypatch():
+        output_error("Neither kuzu nor LadybugDB is installed")
+        return
+
+    kind = (args.kind or "").lower()
+    label = {"episodic": "Episodic", "entity": "Entity"}.get(kind)
+    if not label:
+        output_error(f"Invalid --kind '{args.kind}' (expected 'episodic' or 'entity')")
+        return
+
+    # Resolve the value field for this kind and build a parameterized SET clause.
+    value_field = "content" if kind == "episodic" else "summary"
+    new_value = getattr(args, value_field, None)
+
+    set_parts = []
+    parameters = {"uuid": args.uuid}
+    if new_value is not None:
+        set_parts.append(f"e.{value_field} = ${value_field}")
+        parameters[value_field] = new_value
+    if getattr(args, "name", None) is not None:
+        set_parts.append("e.name = $name")
+        parameters["name"] = args.name
+
+    if not set_parts:
+        output_error("Nothing to update (provide --content/--summary or --name)")
+        return
+
+    # Missing database → nothing to update, but not an error
+    full_path = Path(args.db_path) / args.database
+    if not full_path.exists():
+        output_json(True, data={"updated": False, "id": args.uuid})
+        return
+
+    conn, error = get_db_connection(args.db_path, args.database)
+    if not conn:
+        output_error(error or "Failed to connect to database")
+        return
+
+    try:
+        group_id = resolve_group_id(args)
+        if group_id:
+            parameters["group_id"] = group_id
+        # Parameterized, single-node match then SET the targeted field(s), then
+        # return the updated record so the caller can refresh its view.
+        scope_clause = "WHERE e.group_id = $group_id" if group_id else ""
+        query = f"""
+            MATCH (e:{label} {{uuid: $uuid}})
+            {scope_clause}
+            SET {", ".join(set_parts)}
+            RETURN e.uuid as uuid, e.name as name, e.created_at as created_at,
+                   e.{value_field} as content
+        """
+        result = conn.execute(query, parameters=parameters)
+
+        row = result.get_next() if result.has_next() else None
+        if row is None:
+            # No node matched the uuid → nothing updated
+            output_json(True, data={"updated": False, "id": args.uuid})
+            return
+
+        # Row order: uuid, name, created_at, content
+        uuid_val = serialize_value(row[0]) if len(row) > 0 else None
+        name_val = serialize_value(row[1]) if len(row) > 1 else ""
+        created_at_val = serialize_value(row[2]) if len(row) > 2 else None
+        content_val = serialize_value(row[3]) if len(row) > 3 else ""
+
+        record = {
+            "id": uuid_val or args.uuid,
+            "name": name_val or "",
+            "type": (
+                infer_episode_type(name_val or "", content_val or "")
+                if kind == "episodic"
+                else infer_entity_type(name_val or "")
+            ),
+            "timestamp": created_at_val or datetime.now().isoformat(),
+            "content": content_val or "",
+        }
+        output_json(True, data={"updated": True, "record": record})
+
+    except Exception as e:
+        # Table might not exist yet → treat as nothing to update
+        if label in str(e) and (
+            "not exist" in str(e).lower() or "cannot" in str(e).lower()
+        ):
+            output_json(True, data={"updated": False, "id": args.uuid})
+        else:
+            output_error(f"Update failed: {e}")
+
+
 def infer_episode_type(name: str, content: str = "") -> str:
     """Infer the episode type from its name and content."""
     name_lower = (name or "").lower()
@@ -676,6 +984,21 @@ def main():
     status_parser.add_argument("db_path", help="Path to database directory")
     status_parser.add_argument("database", help="Database name")
 
+    def add_scope_args(subparser):
+        """Add optional project-scoping args (backward compatible when omitted)."""
+        subparser.add_argument(
+            "--project-dir",
+            dest="project_dir",
+            default=None,
+            help="Scope results to this project's memory (computes group_id)",
+        )
+        subparser.add_argument(
+            "--group-id",
+            dest="group_id",
+            default=None,
+            help="Scope results to an explicit group_id (overrides --project-dir)",
+        )
+
     # get-memories command
     memories_parser = subparsers.add_parser(
         "get-memories", help="Get episodic memories"
@@ -685,6 +1008,7 @@ def main():
     memories_parser.add_argument(
         "--limit", type=int, default=20, help="Maximum results"
     )
+    add_scope_args(memories_parser)
 
     # search command
     search_parser = subparsers.add_parser("search", help="Search memories")
@@ -692,6 +1016,7 @@ def main():
     search_parser.add_argument("database", help="Database name")
     search_parser.add_argument("query", help="Search query")
     search_parser.add_argument("--limit", type=int, default=20, help="Maximum results")
+    add_scope_args(search_parser)
 
     # semantic-search command
     semantic_parser = subparsers.add_parser(
@@ -704,6 +1029,7 @@ def main():
     semantic_parser.add_argument(
         "--limit", type=int, default=20, help="Maximum results"
     )
+    add_scope_args(semantic_parser)
 
     # get-entities command
     entities_parser = subparsers.add_parser("get-entities", help="Get entity memories")
@@ -712,6 +1038,18 @@ def main():
     entities_parser.add_argument(
         "--limit", type=int, default=20, help="Maximum results"
     )
+    add_scope_args(entities_parser)
+
+    # get-relationships command
+    relationships_parser = subparsers.add_parser(
+        "get-relationships", help="Get entity-to-entity relationships"
+    )
+    relationships_parser.add_argument("db_path", help="Path to database directory")
+    relationships_parser.add_argument("database", help="Database name")
+    relationships_parser.add_argument(
+        "--limit", type=int, default=20, help="Maximum results"
+    )
+    add_scope_args(relationships_parser)
 
     # add-episode command (for saving memories from Electron app)
     add_parser = subparsers.add_parser(
@@ -734,6 +1072,51 @@ def main():
         "--group-id", dest="group_id", help="Optional group ID for namespacing"
     )
 
+    # delete-memory command (for removing memories from the Electron app)
+    delete_parser = subparsers.add_parser(
+        "delete-memory",
+        help="Delete a memory node (episodic or entity) by uuid",
+    )
+    delete_parser.add_argument("db_path", help="Path to database directory")
+    delete_parser.add_argument("database", help="Database name")
+    delete_parser.add_argument(
+        "--uuid", required=True, help="UUID of the node to delete"
+    )
+    delete_parser.add_argument(
+        "--kind",
+        required=True,
+        choices=["episodic", "entity"],
+        help="Node kind to delete (episodic or entity)",
+    )
+    add_scope_args(delete_parser)
+
+    # update-memory command (for editing memories from the Electron app)
+    update_parser = subparsers.add_parser(
+        "update-memory",
+        help="Update a memory node (episodic or entity) by uuid",
+    )
+    update_parser.add_argument("db_path", help="Path to database directory")
+    update_parser.add_argument("database", help="Database name")
+    update_parser.add_argument(
+        "--uuid", required=True, help="UUID of the node to update"
+    )
+    update_parser.add_argument(
+        "--kind",
+        required=True,
+        choices=["episodic", "entity"],
+        help="Node kind to update (episodic or entity)",
+    )
+    update_parser.add_argument(
+        "--content", default=None, help="New content (episodic nodes)"
+    )
+    update_parser.add_argument(
+        "--summary", default=None, help="New summary (entity nodes)"
+    )
+    update_parser.add_argument(
+        "--name", default=None, help="Optional new name for the node"
+    )
+    add_scope_args(update_parser)
+
     args = parser.parse_args()
 
     if not args.command:
@@ -748,7 +1131,10 @@ def main():
         "search": cmd_search,
         "semantic-search": cmd_semantic_search,
         "get-entities": cmd_get_entities,
+        "get-relationships": cmd_get_relationships,
         "add-episode": cmd_add_episode,
+        "delete-memory": cmd_delete_memory,
+        "update-memory": cmd_update_memory,
     }
 
     handler = commands.get(args.command)
