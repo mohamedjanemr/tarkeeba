@@ -308,10 +308,6 @@ export interface AppSettings {
   sidebarCollapsed?: boolean;
   // GPU acceleration for terminal rendering (WebGL)
   gpuAcceleration?: GpuAcceleration;
-  // Spend warning threshold in USD for usage/cost dashboard alerts (default 5.0)
-  spendWarningThresholdUsd?: number;
-  // Enable/disable cost warning notifications on the usage/cost dashboard
-  costWarningEnabled?: boolean;
 }
 
 // GPU acceleration mode for terminal WebGL rendering

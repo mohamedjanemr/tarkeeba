@@ -7,7 +7,6 @@ memory updates, recovery tracking, and Linear integration.
 """
 
 import logging
-import os
 from pathlib import Path
 
 from claude_agent_sdk import ClaudeSDKClient
@@ -35,7 +34,6 @@ from task_logger import (
     LogPhase,
     get_task_logger,
 )
-from task_logger.usage_capture import capture_usage_from_result
 from ui import (
     StatusManager,
     muted,
@@ -447,7 +445,6 @@ async def run_agent_session(
     spec_dir: Path,
     verbose: bool = False,
     phase: LogPhase = LogPhase.CODING,
-    model: str | None = None,
 ) -> tuple[str, str, dict]:
     """
     Run a single agent session using Claude Agent SDK.
@@ -458,9 +455,6 @@ async def run_agent_session(
         spec_dir: Spec directory path
         verbose: Whether to show detailed output
         phase: Current execution phase for logging
-        model: Claude model string in use for this session (for usage/cost
-            capture and pricing lookups; falls back to the pricing table's
-            "default" entry when not provided)
 
     Returns:
         (status, response_text, error_info) where:
@@ -654,15 +648,6 @@ async def run_agent_session(
                                 )
 
                         current_tool = None
-
-            # Handle ResultMessage (usage/cost reporting for the session)
-            elif msg_type == "ResultMessage":
-                capture_usage_from_result(
-                    msg,
-                    task_logger,
-                    model=model or "default",
-                    account=os.environ.get("CLAUDE_CONFIG_DIR"),
-                )
 
         print("\n" + "-" * 70 + "\n")
 

@@ -25,14 +25,6 @@ export const UI_SCALE_DEFAULT = 100;
 export const UI_SCALE_STEP = 5;
 
 // ============================================
-// Spend Warning Threshold Constants
-// ============================================
-
-export const SPEND_WARNING_THRESHOLD_MIN = 0.1;
-export const SPEND_WARNING_THRESHOLD_MAX = 1000;
-export const SPEND_WARNING_THRESHOLD_DEFAULT = 5.0;
-
-// ============================================
 // Default App Settings
 // ============================================
 
@@ -79,11 +71,7 @@ export const DEFAULT_APP_SETTINGS = {
   // GPU acceleration for terminal rendering
   // Default to 'off' until WebGL stability is proven across all GPU drivers.
   // Users can opt-in via Settings > Display > GPU Acceleration.
-  gpuAcceleration: 'off' as const,
-  // Spend warning threshold in USD for usage/cost dashboard alerts
-  spendWarningThresholdUsd: SPEND_WARNING_THRESHOLD_DEFAULT,
-  // Cost warning notifications on the usage/cost dashboard (enabled by default)
-  costWarningEnabled: true
+  gpuAcceleration: 'off' as const
 };
 
 // ============================================

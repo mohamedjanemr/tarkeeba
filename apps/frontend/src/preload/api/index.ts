@@ -16,7 +16,6 @@ import { ProfileAPI, createProfileAPI } from './profile-api';
 import { ScreenshotAPI, createScreenshotAPI } from './screenshot-api';
 import { QueueAPI, createQueueAPI } from './queue-api';
 import { CodexAPI, createCodexAPI } from './codex-api';
-import { UsageCostAPI, createUsageCostApi } from './modules/usage-cost-api';
 
 export interface ElectronAPI extends
   ProjectAPI,
@@ -34,8 +33,7 @@ export interface ElectronAPI extends
   McpAPI,
   ProfileAPI,
   ScreenshotAPI,
-  CodexAPI,
-  UsageCostAPI {
+  CodexAPI {
   github: GitHubAPI;
   /** Queue routing API for rate limit recovery */
   queue: QueueAPI;
@@ -55,7 +53,6 @@ export const createElectronAPI = (): ElectronAPI => ({
   ...createProfileAPI(),
   ...createScreenshotAPI(),
   ...createCodexAPI(),
-  ...createUsageCostApi(),
   github: createGitHubAPI(),
   queue: createQueueAPI()  // Queue routing for rate limit recovery
 });
@@ -77,8 +74,7 @@ export {
   createMcpAPI,
   createScreenshotAPI,
   createQueueAPI,
-  createCodexAPI,
-  createUsageCostApi
+  createCodexAPI
 };
 
 export type {
@@ -99,6 +95,5 @@ export type {
   McpAPI,
   ScreenshotAPI,
   QueueAPI,
-  CodexAPI,
-  UsageCostAPI
+  CodexAPI
 };

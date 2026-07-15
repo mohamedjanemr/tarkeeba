@@ -16,8 +16,7 @@
     "gitlabIssues": "Issues GitLab",
     "gitlabMRs": "MRs GitLab",
     "worktrees": "Worktrees",
-    "agentTools": "Aperçu MCP",
-    "usageCost": "Utilisation et coûts"
+    "agentTools": "Aperçu MCP"
   },
   "actions": {
     "settings": "Paramètres",

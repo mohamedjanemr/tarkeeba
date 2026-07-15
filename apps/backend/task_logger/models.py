@@ -54,28 +54,6 @@ class LogEntry:
 
 
 @dataclass
-class UsageEntry:
-    """A single usage/cost tracking entry."""
-
-    timestamp: str
-    phase: str
-    subtask_id: str | None
-    session: int | None
-    model: str
-    account: str  # profile/config-dir identifier
-    input_tokens: int
-    output_tokens: int
-    cache_read_tokens: int
-    cache_creation_tokens: int
-    cost_usd: float
-    source: str  # "sdk_reported" | "estimated"
-
-    def to_dict(self) -> dict:
-        """Convert to dictionary, excluding None values."""
-        return {k: v for k, v in asdict(self).items() if v is not None}
-
-
-@dataclass
 class PhaseLog:
     """Logs for a single phase."""
 

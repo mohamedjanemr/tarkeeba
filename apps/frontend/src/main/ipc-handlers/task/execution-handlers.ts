@@ -876,22 +876,6 @@ export function registerTaskExecutionHandlers(
   );
 
   /**
-   * Confirm or reject a pending pre-run cost warning (see AgentManager.checkCostWarningGate).
-   * Resolves the AgentManager's pending confirmation for this task so the blocked
-   * spawn can either proceed (approved) or be cancelled (rejected/unknown).
-   */
-  ipcMain.handle(
-    IPC_CHANNELS.TASK_CONFIRM_COST_WARNING,
-    async (_, taskId: string, approved: boolean): Promise<IPCResult<boolean>> => {
-      const resolved = agentManager.resolveCostWarningConfirmation(taskId, approved);
-      if (!resolved) {
-        return { success: false, error: 'No pending cost warning confirmation found for this task' };
-      }
-      return { success: true, data: true };
-    }
-  );
-
-  /**
    * Resume a paused task (rate limited or auth failure paused)
    * This writes a RESUME file to the spec directory to signal the backend to continue
    */

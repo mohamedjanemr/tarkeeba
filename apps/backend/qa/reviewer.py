@@ -10,7 +10,6 @@ Memory Integration:
 - Saves QA findings (bugs, patterns, validation outcomes) after session
 """
 
-import os
 from pathlib import Path
 
 # Memory integration for cross-session learning
@@ -30,7 +29,6 @@ from task_logger import (
     LogPhase,
     get_task_logger,
 )
-from task_logger.usage_capture import capture_usage_from_result
 
 from .criteria import get_qa_signoff_status
 
@@ -47,7 +45,6 @@ async def run_qa_agent_session(
     max_iterations: int,
     verbose: bool = False,
     previous_error: dict | None = None,
-    model: str = "default",
 ) -> tuple[str, str, dict]:
     """
     Run a QA reviewer agent session.
@@ -60,7 +57,6 @@ async def run_qa_agent_session(
         max_iterations: Maximum number of QA iterations
         verbose: Whether to show detailed output
         previous_error: Error context from previous iteration for self-correction
-        model: Model identifier used to create the client (for usage/cost tracking)
 
     Returns:
         (status, response_text, error_info) where:
@@ -327,15 +323,6 @@ This is attempt {previous_error.get("consecutive_errors", 1) + 1}. If you fail t
                                 )
 
                         current_tool = None
-
-            # Handle ResultMessage (usage/cost reporting for the session)
-            elif msg_type == "ResultMessage":
-                capture_usage_from_result(
-                    msg,
-                    task_logger,
-                    model=model or "default",
-                    account=os.environ.get("CLAUDE_CONFIG_DIR"),
-                )
 
         print("\n" + "-" * 70 + "\n")
 
