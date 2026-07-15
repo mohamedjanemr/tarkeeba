@@ -20,7 +20,9 @@ export interface ProjectSettings {
   notifications: NotificationSettings;
   /** Enable Graphiti MCP server for agent-accessible knowledge graph */
   graphitiMcpEnabled: boolean;
-  /** Graphiti MCP server URL (default: http://localhost:8000/mcp/) */
+  /** Use Tarkeeba's embedded bridge by default, or connect to an external Graphiti server. */
+  graphitiMcpMode?: 'managed' | 'external';
+  /** External Graphiti MCP server URL (only used when graphitiMcpMode is external). */
   graphitiMcpUrl?: string;
   /** Main branch name for worktree creation (default: auto-detected or 'main') */
   mainBranch?: string;

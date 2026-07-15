@@ -20,6 +20,7 @@ import {
 import { Separator } from '../ui/separator';
 import { OllamaModelSelector } from '../onboarding/OllamaModelSelector';
 import type { ProjectEnvConfig, ProjectSettings as ProjectSettingsType, GraphitiEmbeddingProvider } from '../../../shared/types';
+import { AgentMemoryAccessSettings } from './AgentMemoryAccessSettings';
 
 interface SecuritySettingsProps {
   envConfig: ProjectEnvConfig | null;
@@ -384,35 +385,10 @@ export function SecuritySettings({
 
           {envConfig.graphitiEnabled && (
             <>
-              {/* Graphiti MCP Server Toggle */}
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label className="font-normal text-foreground">Enable Agent Memory Access</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Allow agents to search and add to the knowledge graph via MCP
-                  </p>
-                </div>
-                <Switch
-                  checked={settings.graphitiMcpEnabled}
-                  onCheckedChange={(checked) =>
-                    setSettings({ ...settings, graphitiMcpEnabled: checked })
-                  }
-                />
-              </div>
-
-              {settings.graphitiMcpEnabled && (
-                <div className="space-y-2 ml-6">
-                  <Label className="text-sm font-medium text-foreground">Graphiti MCP Server URL</Label>
-                  <p className="text-xs text-muted-foreground">
-                    URL of the Graphiti MCP server for agent memory access
-                  </p>
-                  <Input
-                    placeholder="http://localhost:8000/mcp/"
-                    value={settings.graphitiMcpUrl || ''}
-                    onChange={(e) => setSettings({ ...settings, graphitiMcpUrl: e.target.value || undefined })}
-                  />
-                </div>
-              )}
+              <AgentMemoryAccessSettings
+                settings={settings}
+                onUpdateSettings={(updates) => setSettings((current) => ({ ...current, ...updates }))}
+              />
 
               <Separator />
 

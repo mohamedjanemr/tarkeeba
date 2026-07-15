@@ -57,6 +57,7 @@ import { isProfileAuthenticated } from './claude-profile/profile-utils';
 import { isMacOS, isWindows } from './platform';
 import { ptyDaemonClient } from './terminal/pty-daemon-client';
 import type { AppSettings, AuthFailureInfo } from '../shared/types';
+import { managedMemoryMcpBridge } from './managed-memory-mcp-bridge';
 
 // Keep source builds and E2E runs isolated from the installed application.
 // This must run before logging, settings, profiles, or Chromium access userData.
@@ -394,7 +395,7 @@ if (isWindows()) {
 }
 
 // Initialize the application
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   // Set app user model id for Windows
   electronApp.setAppUserModelId(
     isE2E
@@ -417,6 +418,15 @@ app.whenReady().then(() => {
   // Clean up stale update metadata from the old source updater system
   // This prevents version display desync after electron-updater installs a new version
   cleanupStaleUpdateMetadata();
+
+  // Start the embedded memory MCP bridge on an OS-assigned free loopback port.
+  // This is the default agent-memory path and requires no Docker or external database.
+  const memoryMcpStatus = await managedMemoryMcpBridge.start();
+  if (memoryMcpStatus.running) {
+    console.warn(`[main] Managed memory MCP bridge started on port ${memoryMcpStatus.port}`);
+  } else {
+    console.warn('[main] Managed memory MCP bridge failed to start:', memoryMcpStatus.error);
+  }
 
   // Set dock icon on macOS
   if (isMacOS()) {
@@ -688,6 +698,9 @@ app.on('before-quit', (event) => {
       // ensuring all kill commands reach PTY processes before the daemon disconnects
       ptyDaemonClient.shutdown();
       console.warn('[main] PTY daemon client shutdown complete');
+
+      await managedMemoryMcpBridge.stop();
+      console.warn('[main] Managed memory MCP bridge stopped');
     } catch (error) {
       console.error('[main] Error during pre-quit cleanup:', error);
     } finally {

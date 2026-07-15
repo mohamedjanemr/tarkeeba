@@ -2,7 +2,7 @@ import { app } from 'electron';
 import { readFileSync, existsSync, mkdirSync, readdirSync, Dirent } from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import type { Project, ProjectSettings, Task, TaskStatus, TaskMetadata, ImplementationPlan, ReviewReason, PlanSubtask, KanbanPreferences, ExecutionPhase } from '../shared/types';
+import type { AppSettings, Project, ProjectSettings, Task, TaskStatus, TaskMetadata, ImplementationPlan, ReviewReason, PlanSubtask, KanbanPreferences, ExecutionPhase } from '../shared/types';
 import { DEFAULT_PROJECT_SETTINGS, AUTO_BUILD_PATHS, getSpecsDir, JSON_ERROR_PREFIX, JSON_ERROR_TITLE_SUFFIX, TASK_STATUS_PRIORITY } from '../shared/constants';
 import { getAutoBuildPath, isInitialized } from './project-initializer';
 import { getTaskWorktreeDir } from './worktree-paths';
@@ -10,6 +10,7 @@ import { findAllSpecPaths } from './utils/spec-path-helpers';
 import { ensureAbsolutePath } from './utils/path-helpers';
 import { writeFileAtomicSync } from './utils/atomic-file';
 import { updateRoadmapFeatureOutcome, revertRoadmapFeatureOutcome } from './utils/roadmap-utils';
+import { readSettingsFile } from './settings-utils';
 
 interface TabState {
   openProjectIds: string[];
@@ -111,12 +112,24 @@ export class ProjectStore {
     // Determine auto-claude path (supports both 'auto-claude' and '.auto-claude')
     const autoBuildPath = getAutoBuildPath(absolutePath) || '';
 
+    const appSettings = readSettingsFile() as Partial<AppSettings> | undefined;
+    const projectSettings: ProjectSettings = {
+      ...DEFAULT_PROJECT_SETTINGS,
+      graphitiMcpEnabled: appSettings?.graphitiMcpEnabled
+        ?? DEFAULT_PROJECT_SETTINGS.graphitiMcpEnabled,
+      graphitiMcpMode: appSettings?.graphitiMcpMode
+        ?? DEFAULT_PROJECT_SETTINGS.graphitiMcpMode,
+      graphitiMcpUrl: appSettings?.graphitiMcpMode === 'external'
+        ? appSettings.graphitiMcpUrl
+        : undefined
+    };
+
     const project: Project = {
       id: uuidv4(),
       name: projectName,
       path: absolutePath, // Store absolute path
       autoBuildPath,
-      settings: { ...DEFAULT_PROJECT_SETTINGS },
+      settings: projectSettings,
       createdAt: new Date(),
       updatedAt: new Date()
     };

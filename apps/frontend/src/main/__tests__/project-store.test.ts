@@ -78,6 +78,22 @@ describe('ProjectStore', () => {
       expect(project.name).toBe('Custom Name');
     });
 
+    it('should seed agent memory access from onboarding settings', async () => {
+      writeFileSync(path.join(USER_DATA_PATH, 'settings.json'), JSON.stringify({
+        graphitiMcpEnabled: true,
+        graphitiMcpMode: 'external',
+        graphitiMcpUrl: 'http://127.0.0.1:8321/mcp/'
+      }));
+      const { ProjectStore } = await import('../project-store');
+      const store = new ProjectStore();
+
+      const project = store.addProject(TEST_PROJECT_PATH);
+
+      expect(project.settings.graphitiMcpEnabled).toBe(true);
+      expect(project.settings.graphitiMcpMode).toBe('external');
+      expect(project.settings.graphitiMcpUrl).toBe('http://127.0.0.1:8321/mcp/');
+    });
+
     it('should return existing project if already added', async () => {
       const { ProjectStore } = await import('../project-store');
       const store = new ProjectStore();

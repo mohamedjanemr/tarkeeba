@@ -856,6 +856,12 @@ export interface ElectronAPI {
     version?: string;
     message?: string;
   }>>;
+  getManagedMemoryMcpStatus: () => Promise<IPCResult<{
+    running: boolean;
+    port?: number;
+    baseUrl?: string;
+    error?: string;
+  }>>;
   checkOllamaInstalled: () => Promise<IPCResult<{
     installed: boolean;
     path?: string;

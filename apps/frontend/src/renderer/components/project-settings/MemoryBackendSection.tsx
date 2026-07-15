@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Separator } from '../ui/separator';
 import { Button } from '../ui/button';
 import type { ProjectEnvConfig, ProjectSettings, InfrastructureStatus as InfrastructureStatusType } from '../../../shared/types';
+import { AgentMemoryAccessSettings } from './AgentMemoryAccessSettings';
 
 interface OllamaEmbeddingModel {
   name: string;
@@ -142,35 +143,10 @@ export function MemoryBackendSection({
             isCheckingInfrastructure={isCheckingInfrastructure}
           />
 
-          {/* Graphiti MCP Server Toggle */}
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label className="font-normal text-foreground">Enable Agent Memory Access</Label>
-              <p className="text-xs text-muted-foreground">
-                Allow agents to search and add to the knowledge graph via MCP
-              </p>
-            </div>
-            <Switch
-              checked={settings.graphitiMcpEnabled}
-              onCheckedChange={(checked) =>
-                onUpdateSettings({ graphitiMcpEnabled: checked })
-              }
-            />
-          </div>
-
-          {settings.graphitiMcpEnabled && (
-            <div className="space-y-2 ml-6">
-              <Label className="text-sm font-medium text-foreground">Graphiti MCP Server URL</Label>
-              <p className="text-xs text-muted-foreground">
-                URL of the Graphiti MCP server
-              </p>
-              <Input
-                placeholder="http://localhost:8000/mcp/"
-                value={settings.graphitiMcpUrl || ''}
-                onChange={(e) => onUpdateSettings({ graphitiMcpUrl: e.target.value || undefined })}
-              />
-            </div>
-          )}
+          <AgentMemoryAccessSettings
+            settings={settings}
+            onUpdateSettings={onUpdateSettings}
+          />
 
           <Separator />
 

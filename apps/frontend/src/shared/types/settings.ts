@@ -264,6 +264,7 @@ export interface AppSettings {
   memoryAzureEmbeddingDeployment?: string;
   // Agent Memory Access (MCP) - app-wide defaults
   graphitiMcpEnabled?: boolean;
+  graphitiMcpMode?: 'managed' | 'external';
   graphitiMcpUrl?: string;
   // Onboarding wizard completion state
   onboardingCompleted?: boolean;

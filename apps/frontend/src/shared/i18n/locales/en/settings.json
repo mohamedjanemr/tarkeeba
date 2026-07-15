@@ -660,6 +660,24 @@
     "noProjectSelected": {
       "title": "No Project Selected",
       "description": "Select a project from the sidebar to configure its settings."
+    },
+    "memoryMcp": {
+      "enableLabel": "Enable Agent Memory Access",
+      "enableDescription": "Allow agents to search and add to project memory through MCP.",
+      "modeLabel": "Memory access mode",
+      "managedOption": "Tarkeeba managed (No Docker)",
+      "externalOption": "Existing Graphiti server",
+      "managedDescription": "Uses embedded LadybugDB and your selected embedding provider. Tarkeeba chooses a free local port automatically.",
+      "externalDescription": "Advanced: connect to a Graphiti MCP server that you run separately.",
+      "urlLabel": "Graphiti MCP server URL",
+      "managedConnected": "Embedded memory bridge connected on port {{port}}",
+      "managedUnavailable": "Embedded memory bridge is unavailable",
+      "externalConnected": "External Graphiti MCP server connected",
+      "externalUnavailable": "Unable to connect to the external Graphiti MCP server",
+      "urlRequired": "Enter a Graphiti MCP server URL",
+      "checking": "Checking connection…",
+      "notChecked": "Connection not checked",
+      "retry": "Retry"
     }
   },
   "mcp": {
