@@ -18,12 +18,54 @@ Output:
 
 import argparse
 import asyncio
+import hashlib
 import json
 import os
 import re
 import sys
 from datetime import datetime
 from pathlib import Path
+
+
+def compute_project_group_id(project_dir: str) -> str:
+    """Compute the project-scoped group_id for a project directory.
+
+    Replicates GraphitiMemory.group_id in PROJECT mode so the memory browser
+    can scope queries to a single project. Format:
+        project_{name}_{md5(resolve(project_dir))[:8]}
+
+    Args:
+        project_dir: Path to the project root directory.
+
+    Returns:
+        The project-scoped group_id string.
+    """
+    path = Path(project_dir)
+    project_name = path.name
+    path_hash = hashlib.md5(
+        str(path.resolve()).encode(), usedforsecurity=False
+    ).hexdigest()[:8]
+    return f"project_{project_name}_{path_hash}"
+
+
+def resolve_group_id(args) -> str | None:
+    """Resolve the group_id filter from CLI args.
+
+    Precedence:
+        1. Explicit --group-id passthrough (used as-is)
+        2. --project-dir (computed via compute_project_group_id)
+        3. None (unscoped / backward compatible)
+
+    Returns:
+        The group_id to filter by, or None for unscoped queries.
+    """
+    group_id = getattr(args, "group_id", None)
+    if group_id:
+        return group_id
+    project_dir = getattr(args, "project_dir", None)
+    if project_dir:
+        return compute_project_group_id(project_dir)
+    return None
 
 
 # Apply LadybugDB monkeypatch BEFORE any graphiti imports
@@ -173,18 +215,25 @@ def cmd_get_memories(args):
 
     try:
         limit = args.limit or 20
+        group_id = resolve_group_id(args)
+
+        # Optionally scope to a single project's group_id
+        where_clause = "WHERE e.group_id = $group_id\n            " if group_id else ""
 
         # Query episodic nodes with parameterized query
-        query = """
+        query = f"""
             MATCH (e:Episodic)
-            RETURN e.uuid as uuid, e.name as name, e.created_at as created_at,
+            {where_clause}RETURN e.uuid as uuid, e.name as name, e.created_at as created_at,
                    e.content as content, e.source_description as description,
                    e.group_id as group_id
             ORDER BY e.created_at DESC
             LIMIT $limit
         """
 
-        result = conn.execute(query, parameters={"limit": limit})
+        parameters = {"limit": limit}
+        if group_id:
+            parameters["group_id"] = group_id
+        result = conn.execute(query, parameters=parameters)
 
         # Process results without pandas (iterate through result set directly)
         memories = []
@@ -241,13 +290,17 @@ def cmd_search(args):
     try:
         limit = args.limit or 20
         search_query = args.query.lower()
+        group_id = resolve_group_id(args)
+
+        # Optionally scope to a single project's group_id
+        group_clause = "e.group_id = $group_id\n              AND " if group_id else ""
 
         # Search in episodic nodes using CONTAINS with parameterized query
-        query = """
+        query = f"""
             MATCH (e:Episodic)
-            WHERE toLower(e.name) CONTAINS $search_query
+            WHERE {group_clause}(toLower(e.name) CONTAINS $search_query
                OR toLower(e.content) CONTAINS $search_query
-               OR toLower(e.source_description) CONTAINS $search_query
+               OR toLower(e.source_description) CONTAINS $search_query)
             RETURN e.uuid as uuid, e.name as name, e.created_at as created_at,
                    e.content as content, e.source_description as description,
                    e.group_id as group_id
@@ -255,9 +308,10 @@ def cmd_search(args):
             LIMIT $limit
         """
 
-        result = conn.execute(
-            query, parameters={"search_query": search_query, "limit": limit}
-        )
+        parameters = {"search_query": search_query, "limit": limit}
+        if group_id:
+            parameters["group_id"] = group_id
+        result = conn.execute(query, parameters=parameters)
 
         # Process results without pandas
         memories = []
@@ -377,12 +431,13 @@ async def _async_semantic_search(args):
             # Perform semantic search using Graphiti
             limit = args.limit or 20
             search_query = args.query
+            group_id = resolve_group_id(args)
 
-            # Use Graphiti's search method
-            search_results = await client.graphiti.search(
-                query=search_query,
-                num_results=limit,
-            )
+            # Use Graphiti's search method, optionally scoped to one project
+            search_kwargs = {"query": search_query, "num_results": limit}
+            if group_id:
+                search_kwargs["group_ids"] = [group_id]
+            search_results = await client.graphiti.search(**search_kwargs)
 
             # Transform results to our format
             memories = []
@@ -464,17 +519,24 @@ def cmd_get_entities(args):
 
     try:
         limit = args.limit or 20
+        group_id = resolve_group_id(args)
+
+        # Optionally scope to a single project's group_id
+        where_clause = "WHERE e.group_id = $group_id\n            " if group_id else ""
 
         # Query entity nodes with parameterized query
-        query = """
+        query = f"""
             MATCH (e:Entity)
-            RETURN e.uuid as uuid, e.name as name, e.summary as summary,
+            {where_clause}RETURN e.uuid as uuid, e.name as name, e.summary as summary,
                    e.created_at as created_at
             ORDER BY e.created_at DESC
             LIMIT $limit
         """
 
-        result = conn.execute(query, parameters={"limit": limit})
+        parameters = {"limit": limit}
+        if group_id:
+            parameters["group_id"] = group_id
+        result = conn.execute(query, parameters=parameters)
 
         # Process results without pandas
         entities = []
@@ -676,6 +738,21 @@ def main():
     status_parser.add_argument("db_path", help="Path to database directory")
     status_parser.add_argument("database", help="Database name")
 
+    def add_scope_args(subparser):
+        """Add optional project-scoping args (backward compatible when omitted)."""
+        subparser.add_argument(
+            "--project-dir",
+            dest="project_dir",
+            default=None,
+            help="Scope results to this project's memory (computes group_id)",
+        )
+        subparser.add_argument(
+            "--group-id",
+            dest="group_id",
+            default=None,
+            help="Scope results to an explicit group_id (overrides --project-dir)",
+        )
+
     # get-memories command
     memories_parser = subparsers.add_parser(
         "get-memories", help="Get episodic memories"
@@ -685,6 +762,7 @@ def main():
     memories_parser.add_argument(
         "--limit", type=int, default=20, help="Maximum results"
     )
+    add_scope_args(memories_parser)
 
     # search command
     search_parser = subparsers.add_parser("search", help="Search memories")
@@ -692,6 +770,7 @@ def main():
     search_parser.add_argument("database", help="Database name")
     search_parser.add_argument("query", help="Search query")
     search_parser.add_argument("--limit", type=int, default=20, help="Maximum results")
+    add_scope_args(search_parser)
 
     # semantic-search command
     semantic_parser = subparsers.add_parser(
@@ -704,6 +783,7 @@ def main():
     semantic_parser.add_argument(
         "--limit", type=int, default=20, help="Maximum results"
     )
+    add_scope_args(semantic_parser)
 
     # get-entities command
     entities_parser = subparsers.add_parser("get-entities", help="Get entity memories")
@@ -712,6 +792,7 @@ def main():
     entities_parser.add_argument(
         "--limit", type=int, default=20, help="Maximum results"
     )
+    add_scope_args(entities_parser)
 
     # add-episode command (for saving memories from Electron app)
     add_parser = subparsers.add_parser(
