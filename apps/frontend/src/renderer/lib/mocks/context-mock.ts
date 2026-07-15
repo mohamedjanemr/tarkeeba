@@ -39,6 +39,11 @@ export const contextMock = {
   }),
 
   // Memory Browser (per-project insight timeline)
+  getMemoryEnabled: async () => ({
+    success: true,
+    data: true
+  }),
+
   browseMemoryEntities: async () => ({
     success: true,
     data: []

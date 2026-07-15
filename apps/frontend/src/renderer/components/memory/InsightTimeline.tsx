@@ -5,7 +5,7 @@ import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { cn } from '../../lib/utils';
 import { formatDate } from '../context/utils';
-import { memoryTypeIcons, memoryTypeColors, memoryTypeLabels } from '../context/constants';
+import { memoryTypeIcons, memoryTypeColors } from '../context/constants';
 import type { MemoryTimelineEntry } from '../../../shared/types';
 
 interface InsightTimelineProps {
@@ -59,7 +59,9 @@ export function InsightTimeline({ entries, onSelect }: InsightTimelineProps) {
             {group.items.map((entry) => {
               const Icon = memoryTypeIcons[entry.type] || memoryTypeIcons.session_insight;
               const typeColor = memoryTypeColors[entry.type] || '';
-              const typeLabel = memoryTypeLabels[entry.type] || entry.type.replace(/_/g, ' ');
+              const typeLabel = t(`types.${entry.type}`, {
+                defaultValue: entry.type.replace(/_/g, ' ')
+              });
               return (
                 <button
                   key={entry.id}

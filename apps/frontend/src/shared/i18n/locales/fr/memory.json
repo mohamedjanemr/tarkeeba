@@ -7,31 +7,52 @@
     "timeline": "Chronologie"
   },
   "search": {
-    "placeholder": "Rechercher dans la mémoire..."
+    "placeholder": "Rechercher dans la mémoire...",
+    "button": "Rechercher",
+    "clear": "Effacer",
+    "noResults": "Aucune entrée ne correspond à votre recherche.",
+    "results": "{{count}} résultats"
   },
   "actions": {
     "edit": "Modifier",
     "delete": "Supprimer",
-    "confirmDelete": "Êtes-vous sûr de vouloir supprimer cette entrée de mémoire ? Cette action est irréversible.",
+    "prune": "Élaguer",
     "save": "Enregistrer",
     "cancel": "Annuler",
     "refresh": "Actualiser"
   },
   "empty": {
-    "disabled": "La mémoire n'est pas activée pour ce projet. Activez le système de mémoire Graphiti dans les paramètres pour commencer à capturer des insights.",
-    "noData": "Aucune entrée de mémoire pour l'instant. Au fur et à mesure que les agents travaillent sur votre projet, les insights appris apparaîtront ici.",
-    "noResults": "Aucune entrée ne correspond à votre recherche."
+    "disabled": {
+      "title": "La mémoire n'est pas activée",
+      "description": "La mémoire n'est pas activée pour ce projet. Activez le système de mémoire Graphiti dans les paramètres pour commencer à capturer des insights."
+    },
+    "entities": "Aucune entité pour l'instant. Au fur et à mesure que les agents travaillent sur votre projet, les entités apprises apparaîtront ici.",
+    "relationships": "Aucune relation pour l'instant. Les connexions entre entités apparaîtront ici à mesure que la mémoire s'enrichit.",
+    "timeline": "Aucun insight pour l'instant. Une chronologie de ce que les agents apprennent apparaîtra ici."
   },
   "detail": {
-    "type": "Type",
+    "episodeTitle": "Entrée de mémoire",
     "name": "Nom",
     "summary": "Résumé",
-    "createdAt": "Créé le",
-    "updatedAt": "Mis à jour le",
-    "source": "Source",
-    "relationship": "Relation",
-    "from": "De",
-    "to": "À",
-    "fact": "Fait"
+    "content": "Contenu",
+    "empty": "Aucun contenu disponible.",
+    "confirmDelete": "Êtes-vous sûr de vouloir élaguer cette entrée de mémoire ? Cette action est irréversible."
+  },
+  "timeline": {
+    "session": "Session {{number}}"
+  },
+  "types": {
+    "session_insight": "Insight de session",
+    "codebase_discovery": "Découverte du code",
+    "codebase_map": "Carte du code",
+    "pattern": "Modèle",
+    "gotcha": "Piège",
+    "task_outcome": "Résultat de tâche",
+    "qa_result": "Résultat QA",
+    "historical_context": "Contexte historique",
+    "pr_review": "Revue de PR",
+    "pr_finding": "Constat de PR",
+    "pr_pattern": "Modèle de PR",
+    "pr_gotcha": "Piège de PR"
   }
 }

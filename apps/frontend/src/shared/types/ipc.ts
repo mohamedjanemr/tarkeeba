@@ -471,6 +471,7 @@ export interface ElectronAPI {
   getRecentMemories: (projectId: string, limit?: number) => Promise<IPCResult<MemoryEpisode[]>>;
 
   // Memory Browser operations (per-project insight timeline)
+  getMemoryEnabled: (projectId: string) => Promise<IPCResult<boolean>>;
   browseMemoryEntities: (projectId: string, limit?: number) => Promise<IPCResult<MemoryEntity[]>>;
   browseMemoryEpisodes: (
     projectId: string,

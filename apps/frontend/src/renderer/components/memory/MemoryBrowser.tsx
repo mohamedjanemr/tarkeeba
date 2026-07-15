@@ -45,16 +45,32 @@ export function MemoryBrowser({ projectId }: MemoryBrowserProps) {
   const setActiveTab = useMemoryStore((s) => s.setActiveTab);
   const setSelectedEntry = useMemoryStore((s) => s.setSelectedEntry);
   const setSearchQuery = useMemoryStore((s) => s.setSearchQuery);
+  const setMemoryEnabled = useMemoryStore((s) => s.setMemoryEnabled);
 
   const [localQuery, setLocalQuery] = useState('');
 
-  // Load all three data sets on mount / project change.
+  // Resolve whether Graphiti memory is enabled for this project so the
+  // disabled empty state renders when memory is off. Only load data when on.
   useEffect(() => {
     if (!projectId) return;
-    loadEntities(projectId);
-    loadRelationships(projectId);
-    loadTimeline(projectId);
-  }, [projectId]);
+    let cancelled = false;
+
+    (async () => {
+      const result = await window.electronAPI.getMemoryEnabled(projectId);
+      const enabled = result.success ? (result.data ?? false) : false;
+      if (cancelled) return;
+      setMemoryEnabled(enabled);
+      if (enabled) {
+        loadEntities(projectId);
+        loadRelationships(projectId);
+        loadTimeline(projectId);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId, setMemoryEnabled]);
 
   const handleSearch = () => {
     if (localQuery.trim()) {

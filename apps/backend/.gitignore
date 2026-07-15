@@ -4,6 +4,7 @@
 .env.*.local
 
 # Virtual environment
+.venv
 .venv/
 .venv*/
 venv/

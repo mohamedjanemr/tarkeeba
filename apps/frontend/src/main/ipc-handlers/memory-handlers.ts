@@ -934,6 +934,22 @@ function resolveProjectMemory(
  * handlers return a friendly empty result rather than throwing.
  */
 function registerMemoryBrowserHandlers(): void {
+  // Whether Graphiti memory is enabled and available for a project.
+  // Drives the "memory disabled" empty state in the renderer.
+  ipcMain.handle(
+    IPC_CHANNELS.MEMORY_ENABLED,
+    async (_, projectId: string): Promise<IPCResult<boolean>> => {
+      try {
+        return { success: true, data: resolveProjectMemory(projectId) !== null };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to check memory status',
+        };
+      }
+    }
+  );
+
   // Browse entities (knowledge-graph nodes) scoped to a project
   ipcMain.handle(
     IPC_CHANNELS.MEMORY_BROWSE_ENTITIES,

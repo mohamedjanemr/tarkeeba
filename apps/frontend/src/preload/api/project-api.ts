@@ -56,6 +56,7 @@ export interface ProjectAPI {
   getRecentMemories: (projectId: string, limit?: number) => Promise<IPCResult<unknown>>;
 
   // Memory Browser (per-project insight timeline)
+  getMemoryEnabled: (projectId: string) => Promise<IPCResult<boolean>>;
   browseMemoryEntities: (projectId: string, limit?: number) => Promise<IPCResult<MemoryEntity[]>>;
   browseMemoryEpisodes: (
     projectId: string,
@@ -245,6 +246,9 @@ export const createProjectAPI = (): ProjectAPI => ({
     ipcRenderer.invoke(IPC_CHANNELS.CONTEXT_GET_MEMORIES, projectId, limit),
 
   // Memory Browser (per-project insight timeline)
+  getMemoryEnabled: (projectId: string): Promise<IPCResult<boolean>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MEMORY_ENABLED, projectId),
+
   browseMemoryEntities: (projectId: string, limit?: number): Promise<IPCResult<MemoryEntity[]>> =>
     ipcRenderer.invoke(IPC_CHANNELS.MEMORY_BROWSE_ENTITIES, projectId, limit),
 
