@@ -70,6 +70,7 @@ tests/
 !tests/
 tests/*
 !tests/test_query_memory_browser.py
+!tests/test_spec_rate_limit.py
 
 # Tarkeeba data directory
 .auto-claude/

@@ -13,6 +13,8 @@ from datetime import datetime
 from enum import Enum
 from pathlib import Path
 
+from core.error_utils import RateLimitError
+
 
 class Complexity(Enum):
     """Task complexity tiers that determine which phases to run."""
@@ -431,6 +433,8 @@ async def run_ai_complexity_assessment(
 
         return None
 
+    except RateLimitError:
+        raise
     except Exception:
         return None
 
