@@ -26,6 +26,7 @@ import { registerGitlabHandlers } from './gitlab-handlers';
 import { registerIdeationHandlers } from './ideation-handlers';
 import { registerChangelogHandlers } from './changelog-handlers';
 import { registerInsightsHandlers } from './insights-handlers';
+import { registerUsageCostHandlers } from './usage-cost-handlers';
 import { registerMemoryHandlers } from './memory-handlers';
 import { registerAppUpdateHandlers } from './app-update-handlers';
 import { registerDebugHandlers } from './debug-handlers';
@@ -106,6 +107,9 @@ export function setupIpcHandlers(
   // Insights handlers
   registerInsightsHandlers(getMainWindow);
 
+  // Usage & Cost dashboard handlers (spend tracking, predictive spend, rate-limit headroom)
+  registerUsageCostHandlers(getMainWindow);
+
   // Memory & infrastructure handlers (for Graphiti/LadybugDB)
   registerMemoryHandlers();
 
@@ -151,6 +155,7 @@ export {
   registerIdeationHandlers,
   registerChangelogHandlers,
   registerInsightsHandlers,
+  registerUsageCostHandlers,
   registerMemoryHandlers,
   registerAppUpdateHandlers,
   registerDebugHandlers,

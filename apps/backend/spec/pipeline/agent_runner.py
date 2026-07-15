@@ -12,6 +12,8 @@ from ui.capabilities import configure_safe_encoding
 
 configure_safe_encoding()
 
+import os
+
 from core.error_utils import safe_receive_messages
 from debug import debug, debug_detailed, debug_error, debug_section, debug_success
 from security.tool_input_validator import get_safe_tool_input
@@ -20,6 +22,7 @@ from task_logger import (
     LogPhase,
     TaskLogger,
 )
+from task_logger.usage_capture import capture_usage_from_result
 
 # Lazy import create_client to avoid circular import with core.client
 # The import chain: spec.pipeline -> agent_runner -> core.client -> agents.tools_pkg -> spec.validate_pkg
@@ -243,6 +246,15 @@ class AgentRunner:
                                         phase=LogPhase.PLANNING,
                                     )
                                 current_tool = None
+
+                    # Handle ResultMessage (usage/cost reporting for the session)
+                    elif msg_type == "ResultMessage":
+                        capture_usage_from_result(
+                            msg,
+                            self.task_logger,
+                            model=resolved_model or "default",
+                            account=os.environ.get("CLAUDE_CONFIG_DIR"),
+                        )
 
                 print()
                 debug_success(

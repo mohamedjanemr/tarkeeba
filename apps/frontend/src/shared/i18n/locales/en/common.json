@@ -568,6 +568,56 @@
     "codexUnavailableDescription": "This Codex account did not provide usage-limit data.",
     "codexUsageStatus": "Codex usage status"
   },
+  "usageCostDashboard": {
+    "totalSpend": "Total Spend",
+    "totalTokens": "Total Tokens",
+    "activeRunCost": "Active Run Cost",
+    "activeRunCostNone": "No active runs",
+    "acrossSpecs": "Across {{count}} task",
+    "acrossSpecs_other": "Across {{count}} tasks",
+    "inputOutput": "{{input}} in / {{output}} out",
+    "spendOverTime": {
+      "title": "Spend Over Time",
+      "description": "Daily cost for this project",
+      "empty": "No historical spend data yet",
+      "tooltipCost": "Cost",
+      "axisCost": "Cost (USD)"
+    },
+    "accountHeadroom": {
+      "title": "Account Headroom",
+      "description": "Rate-limit and usage headroom per account, including failover status",
+      "active": "Active",
+      "needsReauth": "Needs re-auth",
+      "rateLimited": "Rate limited",
+      "session": "Session",
+      "weekly": "Weekly",
+      "empty": "No account usage data available"
+    },
+    "taskCostBreakdown": {
+      "title": "Cost Breakdown",
+      "description": "Per-task token usage and estimated cost, broken down by account and provider",
+      "account": "Account",
+      "provider": "Provider",
+      "inputTokens": "Input",
+      "outputTokens": "Output",
+      "cost": "Cost",
+      "empty": "No usage data for this task yet"
+    },
+    "taskSelector": {
+      "label": "Task",
+      "placeholder": "Select a task..."
+    },
+    "accountBreakdown": {
+      "title": "Spend by Account",
+      "description": "Total token usage and cost across all tasks, broken down by account",
+      "empty": "No account usage data yet"
+    },
+    "providerBreakdown": {
+      "title": "Spend by Provider",
+      "description": "Total token usage and cost across all tasks, broken down by provider",
+      "empty": "No provider usage data yet"
+    }
+  },
   "oauth": {
     "enterCode": "Manual Code Entry (Fallback)",
     "enterCodeDescription": "This dialog is only needed if the browser didn't redirect automatically. If authentication already completed in your browser, you can close this dialog.",

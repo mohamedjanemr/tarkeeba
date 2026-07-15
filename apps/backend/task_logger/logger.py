@@ -6,11 +6,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from core.debug import debug, debug_error, debug_info, debug_success, is_debug_enabled
+from core.pricing import calculate_cost
 
 from .ansi import strip_ansi_codes
-from .models import LogEntry, LogEntryType, LogPhase
+from .models import LogEntry, LogEntryType, LogPhase, UsageEntry
 from .storage import LogStorage
 from .streaming import emit_marker
+from .usage_storage import UsageStorage
 
 
 class TaskLogger:
@@ -119,6 +121,64 @@ class TaskLogger:
     def set_subtask(self, subtask_id: str | None) -> None:
         """Set the current subtask being processed."""
         self.current_subtask = subtask_id
+
+    def record_usage(
+        self,
+        model: str,
+        input_tokens: int,
+        output_tokens: int,
+        cache_read_tokens: int = 0,
+        cache_creation_tokens: int = 0,
+        cost_usd: float | None = None,
+        account: str = "default",
+        source: str = "sdk_reported",
+    ) -> None:
+        """
+        Record a usage/cost entry for an AI API call.
+
+        Persists the entry via UsageStorage and emits a streaming marker
+        (__TASK_LOG_USAGE__) so the UI can update live cost/usage displays.
+
+        Args:
+            model: Model identifier (e.g. "claude-sonnet-4-5-20250929")
+            input_tokens: Number of (non-cached) input tokens
+            output_tokens: Number of output tokens
+            cache_read_tokens: Number of tokens read from prompt cache
+            cache_creation_tokens: Number of tokens written to prompt cache
+            cost_usd: Cost in USD; computed via core.pricing.calculate_cost
+                when not provided (e.g. when the SDK doesn't report cost)
+            account: Profile/config-dir identifier for the account used
+            source: "sdk_reported" or "estimated"
+        """
+        if cost_usd is None:
+            cost_usd = calculate_cost(
+                model=model,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                cache_read_tokens=cache_read_tokens,
+                cache_creation_tokens=cache_creation_tokens,
+            )
+
+        entry = UsageEntry(
+            timestamp=self._timestamp(),
+            phase=self.current_phase.value if self.current_phase else None,
+            subtask_id=self.current_subtask,
+            session=self.current_session,
+            model=model,
+            account=account,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            cache_read_tokens=cache_read_tokens,
+            cache_creation_tokens=cache_creation_tokens,
+            cost_usd=cost_usd,
+            source=source,
+        )
+
+        usage_storage = UsageStorage(self.spec_dir)
+        usage_storage.add_entry(entry)
+
+        # Emit marker for UI
+        self._emit("USAGE", entry.to_dict())
 
     def start_phase(self, phase: LogPhase, message: str | None = None) -> None:
         """

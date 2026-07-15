@@ -57,6 +57,21 @@ export function registerAgenteventsHandlers(
     safeSendToRenderer(getMainWindow, IPC_CHANNELS.TASK_ERROR, taskId, error, projectId);
   });
 
+  // Pre-run cost warning gate: predicted cost exceeded the configured threshold and
+  // the spawn is blocked pending user confirmation via TASK_CONFIRM_COST_WARNING.
+  agentManager.on("cost-warning-required", (
+    taskId: string,
+    data: { predictedCostUsd: number; threshold: number },
+    projectId?: string
+  ) => {
+    safeSendToRenderer(getMainWindow, IPC_CHANNELS.COST_WARNING_REQUIRED, {
+      taskId,
+      predictedCostUsd: data.predictedCostUsd,
+      threshold: data.threshold,
+      projectId
+    });
+  });
+
   // Handle SDK rate limit events from agent manager
   agentManager.on("sdk-rate-limit", (rateLimitInfo: SDKRateLimitInfo) => {
     safeSendToRenderer(getMainWindow, IPC_CHANNELS.CLAUDE_SDK_RATE_LIMIT, rateLimitInfo);
