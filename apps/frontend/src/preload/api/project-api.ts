@@ -114,6 +114,12 @@ export interface ProjectAPI {
     version?: string;
     message?: string;
   }>>;
+  getManagedMemoryMcpStatus: () => Promise<IPCResult<{
+    running: boolean;
+    port?: number;
+    baseUrl?: string;
+    error?: string;
+  }>>;
   checkOllamaInstalled: () => Promise<IPCResult<{
     installed: boolean;
     path?: string;
@@ -299,6 +305,9 @@ export const createProjectAPI = (): ProjectAPI => ({
   // Ollama Model Detection
   checkOllamaStatus: (baseUrl?: string) =>
     ipcRenderer.invoke(IPC_CHANNELS.OLLAMA_CHECK_STATUS, baseUrl),
+
+  getManagedMemoryMcpStatus: () =>
+    ipcRenderer.invoke(IPC_CHANNELS.MEMORY_MCP_STATUS),
 
   checkOllamaInstalled: () =>
     ipcRenderer.invoke(IPC_CHANNELS.OLLAMA_CHECK_INSTALLED),

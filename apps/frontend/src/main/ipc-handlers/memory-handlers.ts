@@ -32,6 +32,7 @@ import { validateOpenAIApiKey } from '../api-validation-service';
 import { parsePythonCommand } from '../python-detector';
 import { getConfiguredPythonPath, pythonEnvManager } from '../python-env-manager';
 import { openTerminalWithCommand } from './claude-code-handlers';
+import { managedMemoryMcpBridge } from '../managed-memory-mcp-bridge';
 
 /**
  * Ollama Service Status
@@ -366,6 +367,16 @@ async function executeOllamaDetectorImpl(
  * @returns {void}
  */
 export function registerMemoryHandlers(): void {
+  ipcMain.handle(IPC_CHANNELS.MEMORY_MCP_STATUS, async () => {
+    const currentStatus = managedMemoryMcpBridge.getStatus();
+    return {
+      success: true,
+      data: currentStatus.running
+        ? currentStatus
+        : await managedMemoryMcpBridge.start()
+    };
+  });
+
   // Get memory infrastructure status
   ipcMain.handle(
     IPC_CHANNELS.MEMORY_STATUS,

@@ -460,6 +460,7 @@ export const IPC_CHANNELS = {
   MEMORY_STATUS: 'memory:status',
   MEMORY_LIST_DATABASES: 'memory:listDatabases',
   MEMORY_TEST_CONNECTION: 'memory:testConnection',
+  MEMORY_MCP_STATUS: 'memory:mcpStatus',
 
   // Graphiti validation
   GRAPHITI_VALIDATE_LLM: 'graphiti:validateLlm',

@@ -32,6 +32,7 @@ interface MemoryStepProps {
 interface MemoryConfig {
   enabled: boolean;
   agentMemoryEnabled: boolean;
+  mcpMode: 'managed' | 'external';
   mcpServerUrl: string;
   embeddingProvider: GraphitiEmbeddingProvider;
   // OpenAI
@@ -71,7 +72,8 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
   const [config, setConfig] = useState<MemoryConfig>({
     enabled: true, // Memory enabled by default
     agentMemoryEnabled: true, // Agent memory access enabled by default
-    mcpServerUrl: 'http://localhost:8000/mcp/',
+    mcpMode: 'managed',
+    mcpServerUrl: '',
     embeddingProvider: 'ollama',
     openaiApiKey: settings.globalOpenAIApiKey || '',
     azureOpenaiApiKey: '',
@@ -153,7 +155,10 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
         memoryOllamaEmbeddingDim: config.ollamaEmbeddingDim || undefined,
         // Agent memory access (MCP)
         graphitiMcpEnabled: config.agentMemoryEnabled,
-        graphitiMcpUrl: config.mcpServerUrl.trim() || undefined,
+        graphitiMcpMode: config.mcpMode,
+        graphitiMcpUrl: config.mcpMode === 'external'
+          ? config.mcpServerUrl.trim() || undefined
+          : undefined,
         // Global API keys (shared across features)
         globalOpenAIApiKey: config.openaiApiKey.trim() || undefined,
         globalGoogleApiKey: config.googleApiKey.trim() || undefined,
@@ -176,7 +181,10 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
           memoryOllamaEmbeddingModel: config.ollamaEmbeddingModel || undefined,
           memoryOllamaEmbeddingDim: config.ollamaEmbeddingDim || undefined,
           graphitiMcpEnabled: config.agentMemoryEnabled,
-          graphitiMcpUrl: config.mcpServerUrl.trim() || undefined,
+          graphitiMcpMode: config.mcpMode,
+          graphitiMcpUrl: config.mcpMode === 'external'
+            ? config.mcpServerUrl.trim() || undefined
+            : undefined,
           globalOpenAIApiKey: config.openaiApiKey.trim() || undefined,
           globalGoogleApiKey: config.googleApiKey.trim() || undefined,
           memoryVoyageApiKey: config.voyageApiKey.trim() || undefined,
@@ -286,20 +294,52 @@ export function MemoryStep({ onNext, onBack }: MemoryStepProps) {
                   />
                 </div>
 
-                {/* MCP Server URL (shown when agent memory is enabled) */}
+                {/* MCP access mode (shown when agent memory is enabled) */}
                 {config.agentMemoryEnabled && (
-                  <div className="space-y-2 ml-6">
-                    <Label className="text-sm font-medium text-foreground">{t('memory.mcpServerUrl')}</Label>
-                    <p className="text-xs text-muted-foreground">
-                      {t('memory.mcpServerUrlDescription')}
-                    </p>
-                    <Input
-                      placeholder="http://localhost:8000/mcp/"
-                      value={config.mcpServerUrl}
-                      onChange={(e) => setConfig(prev => ({ ...prev, mcpServerUrl: e.target.value }))}
-                      className="font-mono text-sm"
-                      disabled={isSaving}
-                    />
+                  <div className="ml-6 space-y-3">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-foreground">
+                        {t('memory.mcpMode')}
+                      </Label>
+                      <Select
+                        value={config.mcpMode}
+                        onValueChange={(value: 'managed' | 'external') => {
+                          setConfig(prev => ({ ...prev, mcpMode: value }));
+                        }}
+                        disabled={isSaving}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="managed">{t('memory.mcpManaged')}</SelectItem>
+                          <SelectItem value="external">{t('memory.mcpExternal')}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        {config.mcpMode === 'managed'
+                          ? t('memory.mcpManagedDescription')
+                          : t('memory.mcpExternalDescription')}
+                      </p>
+                    </div>
+
+                    {config.mcpMode === 'external' && (
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-foreground">
+                          {t('memory.mcpServerUrl')}
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          {t('memory.mcpServerUrlDescription')}
+                        </p>
+                        <Input
+                          placeholder="http://127.0.0.1:8321/mcp/"
+                          value={config.mcpServerUrl}
+                          onChange={(e) => setConfig(prev => ({ ...prev, mcpServerUrl: e.target.value }))}
+                          className="font-mono text-sm"
+                          disabled={isSaving}
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
 

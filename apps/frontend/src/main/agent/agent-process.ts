@@ -27,6 +27,7 @@ import { getAugmentedEnv } from '../env-utils';
 import { getToolInfo, getClaudeCliPathForSdk } from '../cli-tool-manager';
 import { killProcessGracefully, isWindows, getPathDelimiter } from '../platform';
 import { debugLog } from '../../shared/utils/debug-logger';
+import { getManagedMemoryMcpProjectUrl } from '../managed-memory-mcp-state';
 
 /**
  * Type for supported CLI tools
@@ -532,8 +533,18 @@ export class AgentProcessManager {
     if (project?.settings) {
       // Graphiti MCP integration
       if (project.settings.graphitiMcpEnabled) {
-        const graphitiUrl = project.settings.graphitiMcpUrl || 'http://localhost:8000/mcp/';
-        env['GRAPHITI_MCP_URL'] = graphitiUrl;
+        const configuredUrl = project.settings.graphitiMcpUrl;
+        const isLegacyDefault = !configuredUrl || /^http:\/\/(localhost|127\.0\.0\.1):8000\/mcp\/?$/.test(configuredUrl);
+        const mode = project.settings.graphitiMcpMode || (isLegacyDefault ? 'managed' : 'external');
+        const graphitiUrl = mode === 'external'
+          ? configuredUrl
+          : getManagedMemoryMcpProjectUrl(project.id);
+
+        if (graphitiUrl) {
+          env['GRAPHITI_MCP_URL'] = graphitiUrl;
+        } else {
+          console.warn('[AgentProcess] Agent memory access is enabled but the MCP bridge is unavailable');
+        }
       }
 
       // CLAUDE.md integration (enabled by default)

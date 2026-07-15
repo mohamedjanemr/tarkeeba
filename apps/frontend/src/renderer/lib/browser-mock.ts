@@ -29,6 +29,15 @@ const isElectron = typeof window !== 'undefined' && window.electronAPI !== undef
  * Aggregates all mock implementations from separate modules
  */
 const browserMockAPI: ElectronAPI = {
+  getManagedMemoryMcpStatus: async () => ({
+    success: true,
+    data: {
+      running: true,
+      port: 0,
+      baseUrl: 'http://127.0.0.1:0'
+    }
+  }),
+
   // Project Operations
   ...projectMock,
 
