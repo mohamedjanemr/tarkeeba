@@ -17,6 +17,12 @@ const mockRefreshIdeation = vi.hoisted(() => vi.fn());
 const mockAppendIdeation = vi.hoisted(() => vi.fn());
 const mockLoadIdeation = vi.hoisted(() => vi.fn());
 const mockSetupListeners = vi.hoisted(() => vi.fn(() => () => {}));
+const claudeProviderConfig = {
+  provider: 'claude',
+  codexProfileId: undefined,
+  codexModel: 'gpt-5.6-sol',
+  codexReasoningEffort: 'high'
+};
 const mockAuthState = vi.hoisted(() => ({
   hasToken: true as boolean | null,
   isLoading: false,
@@ -108,7 +114,7 @@ describe('useIdeation', () => {
     });
 
     expect(result.current.showEnvConfigModal).toBe(false);
-    expect(mockGenerateIdeation).toHaveBeenCalledWith('project-1');
+    expect(mockGenerateIdeation).toHaveBeenCalledWith('project-1', claudeProviderConfig);
   });
 
   it('should retry generate after env is configured', () => {
@@ -126,7 +132,7 @@ describe('useIdeation', () => {
     });
 
     expect(mockAuthState.checkAuth).toHaveBeenCalled();
-    expect(mockGenerateIdeation).toHaveBeenCalledWith('project-1');
+    expect(mockGenerateIdeation).toHaveBeenCalledWith('project-1', claudeProviderConfig);
   });
 
   it('should retry refresh after env is configured', () => {
@@ -144,7 +150,7 @@ describe('useIdeation', () => {
     });
 
     expect(mockAuthState.checkAuth).toHaveBeenCalled();
-    expect(mockRefreshIdeation).toHaveBeenCalledWith('project-1');
+    expect(mockRefreshIdeation).toHaveBeenCalledWith('project-1', claudeProviderConfig);
   });
 
   it('should append ideas after env is configured', () => {
@@ -167,7 +173,11 @@ describe('useIdeation', () => {
     });
 
     expect(mockAuthState.checkAuth).toHaveBeenCalled();
-    expect(mockAppendIdeation).toHaveBeenCalledWith('project-1', typesToAdd);
+    expect(mockAppendIdeation).toHaveBeenCalledWith(
+      'project-1',
+      typesToAdd,
+      claudeProviderConfig
+    );
     expect(result.current.typesToAdd).toHaveLength(0);
   });
 });

@@ -110,6 +110,10 @@ if (typeof window !== 'undefined') {
     saveTabState: vi.fn().mockResolvedValue({ success: true }),
     // Profile-related API methods (API Profile feature)
     getAPIProfiles: vi.fn(),
+    getOpenAIProfiles: vi.fn().mockResolvedValue({
+      success: true,
+      data: { profiles: [], activeProfileId: null }
+    }),
     saveAPIProfile: vi.fn(),
     updateAPIProfile: vi.fn(),
     deleteAPIProfile: vi.fn(),
