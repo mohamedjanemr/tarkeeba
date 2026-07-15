@@ -758,6 +758,61 @@ def cmd_add_episode(args):
         output_error(f"Failed to add episode: {e}")
 
 
+def cmd_delete_memory(args):
+    """
+    Delete a single memory node (episodic or entity) by uuid.
+
+    Issues a parameterized, single-node DETACH DELETE against the matching node
+    so relationships are cleaned up alongside it. Follows the parameterized /
+    single-node-match conventions in security/database_validators.py.
+
+    Args:
+        args.db_path: Path to database directory
+        args.database: Database name
+        args.uuid: UUID of the node to delete
+        args.kind: Node kind ("episodic" or "entity")
+
+    Guards against missing databases and tables, always reporting JSON rather
+    than crashing.
+    """
+    if not apply_monkeypatch():
+        output_error("Neither kuzu nor LadybugDB is installed")
+        return
+
+    kind = (args.kind or "").lower()
+    label = {"episodic": "Episodic", "entity": "Entity"}.get(kind)
+    if not label:
+        output_error(f"Invalid --kind '{args.kind}' (expected 'episodic' or 'entity')")
+        return
+
+    # Missing database → nothing to delete, but not an error
+    full_path = Path(args.db_path) / args.database
+    if not full_path.exists():
+        output_json(True, data={"deleted": False, "id": args.uuid})
+        return
+
+    conn, error = get_db_connection(args.db_path, args.database)
+    if not conn:
+        output_error(error or "Failed to connect to database")
+        return
+
+    try:
+        # Parameterized, single-node match then DETACH DELETE to remove the node
+        # together with any attached relationships.
+        query = f"MATCH (e:{label} {{uuid: $uuid}}) DETACH DELETE e"
+        conn.execute(query, parameters={"uuid": args.uuid})
+        output_json(True, data={"deleted": True, "id": args.uuid})
+
+    except Exception as e:
+        # Table might not exist yet → treat as nothing to delete
+        if label in str(e) and (
+            "not exist" in str(e).lower() or "cannot" in str(e).lower()
+        ):
+            output_json(True, data={"deleted": False, "id": args.uuid})
+        else:
+            output_error(f"Delete failed: {e}")
+
+
 def infer_episode_type(name: str, content: str = "") -> str:
     """Infer the episode type from its name and content."""
     name_lower = (name or "").lower()
@@ -901,6 +956,23 @@ def main():
         "--group-id", dest="group_id", help="Optional group ID for namespacing"
     )
 
+    # delete-memory command (for removing memories from the Electron app)
+    delete_parser = subparsers.add_parser(
+        "delete-memory",
+        help="Delete a memory node (episodic or entity) by uuid",
+    )
+    delete_parser.add_argument("db_path", help="Path to database directory")
+    delete_parser.add_argument("database", help="Database name")
+    delete_parser.add_argument(
+        "--uuid", required=True, help="UUID of the node to delete"
+    )
+    delete_parser.add_argument(
+        "--kind",
+        required=True,
+        choices=["episodic", "entity"],
+        help="Node kind to delete (episodic or entity)",
+    )
+
     args = parser.parse_args()
 
     if not args.command:
@@ -917,6 +989,7 @@ def main():
         "get-entities": cmd_get_entities,
         "get-relationships": cmd_get_relationships,
         "add-episode": cmd_add_episode,
+        "delete-memory": cmd_delete_memory,
     }
 
     handler = commands.get(args.command)
