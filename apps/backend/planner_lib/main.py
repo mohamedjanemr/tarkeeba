@@ -21,7 +21,9 @@ Usage:
 import json
 from pathlib import Path
 
+from execution_budget import get_max_subtasks
 from implementation_plan import ImplementationPlan
+from planner_lib.compaction import compact_plan
 from planner_lib.context import ContextLoader
 from planner_lib.generators import get_plan_generator
 
@@ -45,7 +47,8 @@ class ImplementationPlanner:
             self.load_context()
 
         generator = get_plan_generator(self.context, self.spec_dir)
-        return generator.generate()
+        plan = generator.generate()
+        return compact_plan(plan, get_max_subtasks(self.spec_dir))
 
     def save_plan(self, plan: ImplementationPlan) -> Path:
         """Save plan to spec directory."""

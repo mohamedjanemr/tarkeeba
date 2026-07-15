@@ -194,6 +194,36 @@ describe('Subprocess Spawn Integration', () => {
       );
     }, 30000);  // Increase timeout for Windows CI (dynamic imports are slow)
 
+    it('should reuse selected complexity without AI reassessment', async () => {
+      const { spawn } = await import('child_process');
+      const { AgentManager } = await import('../../main/agent');
+
+      const manager = new AgentManager();
+      manager.configure(undefined, AUTO_CLAUDE_SOURCE);
+
+      const promise = manager.startSpecCreation(
+        'task-1',
+        TEST_PROJECT_PATH,
+        'Large task',
+        undefined,
+        { complexity: 'large' }
+      );
+
+      await new Promise(resolve => setImmediate(resolve));
+      mockProcess.emit('exit', 0);
+      await promise;
+
+      expect(spawn).toHaveBeenCalledWith(
+        EXPECTED_PYTHON_COMMAND,
+        expect.arrayContaining([
+          '--complexity',
+          'complex',
+          '--no-ai-assessment'
+        ]),
+        expect.any(Object)
+      );
+    }, 30000);
+
     it('should spawn Python process for task execution', async () => {
       const { spawn } = await import('child_process');
       const { AgentManager } = await import('../../main/agent');

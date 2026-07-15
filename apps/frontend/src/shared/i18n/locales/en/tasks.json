@@ -258,6 +258,13 @@
     "fastModeLabel": "Fast Mode",
     "fastModeDescription": "Same Opus 4.6 model with faster output. Higher cost per token.",
     "fastModeNotice": "Requires \"extra usage\" enabled on your Claude subscription.",
+    "executionModeLabel": "Execution strategy",
+    "executionModes": {
+      "efficient": "Efficient (Recommended)",
+      "efficientDescription": "Limits planning to 6 vertical subtasks, coding to 8 sessions, and QA to 2 reviews. Skips optional AI planning passes.",
+      "full": "Full Autonomous",
+      "fullDescription": "Uses exhaustive planning and autonomous retries without a coding-session limit. Best for unusually complex or high-risk work."
+    },
     "errors": {
       "descriptionRequired": "Please provide a description",
       "maxImagesReached": "Maximum of 5 images allowed",

@@ -8,9 +8,11 @@ Phases for spec document creation and quality assurance.
 import json
 from pathlib import Path
 
+from execution_budget import get_execution_budget
+
 from .. import validator, writer
 from ..discovery import get_project_index_stats
-from .models import MAX_RETRIES, PhaseResult
+from .models import PhaseResult
 
 
 def _is_greenfield_project(spec_dir: Path) -> bool:
@@ -66,9 +68,10 @@ class SpecPhaseMixin:
             )
 
         is_greenfield = self._check_and_log_greenfield()
+        max_attempts = get_execution_budget(self.spec_dir).max_spec_attempts
 
         errors = []
-        for attempt in range(MAX_RETRIES):
+        for attempt in range(max_attempts):
             self.ui.print_status(
                 f"Running quick spec agent (attempt {attempt + 1})...", "progress"
             )
@@ -103,7 +106,7 @@ Create:
 
             errors.append(f"Attempt {attempt + 1}: Quick spec agent failed")
 
-        return PhaseResult("quick_spec", False, [], errors, MAX_RETRIES)
+        return PhaseResult("quick_spec", False, [], errors, max_attempts)
 
     async def phase_spec_writing(self) -> PhaseResult:
         """Write the spec.md document."""
@@ -120,9 +123,10 @@ Create:
 
         is_greenfield = self._check_and_log_greenfield()
         greenfield_ctx = _greenfield_context() if is_greenfield else ""
+        max_attempts = get_execution_budget(self.spec_dir).max_spec_attempts
 
         errors = []
-        for attempt in range(MAX_RETRIES):
+        for attempt in range(max_attempts):
             self.ui.print_status(
                 f"Running spec writer (attempt {attempt + 1})...", "progress"
             )
@@ -150,7 +154,7 @@ Create:
             else:
                 errors.append(f"Attempt {attempt + 1}: Agent did not create spec.md")
 
-        return PhaseResult("spec_writing", False, [], errors, MAX_RETRIES)
+        return PhaseResult("spec_writing", False, [], errors, max_attempts)
 
     async def phase_self_critique(self) -> PhaseResult:
         """Self-critique the spec using extended thinking."""
@@ -176,7 +180,8 @@ Create:
                     )
 
         errors = []
-        for attempt in range(MAX_RETRIES):
+        max_attempts = get_execution_budget(self.spec_dir).max_spec_attempts
+        for attempt in range(max_attempts):
             self.ui.print_status(
                 f"Running self-critique agent (attempt {attempt + 1})...", "progress"
             )
@@ -241,5 +246,5 @@ Output critique_report.json with:
             reason="Critique failed after retries",
         )
         return PhaseResult(
-            "self_critique", True, [str(critique_file)], errors, MAX_RETRIES
+            "self_critique", True, [str(critique_file)], errors, max_attempts
         )

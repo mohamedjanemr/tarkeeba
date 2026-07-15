@@ -23,6 +23,7 @@ if str(BACKEND_DIR) not in sys.path:
 
 from agents.utils import sync_spec_to_source
 from core.phase_event import ExecutionPhase, emit_phase
+from execution_budget import get_execution_budget
 from workspace import WorkspaceMode, setup_workspace
 
 DEFAULT_CODEX_MODEL = "gpt-5.6-sol"
@@ -151,6 +152,13 @@ def _run_codex(
 
 
 def _spec_prompt(project_dir: Path, spec_dir: Path, task: str) -> str:
+    max_subtasks = get_execution_budget(spec_dir).max_subtasks
+    budget_instruction = (
+        f"Create at most {max_subtasks} vertical subtasks. Group related file changes "
+        "into the same independently verifiable subtask."
+        if max_subtasks is not None
+        else "Use as many subtasks as are genuinely required."
+    )
     return f"""You are the specification and implementation-planning agent for Tarkeeba.
 
 Project root: {project_dir}
@@ -165,6 +173,7 @@ Create these two files:
 
 Do not implement code in this turn. Do not alter files outside the spec directory.
 Read AGENTS.md and repository guidance before planning. Ensure the plan is executable and sufficiently granular.
+Execution budget: {budget_instruction}
 """
 
 

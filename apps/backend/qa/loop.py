@@ -13,6 +13,7 @@ from pathlib import Path
 from core.client import create_client
 from core.task_event import TaskEventEmitter
 from debug import debug, debug_error, debug_section, debug_success, debug_warning
+from execution_budget import FULL_MAX_QA_ITERATIONS, get_execution_budget
 from linear_updater import (
     LinearTaskState,
     is_linear_enabled,
@@ -53,7 +54,7 @@ from .report import (
 from .reviewer import run_qa_agent_session
 
 # Configuration
-MAX_QA_ITERATIONS = 50
+MAX_QA_ITERATIONS = FULL_MAX_QA_ITERATIONS
 MAX_CONSECUTIVE_ERRORS = 3  # Stop after 3 consecutive errors without progress
 
 
@@ -95,6 +96,7 @@ async def run_qa_validation_loop(
     # This is needed because os.getcwd() may return the wrong directory in worktree mode
     os.environ[PROJECT_DIR_ENV_VAR] = str(project_dir.resolve())
     task_event_emitter = TaskEventEmitter.from_spec_dir(spec_dir)
+    max_qa_iterations = get_execution_budget(spec_dir).max_qa_iterations
 
     debug_section("qa_loop", "QA Validation Loop")
     debug(
@@ -103,7 +105,7 @@ async def run_qa_validation_loop(
         project_dir=str(project_dir),
         spec_dir=str(spec_dir),
         model=model,
-        max_iterations=MAX_QA_ITERATIONS,
+        max_iterations=max_qa_iterations,
     )
 
     print("\n" + "=" * 70)
@@ -138,7 +140,7 @@ async def run_qa_validation_loop(
     emit_phase(ExecutionPhase.QA_REVIEW, "Starting QA validation")
     task_event_emitter.emit(
         "QA_STARTED",
-        {"iteration": 1, "maxIterations": MAX_QA_ITERATIONS},
+        {"iteration": 1, "maxIterations": max_qa_iterations},
     )
 
     fast_mode = get_fast_mode(spec_dir)
@@ -268,19 +270,19 @@ async def run_qa_validation_loop(
     last_error_context = None  # Track error for self-correction feedback
     max_iterations_emitted = False
 
-    while qa_iteration < MAX_QA_ITERATIONS:
+    while qa_iteration < max_qa_iterations:
         qa_iteration += 1
         iteration_start = time_module.time()
 
         debug_section("qa_loop", f"QA Iteration {qa_iteration}")
         debug(
             "qa_loop",
-            f"Starting iteration {qa_iteration}/{MAX_QA_ITERATIONS}",
+            f"Starting iteration {qa_iteration}/{max_qa_iterations}",
             iteration=qa_iteration,
-            max_iterations=MAX_QA_ITERATIONS,
+            max_iterations=max_qa_iterations,
         )
 
-        print(f"\n--- QA Iteration {qa_iteration}/{MAX_QA_ITERATIONS} ---")
+        print(f"\n--- QA Iteration {qa_iteration}/{max_qa_iterations} ---")
         emit_phase(
             ExecutionPhase.QA_REVIEW, f"Running QA review iteration {qa_iteration}"
         )
@@ -312,7 +314,7 @@ async def run_qa_validation_loop(
                 project_dir,  # Pass project_dir for capability-based tool injection
                 spec_dir,
                 qa_iteration,
-                MAX_QA_ITERATIONS,
+                max_qa_iterations,
                 verbose,
                 previous_error=last_error_context,  # Pass error context for self-correction
             )
@@ -384,7 +386,7 @@ async def run_qa_validation_loop(
                 iteration=qa_iteration,
                 duration=f"{iteration_duration:.1f}s",
             )
-            print(f"\n❌ QA found issues. Iteration {qa_iteration}/{MAX_QA_ITERATIONS}")
+            print(f"\n❌ QA found issues. Iteration {qa_iteration}/{max_qa_iterations}")
 
             # Get issues from QA report
             qa_status = get_qa_signoff_status(spec_dir)
@@ -452,7 +454,7 @@ async def run_qa_validation_loop(
                     )
                 task_event_emitter.emit(
                     "QA_MAX_ITERATIONS",
-                    {"iteration": qa_iteration, "maxIterations": MAX_QA_ITERATIONS},
+                    {"iteration": qa_iteration, "maxIterations": max_qa_iterations},
                 )
                 max_iterations_emitted = True
 
@@ -463,7 +465,7 @@ async def run_qa_validation_loop(
                 issues_count = len(current_issues)
                 await linear_qa_rejected(spec_dir, issues_count, qa_iteration)
 
-            if qa_iteration >= MAX_QA_ITERATIONS:
+            if qa_iteration >= max_qa_iterations:
                 print("\n⚠️  Maximum QA iterations reached.")
                 print("Escalating to human review.")
                 if not max_iterations_emitted:
@@ -471,7 +473,7 @@ async def run_qa_validation_loop(
                         "QA_MAX_ITERATIONS",
                         {
                             "iteration": qa_iteration,
-                            "maxIterations": MAX_QA_ITERATIONS,
+                            "maxIterations": max_qa_iterations,
                         },
                     )
                     max_iterations_emitted = True
@@ -600,18 +602,18 @@ async def run_qa_validation_loop(
     if not max_iterations_emitted:
         task_event_emitter.emit(
             "QA_MAX_ITERATIONS",
-            {"iteration": qa_iteration, "maxIterations": MAX_QA_ITERATIONS},
+            {"iteration": qa_iteration, "maxIterations": max_qa_iterations},
         )
     debug_error(
         "qa_loop",
         "QA VALIDATION INCOMPLETE - max iterations reached",
         iterations=qa_iteration,
-        max_iterations=MAX_QA_ITERATIONS,
+        max_iterations=max_qa_iterations,
     )
     print("\n" + "=" * 70)
     print("  ⚠️  QA VALIDATION INCOMPLETE")
     print("=" * 70)
-    print(f"\nReached maximum iterations ({MAX_QA_ITERATIONS}) without approval.")
+    print(f"\nReached maximum iterations ({max_qa_iterations}) without approval.")
     print("\nRemaining issues require human review:")
 
     # Show iteration summary

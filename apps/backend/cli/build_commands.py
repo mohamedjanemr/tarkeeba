@@ -86,6 +86,7 @@ def handle_build_command(
         debug_section,
         debug_success,
     )
+    from execution_budget import get_execution_budget
     from phase_config import get_phase_model
     from prompts_pkg.prompts import (
         get_base_branch_from_metadata,
@@ -100,6 +101,9 @@ def handle_build_command(
     planning_model = get_phase_model(spec_dir, "planning", model)
     coding_model = get_phase_model(spec_dir, "coding", model)
     qa_model = get_phase_model(spec_dir, "qa", model)
+    execution_budget = get_execution_budget(spec_dir)
+    if max_iterations is None:
+        max_iterations = execution_budget.max_agent_sessions
 
     print_banner()
     print(f"\nProject directory: {project_dir}")

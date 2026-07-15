@@ -115,13 +115,13 @@ def should_run_fixes(spec_dir: Path) -> bool:
     - QA has rejected the build
     - Max iterations not reached
     """
-    from .loop import MAX_QA_ITERATIONS
+    from execution_budget import get_execution_budget
 
     if not is_qa_rejected(spec_dir):
         return False
 
     iterations = get_qa_iteration_count(spec_dir)
-    if iterations >= MAX_QA_ITERATIONS:
+    if iterations >= get_execution_budget(spec_dir).max_qa_iterations:
         return False
 
     return True

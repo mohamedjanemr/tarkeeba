@@ -25,7 +25,7 @@ import { createTask, saveDraft, loadDraft, clearDraft, isDraftEmpty } from '../s
 import { useProjectStore } from '../stores/project-store';
 import { buildBranchOptions } from '../lib/branch-utils';
 import { cn } from '../lib/utils';
-import type { TaskCategory, TaskPriority, TaskComplexity, TaskImpact, TaskMetadata, ImageAttachment, TaskDraft, ModelType, ThinkingLevel, ReferencedFile, GitBranchDetail, AgentProvider, CodexReasoningEffort } from '../../shared/types';
+import type { TaskCategory, TaskPriority, TaskComplexity, TaskImpact, TaskMetadata, ImageAttachment, TaskDraft, ModelType, ThinkingLevel, ReferencedFile, GitBranchDetail, AgentProvider, CodexReasoningEffort, ExecutionMode } from '../../shared/types';
 import type { PhaseModelConfig, PhaseThinkingConfig } from '../../shared/types/settings';
 import {
   DEFAULT_AGENT_PROFILES,
@@ -144,6 +144,7 @@ export function TaskCreationWizard({
 
   // Fast mode
   const [fastMode, setFastMode] = useState(false);
+  const [executionMode, setExecutionMode] = useState<ExecutionMode>('efficient');
 
   // Show Fast Mode toggle when any phase uses an Opus model
   const showFastModeToggle = useMemo(() => {
@@ -194,6 +195,7 @@ export function TaskCreationWizard({
         setReferencedFiles(draft.referencedFiles ?? []);
         setRequireReviewBeforeCoding(draft.requireReviewBeforeCoding ?? false);
         setFastMode(draft.fastMode ?? false);
+        setExecutionMode(draft.executionMode ?? 'efficient');
         setIsDraftRestored(true);
 
         if (draft.category || draft.priority || draft.complexity || draft.impact) {
@@ -221,6 +223,7 @@ export function TaskCreationWizard({
         setReferencedFiles([]);
         setRequireReviewBeforeCoding(false);
         setFastMode(false);
+        setExecutionMode('efficient');
         setBaseBranch(PROJECT_DEFAULT_BRANCH);
         setUseWorktree(true);
         setIsDraftRestored(false);
@@ -302,8 +305,9 @@ export function TaskCreationWizard({
     referencedFiles,
     requireReviewBeforeCoding,
     fastMode,
+    executionMode,
     savedAt: new Date()
-  }), [projectId, title, description, category, priority, complexity, impact, profileId, provider, codexProfileId, codexModel, codexReasoningEffort, model, thinkingLevel, phaseModels, phaseThinking, images, referencedFiles, requireReviewBeforeCoding, fastMode]);
+  }), [projectId, title, description, category, priority, complexity, impact, profileId, provider, codexProfileId, codexModel, codexReasoningEffort, model, thinkingLevel, phaseModels, phaseThinking, images, referencedFiles, requireReviewBeforeCoding, fastMode, executionMode]);
 
   /**
    * Detect @ mention being typed and show autocomplete
@@ -492,6 +496,7 @@ export function TaskCreationWizard({
       // This preserves gitignored files (.env, configs) by not switching to origin
       if (isSelectedBranchLocal) metadata.useLocalBranch = true;
       metadata.fastMode = fastMode;
+      metadata.executionMode = executionMode;
 
       const task = await createTask(projectId, title.trim(), description.trim(), metadata);
       if (task) {
@@ -528,6 +533,7 @@ export function TaskCreationWizard({
     setReferencedFiles([]);
     setRequireReviewBeforeCoding(false);
     setFastMode(false);
+    setExecutionMode('efficient');
     setBaseBranch(PROJECT_DEFAULT_BRANCH);
     setUseWorktree(true);
     setError(null);
@@ -724,6 +730,8 @@ export function TaskCreationWizard({
           fastMode={fastMode}
           onFastModeChange={setFastMode}
           showFastModeToggle={showFastModeToggle}
+          executionMode={executionMode}
+          onExecutionModeChange={setExecutionMode}
           disabled={isCreating}
           error={error}
           onError={setError}

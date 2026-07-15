@@ -7,10 +7,11 @@ Phases for implementation planning and final validation.
 
 from typing import TYPE_CHECKING
 
+from execution_budget import get_execution_budget
 from task_logger import LogEntryType, LogPhase
 
 from .. import writer
-from .models import MAX_RETRIES, PhaseResult
+from .models import PhaseResult
 
 if TYPE_CHECKING:
     pass
@@ -35,6 +36,7 @@ class PlanningPhaseMixin:
             self.ui.print_status("Plan exists but invalid, regenerating...", "warning")
 
         errors = []
+        budget = get_execution_budget(self.spec_dir)
 
         # Try Python script first (deterministic)
         self.ui.print_status("Trying planner.py (deterministic)...", "progress")
@@ -68,13 +70,21 @@ class PlanningPhaseMixin:
 
         # Fall back to agent
         self.ui.print_status("Falling back to planner agent...", "progress")
-        for attempt in range(MAX_RETRIES):
+        for attempt in range(budget.max_spec_attempts):
             self.ui.print_status(
                 f"Running planner agent (attempt {attempt + 1})...", "progress"
             )
 
             success, output = await self.run_agent_fn(
                 "planner.md",
+                additional_context=(
+                    f"\n## EXECUTION BUDGET\n\nCreate no more than "
+                    f"{budget.max_subtasks} vertical subtasks total. Group related "
+                    "file changes into one subtask and keep each subtask independently "
+                    "verifiable.\n"
+                    if budget.max_subtasks is not None
+                    else ""
+                ),
                 phase_name="planning",
             )
 
@@ -100,11 +110,12 @@ class PlanningPhaseMixin:
             else:
                 errors.append(f"Agent attempt {attempt + 1}: Did not create plan file")
 
-        return PhaseResult("planning", False, [], errors, MAX_RETRIES)
+        return PhaseResult("planning", False, [], errors, budget.max_spec_attempts)
 
     async def phase_validation(self) -> PhaseResult:
         """Final validation of all spec files with auto-fix retry."""
-        for attempt in range(MAX_RETRIES):
+        budget = get_execution_budget(self.spec_dir)
+        for attempt in range(budget.max_spec_attempts):
             results = self.spec_validator.validate_all()
             all_valid = all(r.valid for r in results)
 
@@ -122,10 +133,10 @@ class PlanningPhaseMixin:
                 return PhaseResult("validation", True, [], [], attempt)
 
             # If not valid, try to auto-fix with AI agent
-            if attempt < MAX_RETRIES - 1:
+            if attempt < budget.max_spec_attempts - 1:
                 print()
                 self.ui.print_status(
-                    f"Attempting auto-fix (attempt {attempt + 1}/{MAX_RETRIES - 1})...",
+                    f"Attempting auto-fix (attempt {attempt + 1}/{budget.max_spec_attempts - 1})...",
                     "progress",
                 )
 
@@ -172,4 +183,4 @@ Read the failed files, understand the errors, and fix them.
 
         # All retries exhausted
         errors = [f"{r.checkpoint}: {err}" for r in results for err in r.errors]
-        return PhaseResult("validation", False, [], errors, MAX_RETRIES)
+        return PhaseResult("validation", False, [], errors, budget.max_spec_attempts)
