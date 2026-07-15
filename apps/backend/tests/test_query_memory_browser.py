@@ -219,6 +219,8 @@ class TestArgparseRouting:
                 "abc-123",
                 "--kind",
                 "episodic",
+                "--project-dir",
+                "/proj",
             ],
             "delete-memory",
         )
@@ -229,6 +231,7 @@ class TestArgparseRouting:
         assert args.database == "memory.db"
         assert args.uuid == "abc-123"
         assert args.kind == "episodic"
+        assert args.project_dir == "/proj"
 
     def test_update_memory_routing(self, monkeypatch):
         """update-memory parses --uuid, --kind, --content and --name."""
@@ -246,6 +249,8 @@ class TestArgparseRouting:
                 "new summary",
                 "--name",
                 "new name",
+                "--project-dir",
+                "/proj",
             ],
             "update-memory",
         )
@@ -256,6 +261,7 @@ class TestArgparseRouting:
         assert args.kind == "entity"
         assert args.summary == "new summary"
         assert args.name == "new name"
+        assert args.project_dir == "/proj"
 
     def test_delete_memory_rejects_invalid_kind(self, monkeypatch):
         """argparse enforces the kind choices (episodic|entity)."""

@@ -67,11 +67,12 @@ export function MemoryEntryDetail({ projectId, entry, onClose }: MemoryEntryDeta
     setIsSaving(true);
     try {
       if (entity) {
-        await updateEntry(projectId, entry.id, kind, { name, summary: body });
+        const succeeded = await updateEntry(projectId, entry.id, kind, { name, summary: body });
+        if (succeeded) onClose();
       } else {
-        await updateEntry(projectId, entry.id, kind, { content: body });
+        const succeeded = await updateEntry(projectId, entry.id, kind, { content: body });
+        if (succeeded) onClose();
       }
-      onClose();
     } finally {
       setIsSaving(false);
     }
@@ -80,8 +81,8 @@ export function MemoryEntryDetail({ projectId, entry, onClose }: MemoryEntryDeta
   const handleDelete = async () => {
     setIsSaving(true);
     try {
-      await deleteEntry(projectId, entry.id, kind);
-      onClose();
+      const succeeded = await deleteEntry(projectId, entry.id, kind);
+      if (succeeded) onClose();
     } finally {
       setIsSaving(false);
     }

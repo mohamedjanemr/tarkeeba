@@ -218,8 +218,9 @@ export async function deleteEntry(
   projectId: string,
   uuid: string,
   kind: MemoryKind
-): Promise<void> {
+): Promise<boolean> {
   const store = useMemoryStore.getState();
+  let succeeded = false;
   store.setLoading(true);
   store.setError(null);
 
@@ -227,6 +228,7 @@ export async function deleteEntry(
     const result = await window.electronAPI.deleteMemoryEntry(projectId, uuid, kind);
     if (result.success && result.data) {
       store.setSelectedEntry(null);
+      succeeded = true;
     } else {
       store.setError(result.error || 'Failed to delete entry');
     }
@@ -236,6 +238,8 @@ export async function deleteEntry(
     store.setLoading(false);
   }
 
+  if (!succeeded) return false;
+
   // Refresh the affected list after the mutation completes.
   if (kind === 'entity') {
     await loadEntities(projectId);
@@ -243,6 +247,7 @@ export async function deleteEntry(
     await loadEpisodes(projectId);
     await loadTimeline(projectId);
   }
+  return true;
 }
 
 /**
@@ -253,8 +258,9 @@ export async function updateEntry(
   uuid: string,
   kind: MemoryKind,
   payload: MemoryUpdatePayload
-): Promise<void> {
+): Promise<boolean> {
   const store = useMemoryStore.getState();
+  let succeeded = false;
   store.setLoading(true);
   store.setError(null);
 
@@ -262,6 +268,7 @@ export async function updateEntry(
     const result = await window.electronAPI.updateMemoryEntry(projectId, uuid, kind, payload);
     if (result.success && result.data) {
       store.setSelectedEntry(null);
+      succeeded = true;
     } else {
       store.setError(result.error || 'Failed to update entry');
     }
@@ -271,6 +278,8 @@ export async function updateEntry(
     store.setLoading(false);
   }
 
+  if (!succeeded) return false;
+
   // Refresh the affected list after the mutation completes.
   if (kind === 'entity') {
     await loadEntities(projectId);
@@ -278,4 +287,5 @@ export async function updateEntry(
     await loadEpisodes(projectId);
     await loadTimeline(projectId);
   }
+  return true;
 }

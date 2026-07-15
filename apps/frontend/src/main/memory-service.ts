@@ -826,10 +826,12 @@ export class MemoryService {
   /**
    * Delete a single memory node (episodic or entity) by uuid.
    *
+   * @param projectDir Absolute project path used to enforce group isolation
    * @param uuid UUID of the node to delete
    * @param kind Node kind ('episodic' or 'entity')
    */
   async deleteEntry(
+    projectDir: string,
     uuid: string,
     kind: MemoryKind
   ): Promise<{ success: boolean; deleted?: boolean; id?: string; error?: string }> {
@@ -840,6 +842,8 @@ export class MemoryService {
       uuid,
       '--kind',
       kind,
+      '--project-dir',
+      projectDir,
     ]);
 
     if (!result.success) {
@@ -854,11 +858,13 @@ export class MemoryService {
   /**
    * Update a single memory node (episodic or entity) by uuid.
    *
+   * @param projectDir Absolute project path used to enforce group isolation
    * @param uuid UUID of the node to update
    * @param kind Node kind ('episodic' or 'entity')
    * @param payload Fields to update (content for episodic, summary for entity, optional name)
    */
   async updateEntry(
+    projectDir: string,
     uuid: string,
     kind: MemoryKind,
     payload: MemoryUpdatePayload
@@ -870,6 +876,8 @@ export class MemoryService {
       uuid,
       '--kind',
       kind,
+      '--project-dir',
+      projectDir,
     ];
 
     if (payload.content !== undefined) {

@@ -797,10 +797,15 @@ def cmd_delete_memory(args):
         return
 
     try:
+        group_id = resolve_group_id(args)
         # Parameterized, single-node match then DETACH DELETE to remove the node
         # together with any attached relationships.
-        query = f"MATCH (e:{label} {{uuid: $uuid}}) DETACH DELETE e"
-        conn.execute(query, parameters={"uuid": args.uuid})
+        scope_clause = " WHERE e.group_id = $group_id" if group_id else ""
+        query = f"MATCH (e:{label} {{uuid: $uuid}}){scope_clause} DETACH DELETE e"
+        parameters = {"uuid": args.uuid}
+        if group_id:
+            parameters["group_id"] = group_id
+        conn.execute(query, parameters=parameters)
         output_json(True, data={"deleted": True, "id": args.uuid})
 
     except Exception as e:
@@ -876,10 +881,15 @@ def cmd_update_memory(args):
         return
 
     try:
+        group_id = resolve_group_id(args)
+        if group_id:
+            parameters["group_id"] = group_id
         # Parameterized, single-node match then SET the targeted field(s), then
         # return the updated record so the caller can refresh its view.
+        scope_clause = "WHERE e.group_id = $group_id" if group_id else ""
         query = f"""
             MATCH (e:{label} {{uuid: $uuid}})
+            {scope_clause}
             SET {", ".join(set_parts)}
             RETURN e.uuid as uuid, e.name as name, e.created_at as created_at,
                    e.{value_field} as content
@@ -1080,6 +1090,7 @@ def main():
         choices=["episodic", "entity"],
         help="Node kind to delete (episodic or entity)",
     )
+    add_scope_args(delete_parser)
 
     # update-memory command (for editing memories from the Electron app)
     update_parser = subparsers.add_parser(
@@ -1106,6 +1117,7 @@ def main():
     update_parser.add_argument(
         "--name", default=None, help="Optional new name for the node"
     )
+    add_scope_args(update_parser)
 
     args = parser.parse_args()
 

@@ -311,18 +311,19 @@ describe('memory-store', () => {
       expect(mockBrowseMemoryEntities).not.toHaveBeenCalled();
     });
 
-    it('should set error on { success: false } but still refresh the list', async () => {
+    it('should preserve the error and skip refresh on failure', async () => {
       mockDeleteMemoryEntry.mockResolvedValue({ success: false });
       mockBrowseMemoryEntities.mockResolvedValue({ success: true, data: [] });
       useMemoryStore.getState().setSelectedEntry(sampleEntity);
 
-      await deleteEntry('project-1', 'entity-1', 'entity');
+      const succeeded = await deleteEntry('project-1', 'entity-1', 'entity');
 
       const state = useMemoryStore.getState();
       // Selection is not cleared on failure.
       expect(state.selectedEntry).toEqual(sampleEntity);
-      // The refresh clears the error via loadEntities, so verify the refresh ran.
-      expect(mockBrowseMemoryEntities).toHaveBeenCalledWith('project-1', undefined);
+      expect(state.error).toBe('Failed to delete entry');
+      expect(mockBrowseMemoryEntities).not.toHaveBeenCalled();
+      expect(succeeded).toBe(false);
     });
   });
 
@@ -359,10 +360,12 @@ describe('memory-store', () => {
       mockBrowseMemoryEntities.mockResolvedValue({ success: true, data: [] });
       useMemoryStore.getState().setSelectedEntry(sampleEntity);
 
-      await updateEntry('project-1', 'entity-1', 'entity', { name: 'Renamed' });
+      const succeeded = await updateEntry('project-1', 'entity-1', 'entity', { name: 'Renamed' });
 
       expect(useMemoryStore.getState().selectedEntry).toEqual(sampleEntity);
-      expect(mockBrowseMemoryEntities).toHaveBeenCalledWith('project-1', undefined);
+      expect(useMemoryStore.getState().error).toBe('update failed');
+      expect(mockBrowseMemoryEntities).not.toHaveBeenCalled();
+      expect(succeeded).toBe(false);
     });
   });
 });

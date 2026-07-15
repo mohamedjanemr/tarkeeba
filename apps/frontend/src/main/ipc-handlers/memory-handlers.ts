@@ -1069,7 +1069,7 @@ function registerMemoryBrowserHandlers(): void {
         if (!resolved) {
           return { success: false, error: 'Memory is not enabled for this project' };
         }
-        const result = await resolved.service.deleteEntry(uuid, kind);
+        const result = await resolved.service.deleteEntry(resolved.projectDir, uuid, kind);
         if (!result.success) {
           return { success: false, error: result.error || 'Failed to delete memory entry' };
         }
@@ -1098,7 +1098,12 @@ function registerMemoryBrowserHandlers(): void {
         if (!resolved) {
           return { success: false, error: 'Memory is not enabled for this project' };
         }
-        const result = await resolved.service.updateEntry(uuid, kind, payload);
+        const result = await resolved.service.updateEntry(
+          resolved.projectDir,
+          uuid,
+          kind,
+          payload
+        );
         if (!result.success) {
           return { success: false, error: result.error || 'Failed to update memory entry' };
         }
