@@ -1200,7 +1200,12 @@ async def run_autonomous_agent(
         # Run session with async context manager
         async with client:
             status, response, error_info = await run_agent_session(
-                client, prompt, spec_dir, verbose, phase=current_log_phase
+                client,
+                prompt,
+                spec_dir,
+                verbose,
+                phase=current_log_phase,
+                model=phase_model,
             )
 
         plan_validated = False

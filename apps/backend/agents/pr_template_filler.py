@@ -317,7 +317,7 @@ async def run_pr_template_filler(
     try:
         async with client:
             status, response, _ = await run_agent_session(
-                client, prompt, spec_dir, verbose, phase=LogPhase.CODING
+                client, prompt, spec_dir, verbose, phase=LogPhase.CODING, model=model
             )
 
         if task_logger:

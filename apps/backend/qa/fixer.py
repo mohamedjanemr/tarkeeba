@@ -9,6 +9,7 @@ Memory Integration:
 - Saves fix outcomes and learnings after session
 """
 
+import os
 from pathlib import Path
 
 # Memory integration for cross-session learning
@@ -27,6 +28,7 @@ from task_logger import (
     LogPhase,
     get_task_logger,
 )
+from task_logger.usage_capture import capture_usage_from_result
 
 from .criteria import get_qa_signoff_status
 
@@ -58,6 +60,7 @@ async def run_qa_fixer_session(
     fix_session: int,
     verbose: bool = False,
     project_dir: Path | None = None,
+    model: str = "default",
 ) -> tuple[str, str, dict]:
     """
     Run a QA fixer agent session.
@@ -68,6 +71,7 @@ async def run_qa_fixer_session(
         fix_session: Fix iteration number
         verbose: Whether to show detailed output
         project_dir: Project root directory (for memory context)
+        model: Model identifier used to create the client (for usage/cost tracking)
 
     Returns:
         (status, response_text, error_info) where:
@@ -271,6 +275,15 @@ async def run_qa_fixer_session(
                                 )
 
                         current_tool = None
+
+            # Handle ResultMessage (usage/cost reporting for the session)
+            elif msg_type == "ResultMessage":
+                capture_usage_from_result(
+                    msg,
+                    task_logger,
+                    model=model or "default",
+                    account=os.environ.get("CLAUDE_CONFIG_DIR"),
+                )
 
         print("\n" + "-" * 70 + "\n")
 

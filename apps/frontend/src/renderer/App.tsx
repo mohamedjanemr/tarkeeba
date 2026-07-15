@@ -35,6 +35,7 @@ import { AppSettingsDialog, type AppSection } from './components/settings/AppSet
 import type { ProjectSettingsSection } from './components/settings/ProjectSettingsContent';
 import { TerminalGrid } from './components/TerminalGrid';
 import { Roadmap } from './components/Roadmap';
+import { UsageCostDashboard } from './components/usage-cost/UsageCostDashboard';
 import { Context } from './components/Context';
 import { Ideation } from './components/Ideation';
 import { Insights } from './components/Insights';
@@ -48,6 +49,7 @@ import { Worktrees } from './components/Worktrees';
 import { AgentTools } from './components/AgentTools';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { RateLimitModal } from './components/RateLimitModal';
+import { CostWarningModal } from './components/usage-cost/CostWarningModal';
 import { SDKRateLimitModal } from './components/SDKRateLimitModal';
 import { AuthFailureModal } from './components/AuthFailureModal';
 import { VersionWarningModal } from './components/VersionWarningModal';
@@ -952,6 +954,9 @@ export function App() {
                 {activeView === 'worktrees' && (activeProjectId || selectedProjectId) && (
                   <Worktrees projectId={activeProjectId || selectedProjectId!} />
                 )}
+                {activeView === 'usage-cost' && (activeProjectId || selectedProjectId) && (
+                  <UsageCostDashboard projectId={activeProjectId || selectedProjectId!} />
+                )}
                 {activeView === 'agent-tools' && <AgentTools />}
               </>
             ) : (
@@ -1137,6 +1142,9 @@ export function App() {
 
         {/* SDK Rate Limit Modal - shows when SDK/CLI operations hit limits (changelog, tasks, etc.) */}
         <SDKRateLimitModal />
+
+        {/* Cost Warning Modal - shows when a task's predicted cost exceeds the configured threshold */}
+        <CostWarningModal />
 
         {/* Auth Failure Modal - shows when Claude CLI encounters 401/auth errors */}
         <AuthFailureModal onOpenSettings={() => {
