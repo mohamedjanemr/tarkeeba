@@ -23,8 +23,6 @@ import { getSettingsPath, readSettingsFile } from '../settings-utils';
 import { configureTools, getToolPath, getToolInfo, isPathFromWrongPlatform, preWarmToolCache } from '../cli-tool-manager';
 import { parseEnvFile } from './utils';
 
-const settingsPath = getSettingsPath();
-
 /**
  * Auto-detect the auto-claude source path relative to the app location.
  * Works across platforms (macOS, Windows, Linux) in both dev and production modes.
@@ -98,6 +96,11 @@ export function registerSettingsHandlers(
   agentManager: AgentManager,
   getMainWindow: () => BrowserWindow | null
 ): void {
+  // Resolve this only after the app bootstrap has configured Electron's
+  // userData path. Resolving it at module load time writes development
+  // settings to the installed app's default directory instead of Tarkeeba-Dev.
+  const settingsPath = getSettingsPath();
+
   // ============================================
   // Settings Operations
   // ============================================
