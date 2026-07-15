@@ -327,6 +327,9 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved }: TaskEditDi
         thinkingLevel={thinkingLevel}
         phaseModels={phaseModels}
         phaseThinking={phaseThinking}
+        configuredProfileId={settings.selectedAgentProfile}
+        configuredPhaseModels={settings.customPhaseModels}
+        configuredPhaseThinking={settings.customPhaseThinking}
         onProfileChange={(newProfileId, newModel, newThinkingLevel) => {
           setProfileId(newProfileId);
           setModel(newModel);

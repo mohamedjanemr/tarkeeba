@@ -71,6 +71,9 @@ interface TaskFormFieldsProps {
   thinkingLevel: ThinkingLevel | '';
   phaseModels?: PhaseModelConfig;
   phaseThinking?: PhaseThinkingConfig;
+  configuredProfileId?: string;
+  configuredPhaseModels?: PhaseModelConfig;
+  configuredPhaseThinking?: PhaseThinkingConfig;
   onProfileChange: (profileId: string, model: ModelType | '', thinkingLevel: ThinkingLevel | '') => void;
   onModelChange: (model: ModelType | '') => void;
   onThinkingLevelChange: (level: ThinkingLevel | '') => void;
@@ -150,6 +153,9 @@ export function TaskFormFields({
   thinkingLevel,
   phaseModels,
   phaseThinking,
+  configuredProfileId,
+  configuredPhaseModels,
+  configuredPhaseThinking,
   onProfileChange,
   onModelChange,
   onThinkingLevelChange,
@@ -611,6 +617,9 @@ export function TaskFormFields({
               thinkingLevel={thinkingLevel}
               phaseModels={phaseModels}
               phaseThinking={phaseThinking}
+              configuredProfileId={configuredProfileId}
+              configuredPhaseModels={configuredPhaseModels}
+              configuredPhaseThinking={configuredPhaseThinking}
               onProfileChange={onProfileChange}
               onModelChange={onModelChange}
               onThinkingLevelChange={onThinkingLevelChange}
