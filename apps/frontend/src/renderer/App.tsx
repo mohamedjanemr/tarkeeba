@@ -46,6 +46,7 @@ import { GitHubPRs } from './components/github-prs';
 import { GitLabMergeRequests } from './components/gitlab-merge-requests';
 import { Changelog } from './components/Changelog';
 import { Worktrees } from './components/Worktrees';
+import { Memory } from './components/Memory';
 import { AgentTools } from './components/AgentTools';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { RateLimitModal } from './components/RateLimitModal';
@@ -958,6 +959,11 @@ export function App() {
                   <UsageCostDashboard projectId={activeProjectId || selectedProjectId!} />
                 )}
                 {activeView === 'agent-tools' && <AgentTools />}
+                {activeView === 'memory' && (activeProjectId || selectedProjectId) && (
+                  <ErrorBoundary>
+                    <Memory projectId={activeProjectId || selectedProjectId!} />
+                  </ErrorBoundary>
+                )}
               </>
             ) : (
               <WelcomeScreen

@@ -22,7 +22,8 @@ import {
   Wrench,
   PanelLeft,
   PanelLeftClose,
-  DollarSign
+  DollarSign,
+  Brain
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { ScrollArea } from './ui/scroll-area';
@@ -59,7 +60,7 @@ import { RateLimitIndicator } from './RateLimitIndicator';
 import { UpdateBanner } from './UpdateBanner';
 import type { Project, GitStatus } from '../../shared/types';
 
-export type SidebarView = 'kanban' | 'terminals' | 'roadmap' | 'context' | 'ideation' | 'github-issues' | 'gitlab-issues' | 'github-prs' | 'gitlab-merge-requests' | 'changelog' | 'insights' | 'worktrees' | 'agent-tools' | 'usage-cost';
+export type SidebarView = 'kanban' | 'terminals' | 'roadmap' | 'context' | 'ideation' | 'github-issues' | 'gitlab-issues' | 'github-prs' | 'gitlab-merge-requests' | 'changelog' | 'insights' | 'worktrees' | 'agent-tools' | 'usage-cost' | 'memory';
 
 interface SidebarProps {
   onSettingsClick: () => void;
@@ -86,7 +87,8 @@ const baseNavItems: NavItem[] = [
   { id: 'context', labelKey: 'navigation:items.context', icon: BookOpen, shortcut: 'C' },
   { id: 'agent-tools', labelKey: 'navigation:items.agentTools', icon: Wrench, shortcut: 'M' },
   { id: 'worktrees', labelKey: 'navigation:items.worktrees', icon: GitBranch, shortcut: 'W' },
-  { id: 'usage-cost', labelKey: 'navigation:items.usageCost', icon: DollarSign }
+  { id: 'usage-cost', labelKey: 'navigation:items.usageCost', icon: DollarSign },
+  { id: 'memory', labelKey: 'navigation:items.memory', icon: Brain, shortcut: 'Y' }
 ];
 
 // GitHub nav items shown when GitHub is enabled
