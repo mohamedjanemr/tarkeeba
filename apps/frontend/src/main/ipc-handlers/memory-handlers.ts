@@ -21,6 +21,11 @@ import type {
   InfrastructureStatus,
   GraphitiValidationResult,
   GraphitiConnectionTestResult,
+  MemoryEntity,
+  MemoryRelationship,
+  MemoryTimelineEntry,
+  MemoryEpisode,
+  MemoryKind,
 } from '../../shared/types';
 import {
   getMemoryServiceStatus,
@@ -28,11 +33,18 @@ import {
   getDefaultDbPath,
   isKuzuAvailable,
 } from '../memory-service';
+import type { MemoryService, MemoryUpdatePayload } from '../memory-service';
 import { validateOpenAIApiKey } from '../api-validation-service';
 import { parsePythonCommand } from '../python-detector';
 import { getConfiguredPythonPath, pythonEnvManager } from '../python-env-manager';
 import { openTerminalWithCommand } from './claude-code-handlers';
 import { managedMemoryMcpBridge } from '../managed-memory-mcp-bridge';
+import { projectStore } from '../project-store';
+import {
+  loadProjectEnvVars,
+  isGraphitiEnabled,
+  getGraphitiDatabaseDetails,
+} from './context/utils';
 
 /**
  * Ollama Service Status
@@ -870,6 +882,215 @@ export function registerMemoryHandlers(): void {
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to pull model',
+        };
+      }
+    }
+  );
+
+  // ============================================
+  // Per-Project Memory Browser Handlers
+  // ============================================
+  registerMemoryBrowserHandlers();
+}
+
+/**
+ * Resolve the LadybugDB-backed MemoryService for a given project.
+ *
+ * Looks up the project in the main projectStore to get its real path, checks
+ * whether Graphiti/LadybugDB memory is enabled and available, then builds a
+ * MemoryService bound to the project's configured database.
+ *
+ * Returns `null` when the project is missing, memory is disabled, or the
+ * embedded database engine is unavailable so callers can return a friendly
+ * empty result instead of throwing.
+ */
+function resolveProjectMemory(
+  projectId: string
+): { service: MemoryService; projectDir: string } | null {
+  const project = projectStore.getProject(projectId);
+  if (!project) {
+    return null;
+  }
+
+  const projectEnvVars = loadProjectEnvVars(project.path, project.autoBuildPath);
+  if (!isGraphitiEnabled(projectEnvVars) || !isKuzuAvailable()) {
+    return null;
+  }
+
+  const dbDetails = getGraphitiDatabaseDetails(projectEnvVars);
+  const service = getMemoryService({
+    dbPath: dbDetails.dbPath || getDefaultDbPath(),
+    database: dbDetails.database,
+  });
+
+  return { service, projectDir: project.path };
+}
+
+/**
+ * Register the per-project memory browser IPC handlers.
+ *
+ * Each handler resolves the project's LadybugDB-backed MemoryService and calls
+ * the corresponding method. When memory is disabled or the database is missing,
+ * handlers return a friendly empty result rather than throwing.
+ */
+function registerMemoryBrowserHandlers(): void {
+  // Browse entities (knowledge-graph nodes) scoped to a project
+  ipcMain.handle(
+    IPC_CHANNELS.MEMORY_BROWSE_ENTITIES,
+    async (_, projectId: string, limit: number = 20): Promise<IPCResult<MemoryEntity[]>> => {
+      try {
+        const resolved = resolveProjectMemory(projectId);
+        if (!resolved) {
+          return { success: true, data: [] };
+        }
+        const data = await resolved.service.browseEntities(resolved.projectDir, limit);
+        return { success: true, data };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to browse entities',
+        };
+      }
+    }
+  );
+
+  // Browse episodic memories scoped to a project
+  ipcMain.handle(
+    IPC_CHANNELS.MEMORY_BROWSE_EPISODES,
+    async (_, projectId: string, limit: number = 20): Promise<IPCResult<MemoryTimelineEntry[]>> => {
+      try {
+        const resolved = resolveProjectMemory(projectId);
+        if (!resolved) {
+          return { success: true, data: [] };
+        }
+        const data = await resolved.service.browseEpisodes(resolved.projectDir, limit);
+        return { success: true, data };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to browse episodes',
+        };
+      }
+    }
+  );
+
+  // List entity-to-entity relationships scoped to a project
+  ipcMain.handle(
+    IPC_CHANNELS.MEMORY_RELATIONSHIPS,
+    async (_, projectId: string, limit: number = 20): Promise<IPCResult<MemoryRelationship[]>> => {
+      try {
+        const resolved = resolveProjectMemory(projectId);
+        if (!resolved) {
+          return { success: true, data: [] };
+        }
+        const data = await resolved.service.getRelationships(resolved.projectDir, limit);
+        return { success: true, data };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to get relationships',
+        };
+      }
+    }
+  );
+
+  // Keyword-search memories scoped to a project
+  ipcMain.handle(
+    IPC_CHANNELS.MEMORY_SEARCH,
+    async (
+      _,
+      projectId: string,
+      query: string,
+      limit: number = 20
+    ): Promise<IPCResult<MemoryEpisode[]>> => {
+      try {
+        const resolved = resolveProjectMemory(projectId);
+        if (!resolved || !query || !query.trim()) {
+          return { success: true, data: [] };
+        }
+        const data = await resolved.service.searchScoped(resolved.projectDir, query, limit);
+        return { success: true, data };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to search memories',
+        };
+      }
+    }
+  );
+
+  // Chronological insight timeline scoped to a project
+  ipcMain.handle(
+    IPC_CHANNELS.MEMORY_TIMELINE,
+    async (_, projectId: string, limit: number = 20): Promise<IPCResult<MemoryTimelineEntry[]>> => {
+      try {
+        const resolved = resolveProjectMemory(projectId);
+        if (!resolved) {
+          return { success: true, data: [] };
+        }
+        const data = await resolved.service.getTimeline(resolved.projectDir, limit);
+        return { success: true, data };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to get timeline',
+        };
+      }
+    }
+  );
+
+  // Delete a single memory node (episodic or entity)
+  ipcMain.handle(
+    IPC_CHANNELS.MEMORY_DELETE_ENTRY,
+    async (
+      _,
+      projectId: string,
+      uuid: string,
+      kind: MemoryKind
+    ): Promise<IPCResult<{ deleted?: boolean; id?: string }>> => {
+      try {
+        const resolved = resolveProjectMemory(projectId);
+        if (!resolved) {
+          return { success: false, error: 'Memory is not enabled for this project' };
+        }
+        const result = await resolved.service.deleteEntry(uuid, kind);
+        if (!result.success) {
+          return { success: false, error: result.error || 'Failed to delete memory entry' };
+        }
+        return { success: true, data: { deleted: result.deleted, id: result.id } };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to delete memory entry',
+        };
+      }
+    }
+  );
+
+  // Update a single memory node (episodic or entity)
+  ipcMain.handle(
+    IPC_CHANNELS.MEMORY_UPDATE_ENTRY,
+    async (
+      _,
+      projectId: string,
+      uuid: string,
+      kind: MemoryKind,
+      payload: MemoryUpdatePayload
+    ): Promise<IPCResult<{ record?: MemoryEpisode }>> => {
+      try {
+        const resolved = resolveProjectMemory(projectId);
+        if (!resolved) {
+          return { success: false, error: 'Memory is not enabled for this project' };
+        }
+        const result = await resolved.service.updateEntry(uuid, kind, payload);
+        if (!result.success) {
+          return { success: false, error: result.error || 'Failed to update memory entry' };
+        }
+        return { success: true, data: { record: result.record } };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to update memory entry',
         };
       }
     }
