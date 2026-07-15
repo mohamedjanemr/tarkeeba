@@ -147,6 +147,12 @@ import type {
   GitLabNewCommitsCheck
 } from './integrations';
 import type { APIProfile, ProfilesFile, TestConnectionResult, DiscoverModelsResult } from './profile';
+import type {
+  MemoryEntity,
+  MemoryRelationship,
+  MemoryTimelineEntry,
+  MemoryKind
+} from './memory';
 
 // ============================================
 // Branch Types
@@ -463,6 +469,37 @@ export interface ElectronAPI {
   getMemoryStatus: (projectId: string) => Promise<IPCResult<GraphitiMemoryStatus>>;
   searchMemories: (projectId: string, query: string) => Promise<IPCResult<ContextSearchResult[]>>;
   getRecentMemories: (projectId: string, limit?: number) => Promise<IPCResult<MemoryEpisode[]>>;
+
+  // Memory Browser operations (per-project insight timeline)
+  browseMemoryEntities: (projectId: string, limit?: number) => Promise<IPCResult<MemoryEntity[]>>;
+  browseMemoryEpisodes: (
+    projectId: string,
+    limit?: number
+  ) => Promise<IPCResult<MemoryTimelineEntry[]>>;
+  getMemoryRelationships: (
+    projectId: string,
+    limit?: number
+  ) => Promise<IPCResult<MemoryRelationship[]>>;
+  searchMemory: (
+    projectId: string,
+    query: string,
+    limit?: number
+  ) => Promise<IPCResult<MemoryEpisode[]>>;
+  getMemoryTimeline: (
+    projectId: string,
+    limit?: number
+  ) => Promise<IPCResult<MemoryTimelineEntry[]>>;
+  deleteMemoryEntry: (
+    projectId: string,
+    uuid: string,
+    kind: MemoryKind
+  ) => Promise<IPCResult<{ deleted?: boolean; id?: string }>>;
+  updateMemoryEntry: (
+    projectId: string,
+    uuid: string,
+    kind: MemoryKind,
+    payload: { content?: string; summary?: string; name?: string }
+  ) => Promise<IPCResult<{ record?: MemoryEpisode }>>;
 
   // Environment configuration operations
   getProjectEnv: (projectId: string) => Promise<IPCResult<ProjectEnvConfig>>;

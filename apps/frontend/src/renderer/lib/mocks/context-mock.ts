@@ -36,5 +36,41 @@ export const contextMock = {
   getRecentMemories: async () => ({
     success: true,
     data: []
+  }),
+
+  // Memory Browser (per-project insight timeline)
+  browseMemoryEntities: async () => ({
+    success: true,
+    data: []
+  }),
+
+  browseMemoryEpisodes: async () => ({
+    success: true,
+    data: []
+  }),
+
+  getMemoryRelationships: async () => ({
+    success: true,
+    data: []
+  }),
+
+  searchMemory: async () => ({
+    success: true,
+    data: []
+  }),
+
+  getMemoryTimeline: async () => ({
+    success: true,
+    data: []
+  }),
+
+  deleteMemoryEntry: async () => ({
+    success: true,
+    data: { deleted: false }
+  }),
+
+  updateMemoryEntry: async () => ({
+    success: true,
+    data: {}
   })
 };
