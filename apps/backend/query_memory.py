@@ -813,6 +813,114 @@ def cmd_delete_memory(args):
             output_error(f"Delete failed: {e}")
 
 
+def cmd_update_memory(args):
+    """
+    Update a single memory node (episodic or entity) by uuid.
+
+    For episodic nodes the new value targets the ``content`` field; for entity
+    nodes it targets the ``summary`` field. An optional ``--name`` updates the
+    node name for either kind. Uses a parameterized, single-node MATCH then SET
+    following the conventions in security/database_validators.py.
+
+    Args:
+        args.db_path: Path to database directory
+        args.database: Database name
+        args.uuid: UUID of the node to update
+        args.kind: Node kind ("episodic" or "entity")
+        args.content: New content (episodic only)
+        args.summary: New summary (entity only)
+        args.name: Optional new name
+
+    Returns the updated record {id, name, type, timestamp, content}. Guards
+    against missing databases and tables, always reporting JSON rather than
+    crashing.
+    """
+    if not apply_monkeypatch():
+        output_error("Neither kuzu nor LadybugDB is installed")
+        return
+
+    kind = (args.kind or "").lower()
+    label = {"episodic": "Episodic", "entity": "Entity"}.get(kind)
+    if not label:
+        output_error(f"Invalid --kind '{args.kind}' (expected 'episodic' or 'entity')")
+        return
+
+    # Resolve the value field for this kind and build a parameterized SET clause.
+    value_field = "content" if kind == "episodic" else "summary"
+    new_value = getattr(args, value_field, None)
+
+    set_parts = []
+    parameters = {"uuid": args.uuid}
+    if new_value is not None:
+        set_parts.append(f"e.{value_field} = ${value_field}")
+        parameters[value_field] = new_value
+    if getattr(args, "name", None) is not None:
+        set_parts.append("e.name = $name")
+        parameters["name"] = args.name
+
+    if not set_parts:
+        output_error(
+            "Nothing to update (provide --content/--summary or --name)"
+        )
+        return
+
+    # Missing database → nothing to update, but not an error
+    full_path = Path(args.db_path) / args.database
+    if not full_path.exists():
+        output_json(True, data={"updated": False, "id": args.uuid})
+        return
+
+    conn, error = get_db_connection(args.db_path, args.database)
+    if not conn:
+        output_error(error or "Failed to connect to database")
+        return
+
+    try:
+        # Parameterized, single-node match then SET the targeted field(s), then
+        # return the updated record so the caller can refresh its view.
+        query = f"""
+            MATCH (e:{label} {{uuid: $uuid}})
+            SET {", ".join(set_parts)}
+            RETURN e.uuid as uuid, e.name as name, e.created_at as created_at,
+                   e.{value_field} as content
+        """
+        result = conn.execute(query, parameters=parameters)
+
+        row = result.get_next() if result.has_next() else None
+        if row is None:
+            # No node matched the uuid → nothing updated
+            output_json(True, data={"updated": False, "id": args.uuid})
+            return
+
+        # Row order: uuid, name, created_at, content
+        uuid_val = serialize_value(row[0]) if len(row) > 0 else None
+        name_val = serialize_value(row[1]) if len(row) > 1 else ""
+        created_at_val = serialize_value(row[2]) if len(row) > 2 else None
+        content_val = serialize_value(row[3]) if len(row) > 3 else ""
+
+        record = {
+            "id": uuid_val or args.uuid,
+            "name": name_val or "",
+            "type": (
+                infer_episode_type(name_val or "", content_val or "")
+                if kind == "episodic"
+                else infer_entity_type(name_val or "")
+            ),
+            "timestamp": created_at_val or datetime.now().isoformat(),
+            "content": content_val or "",
+        }
+        output_json(True, data={"updated": True, "record": record})
+
+    except Exception as e:
+        # Table might not exist yet → treat as nothing to update
+        if label in str(e) and (
+            "not exist" in str(e).lower() or "cannot" in str(e).lower()
+        ):
+            output_json(True, data={"updated": False, "id": args.uuid})
+        else:
+            output_error(f"Update failed: {e}")
+
+
 def infer_episode_type(name: str, content: str = "") -> str:
     """Infer the episode type from its name and content."""
     name_lower = (name or "").lower()
@@ -973,6 +1081,32 @@ def main():
         help="Node kind to delete (episodic or entity)",
     )
 
+    # update-memory command (for editing memories from the Electron app)
+    update_parser = subparsers.add_parser(
+        "update-memory",
+        help="Update a memory node (episodic or entity) by uuid",
+    )
+    update_parser.add_argument("db_path", help="Path to database directory")
+    update_parser.add_argument("database", help="Database name")
+    update_parser.add_argument(
+        "--uuid", required=True, help="UUID of the node to update"
+    )
+    update_parser.add_argument(
+        "--kind",
+        required=True,
+        choices=["episodic", "entity"],
+        help="Node kind to update (episodic or entity)",
+    )
+    update_parser.add_argument(
+        "--content", default=None, help="New content (episodic nodes)"
+    )
+    update_parser.add_argument(
+        "--summary", default=None, help="New summary (entity nodes)"
+    )
+    update_parser.add_argument(
+        "--name", default=None, help="Optional new name for the node"
+    )
+
     args = parser.parse_args()
 
     if not args.command:
@@ -990,6 +1124,7 @@ def main():
         "get-relationships": cmd_get_relationships,
         "add-episode": cmd_add_episode,
         "delete-memory": cmd_delete_memory,
+        "update-memory": cmd_update_memory,
     }
 
     handler = commands.get(args.command)
