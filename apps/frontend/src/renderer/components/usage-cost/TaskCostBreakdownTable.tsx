@@ -10,34 +10,8 @@ import { Table as TableIcon } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { useUsageCostStore } from '../../stores/usage-cost-store';
-import { formatCurrency } from './CostSummaryCards';
+import { formatCurrency, formatTokens, getProviderLabelFromModel, getProviderBadgeVariant } from './format';
 import type { UsageEntry, UsageTotals } from '../../../preload/api/modules/usage-cost-api';
-
-/** Formats a token count with locale-aware compact notation (e.g. 12.4K, 1.2M). */
-export function formatTokens(value: number): string {
-  return new Intl.NumberFormat(undefined, {
-    notation: 'compact',
-    compactDisplay: 'short',
-    maximumFractionDigits: 1
-  }).format(value);
-}
-
-/**
- * Best-effort provider label derived from the model identifier recorded on each usage entry.
- * There is no explicit provider field on UsageEntry, so this mirrors the naming conventions
- * used across the app's model pickers/config (e.g. "claude-*" -> Anthropic, "gpt-*"/"*codex*" -> OpenAI,
- * "glm-*" -> Z.ai/Zhipu).
- */
-export function getProviderLabel(model: string): string {
-  const normalized = model.toLowerCase();
-  if (normalized.includes('claude')) return 'Anthropic';
-  if (normalized.includes('gpt') || normalized.includes('codex') || normalized.startsWith('o1') || normalized.startsWith('o3')) {
-    return 'OpenAI';
-  }
-  if (normalized.includes('glm') || normalized.includes('zhipu')) return 'Z.ai';
-  if (normalized.includes('gemini')) return 'Google';
-  return 'Other';
-}
 
 interface BreakdownRow extends UsageTotals {
   account: string;
@@ -54,7 +28,7 @@ function groupByAccountAndProvider(entries: UsageEntry[]): BreakdownRow[] {
 
   for (const entry of entries) {
     const account = entry.account || 'unknown';
-    const provider = getProviderLabel(entry.model || '');
+    const provider = getProviderLabelFromModel(entry.model || '');
     const key = `${account}::${provider}`;
 
     const existing = groups.get(key) ?? { account, provider, ...emptyTotals() };
@@ -65,21 +39,6 @@ function groupByAccountAndProvider(entries: UsageEntry[]): BreakdownRow[] {
   }
 
   return Array.from(groups.values()).sort((a, b) => b.cost_usd - a.cost_usd);
-}
-
-export function getProviderBadgeVariant(provider: string): 'default' | 'info' | 'purple' | 'success' | 'muted' {
-  switch (provider) {
-    case 'Anthropic':
-      return 'info';
-    case 'OpenAI':
-      return 'purple';
-    case 'Z.ai':
-      return 'success';
-    case 'Google':
-      return 'default';
-    default:
-      return 'muted';
-  }
 }
 
 /**

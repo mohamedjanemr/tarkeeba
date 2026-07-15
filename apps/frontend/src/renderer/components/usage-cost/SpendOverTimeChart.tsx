@@ -13,7 +13,7 @@ import type { TooltipProps } from 'recharts';
 import { LineChart as LineChartIcon } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
 import { useUsageCostStore } from '../../stores/usage-cost-store';
-import { formatCurrency } from './CostSummaryCards';
+import { formatCurrency } from './format';
 
 interface SpendPoint {
   date: string;

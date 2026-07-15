@@ -17,7 +17,7 @@ import {
   DialogTitle
 } from '../ui/dialog';
 import { Button } from '../ui/button';
-import { formatCurrency } from './CostSummaryCards';
+import { formatCurrency } from './format';
 import type { CostWarningRequiredPayload } from '../../../preload/api/modules/usage-cost-api';
 import { debugError } from '../../../shared/utils/debug-logger';
 

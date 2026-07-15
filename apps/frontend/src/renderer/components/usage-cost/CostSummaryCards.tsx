@@ -4,32 +4,7 @@ import { DollarSign, Coins, Activity } from 'lucide-react';
 import { Card, CardContent } from '../ui/card';
 import { cn } from '../../lib/utils';
 import { useUsageCostStore } from '../../stores/usage-cost-store';
-
-/**
- * Formats a USD amount for display (e.g. $12.34, $0.0032 for very small amounts).
- */
-export function formatCurrency(value: number): string {
-  if (value > 0 && value < 0.01) {
-    return `$${value.toFixed(4)}`;
-  }
-  return new Intl.NumberFormat(undefined, {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }).format(value);
-}
-
-/**
- * Formats a token count with locale-aware compact notation (e.g. 12.4K, 1.2M).
- */
-function formatTokens(value: number): string {
-  return new Intl.NumberFormat(undefined, {
-    notation: 'compact',
-    compactDisplay: 'short',
-    maximumFractionDigits: 1
-  }).format(value);
-}
+import { formatCurrency, formatTokens } from './format';
 
 interface StatCardProps {
   icon: React.ReactNode;

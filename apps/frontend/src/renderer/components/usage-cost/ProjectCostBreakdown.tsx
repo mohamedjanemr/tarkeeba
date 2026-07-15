@@ -13,8 +13,7 @@ import { Users, Layers } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { useUsageCostStore } from '../../stores/usage-cost-store';
-import { formatCurrency } from './CostSummaryCards';
-import { formatTokens, getProviderLabel, getProviderBadgeVariant } from './TaskCostBreakdownTable';
+import { formatCurrency, formatTokens, getProviderLabelFromModel, getProviderBadgeVariant } from './format';
 import type { UsageBreakdown, UsageTotals } from '../../../preload/api/modules/usage-cost-api';
 
 interface BreakdownEntry {
@@ -39,7 +38,7 @@ function groupByProvider(byModel: UsageBreakdown | undefined): BreakdownEntry[] 
   const grouped = new Map<string, UsageTotals>();
 
   for (const [model, totals] of Object.entries(byModel)) {
-    const provider = getProviderLabel(model);
+    const provider = getProviderLabelFromModel(model);
     const existing = grouped.get(provider) ?? { input_tokens: 0, output_tokens: 0, cost_usd: 0 };
     existing.input_tokens += totals.input_tokens || 0;
     existing.output_tokens += totals.output_tokens || 0;
