@@ -1,0 +1,208 @@
+{
+  "title": "Azure DevOps Work Items",
+  "states": {
+    "opened": "Active",
+    "closed": "Closed"
+  },
+  "complexity": {
+    "simple": "Simple",
+    "standard": "Standard",
+    "complex": "Complex"
+  },
+  "header": {
+    "open": "active",
+    "searchPlaceholder": "Search work items..."
+  },
+  "filters": {
+    "opened": "Active",
+    "closed": "Closed",
+    "all": "All"
+  },
+  "empty": {
+    "noMatch": "No work items match your search",
+    "selectIssue": "Select a work item to view details"
+  },
+  "notConnected": {
+    "title": "Azure DevOps Not Connected",
+    "description": "Configure your Azure DevOps Personal Access Token (PAT) and project in project settings to sync work items.",
+    "openSettings": "Open Settings"
+  },
+  "detail": {
+    "notes": "comments",
+    "viewTask": "View Task",
+    "createTask": "Create Task",
+    "taskLinked": "Task Linked",
+    "taskId": "Task ID",
+    "description": "Description",
+    "noDescription": "No description provided.",
+    "assignees": "Assigned To",
+    "milestone": "Iteration"
+  },
+  "investigation": {
+    "title": "Create Task from Work Item",
+    "issuePrefix": "Work Item",
+    "description": "Create a task from this Azure DevOps work item. The task will be added to your Kanban board in the Backlog column.",
+    "selectNotes": "Select Comments to Include",
+    "deselectAll": "Deselect All",
+    "selectAll": "Select All",
+    "willInclude": "The task will include:",
+    "includeTitle": "Work item title and description",
+    "includeLink": "Link back to the Azure DevOps work item",
+    "includeLabels": "Tags and metadata from the work item",
+    "noNotes": "No comments (this work item has no comments)",
+    "failedToLoadNotes": "Failed to load comments",
+    "taskCreated": "Task created! View it in your Kanban board.",
+    "creating": "Creating...",
+    "cancel": "Cancel",
+    "done": "Done",
+    "close": "Close"
+  },
+  "settings": {
+    "enableIssues": "Enable Azure DevOps Work Items",
+    "enableIssuesDescription": "Sync work items from Azure DevOps and create tasks automatically",
+    "instance": "Azure DevOps Organization",
+    "instanceDescription": "Enter your organization URL (e.g., https://dev.azure.com/your-org)",
+    "connectedVia": "Connected via Personal Access Token (PAT)",
+    "authenticatedAs": "Authenticated as",
+    "useDifferentToken": "Use Different Token",
+    "authentication": "Azure DevOps Authentication",
+    "useManualToken": "Use Manual Token",
+    "authenticating": "Authenticating with Azure DevOps...",
+    "browserWindow": "A browser window should open for you to log in.",
+    "personalAccessToken": "Personal Access Token (PAT)",
+    "useOAuth": "Use OAuth Instead",
+    "tokenScope": "Create a token with",
+    "scopeApi": "work_write, code_read",
+    "scopeFrom": "scope from",
+    "gitlabSettings": "Azure DevOps Settings",
+    "project": "Project",
+    "enterManually": "Enter Manually",
+    "loadingProjects": "Loading projects...",
+    "selectProject": "Select a project...",
+    "searchProjects": "Search projects...",
+    "noMatchingProjects": "No matching projects",
+    "noProjectsFound": "No projects found",
+    "selected": "Selected",
+    "projectFormat": "Format:",
+    "projectFormatExample": "(e.g., MyOrganization/MyProject)",
+    "connectionStatus": "Connection Status",
+    "checking": "Checking...",
+    "connectedTo": "Connected to",
+    "notConnected": "Not connected",
+    "issuesAvailable": "Work Items Available",
+    "issuesAvailableDescription": "Access Azure DevOps Work Items from the sidebar to view, investigate, and create tasks from work items.",
+    "defaultBranch": "Default Branch",
+    "defaultBranchDescription": "Base branch for creating task worktrees",
+    "loadingBranches": "Loading branches...",
+    "autoDetect": "Auto-detect (main/master)",
+    "searchBranches": "Search branches...",
+    "noMatchingBranches": "No matching branches",
+    "noBranchesFound": "No branches found",
+    "branchFromNote": "All new tasks will branch from",
+    "autoSyncOnLoad": "Auto-Sync on Load",
+    "autoSyncDescription": "Automatically fetch work items when the project loads",
+    "cli": {
+      "required": "Azure CLI Required",
+      "notInstalled": "The Azure CLI is required for OAuth authentication. Install it to use the 'Use OAuth' option.",
+      "installButton": "Install Azure CLI",
+      "installing": "Installing...",
+      "installSuccess": "Installation started in your terminal. Complete it and click Refresh.",
+      "refresh": "Refresh",
+      "learnMore": "Learn more",
+      "installed": "Azure CLI installed:"
+    }
+  },
+  "mergeRequests": {
+    "title": "Azure DevOps Pull Requests",
+    "newMR": "New Pull Request",
+    "selectMR": "Select a pull request to view details",
+    "states": {
+      "opened": "Active",
+      "closed": "Abandoned",
+      "merged": "Completed",
+      "locked": "Draft"
+    },
+    "filters": {
+      "opened": "Active",
+      "closed": "Abandoned",
+      "merged": "Completed",
+      "all": "All"
+    }
+  },
+  "mrReview": {
+    "runReview": "Run AI Review",
+    "reviewing": "Reviewing...",
+    "followupReview": "Follow-up Review",
+    "newCommits": "new commit",
+    "newCommitsPlural": "new commits",
+    "cancel": "Cancel",
+    "postFindings": "Post Findings",
+    "posting": "Posting...",
+    "postedTo": "Posted to Azure DevOps",
+    "approve": "Approve",
+    "approving": "Approving...",
+    "merge": "Complete PR",
+    "merging": "Completing...",
+    "aiReviewResult": "AI Review Result",
+    "followupReviewResult": "Follow-up Review",
+    "description": "Description",
+    "noDescription": "No description provided.",
+    "labels": "Labels",
+    "status": {
+      "notReviewed": "Not Reviewed",
+      "notReviewedDesc": "Run an AI review to analyze this PR",
+      "reviewComplete": "Review Complete",
+      "reviewCompleteDesc": "finding(s) found. Select and post to Azure DevOps.",
+      "waitingForChanges": "Waiting for Changes",
+      "waitingForChangesDesc": "finding(s) posted. Waiting for contributor to address issues.",
+      "readyToMerge": "Ready to Complete",
+      "readyToMergeDesc": "No blocking issues found. This PR can be completed.",
+      "needsAttention": "Needs Attention",
+      "needsAttentionDesc": "finding(s) need to be posted to Azure DevOps.",
+      "readyForFollowup": "Ready for Follow-up",
+      "readyForFollowupDesc": "since review. Run follow-up to check if issues are resolved.",
+      "blockingIssues": "Blocking Issues",
+      "blockingIssuesDesc": "blocking issue(s) still open."
+    },
+    "overallStatus": {
+      "approve": "Approve",
+      "requestChanges": "Changes Requested",
+      "comment": "Comment"
+    },
+    "resolution": {
+      "resolved": "resolved",
+      "stillOpen": "still open",
+      "newIssue": "new issue",
+      "newIssues": "new issues"
+    }
+  },
+  "findings": {
+    "summary": "selected",
+    "selectCriticalHigh": "Select Blocker/Required",
+    "selectAll": "Select All",
+    "clear": "Clear",
+    "noIssues": "No issues found! The code looks good.",
+    "suggestedFix": "Suggested fix:",
+    "posted": "Posted",
+    "severity": {
+      "critical": "Blocker",
+      "criticalDesc": "Must fix",
+      "high": "Required",
+      "highDesc": "Should fix",
+      "medium": "Recommended",
+      "mediumDesc": "Improve quality",
+      "low": "Suggestion",
+      "lowDesc": "Consider"
+    },
+    "category": {
+      "security": "Security",
+      "quality": "Quality",
+      "style": "Style",
+      "test": "Test",
+      "docs": "Documentation",
+      "pattern": "Pattern",
+      "performance": "Performance",
+      "logic": "Logic"
+    }
+  }
+}
