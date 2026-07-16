@@ -9,6 +9,34 @@ implementation_plan.json without changing status semantics.
 from typing import Any
 
 
+def normalize_plan_summary(plan: dict[str, Any]) -> bool:
+    """Synchronize display-only summary counts with executable plan arrays."""
+
+    phases = plan.get("phases", [])
+    if not isinstance(phases, list):
+        phases = []
+
+    total_phases = len(phases)
+    total_subtasks = sum(
+        len(phase.get("subtasks", []))
+        for phase in phases
+        if isinstance(phase, dict) and isinstance(phase.get("subtasks", []), list)
+    )
+
+    summary = plan.get("summary")
+    if not isinstance(summary, dict):
+        return False
+
+    changed = False
+    if summary.get("total_phases") != total_phases:
+        summary["total_phases"] = total_phases
+        changed = True
+    if summary.get("total_subtasks") != total_subtasks:
+        summary["total_subtasks"] = total_subtasks
+        changed = True
+    return changed
+
+
 def normalize_subtask_aliases(subtask: dict[str, Any]) -> tuple[dict[str, Any], bool]:
     """Normalize common subtask field aliases.
 

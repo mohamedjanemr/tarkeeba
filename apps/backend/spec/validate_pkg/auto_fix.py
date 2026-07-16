@@ -11,7 +11,7 @@ import re
 from pathlib import Path
 
 from core.file_utils import write_json_atomic
-from core.plan_normalization import normalize_subtask_aliases
+from core.plan_normalization import normalize_plan_summary, normalize_subtask_aliases
 
 
 def _repair_json_syntax(content: str) -> str | None:
@@ -277,6 +277,9 @@ def auto_fix_plan(spec_dir: Path) -> bool:
                 if subtask.get("status") != normalized_status:
                     subtask["status"] = normalized_status
                     fixed = True
+
+    if normalize_plan_summary(plan):
+        fixed = True
 
     if fixed or json_repaired:
         try:

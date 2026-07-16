@@ -11,6 +11,7 @@ Memory Integration:
 """
 
 import os
+import time
 from pathlib import Path
 
 # Memory integration for cross-session learning
@@ -93,7 +94,12 @@ async def run_qa_agent_session(
 
     # Load QA prompt with dynamically-injected project-specific MCP tools
     # This includes Electron validation for Electron apps, Puppeteer for web, etc.
+    context_started = time.perf_counter()
     prompt = get_qa_reviewer_prompt(spec_dir, project_dir)
+    if task_logger:
+        task_logger.record_timing(
+            "context_build", time.perf_counter() - context_started
+        )
     debug_detailed(
         "qa_reviewer",
         "Loaded QA reviewer prompt with project-specific tools",
@@ -102,6 +108,7 @@ async def run_qa_agent_session(
     )
 
     # Retrieve memory context for QA (past patterns, gotchas, validation insights)
+    graphiti_started = time.perf_counter()
     qa_memory_context = await get_graphiti_context(
         spec_dir,
         project_dir,
@@ -110,12 +117,17 @@ async def run_qa_agent_session(
             "id": f"qa_reviewer_{qa_session}",
         },
     )
+    if task_logger:
+        task_logger.record_timing(
+            "graphiti_retrieval", time.perf_counter() - graphiti_started
+        )
     if qa_memory_context:
         prompt += "\n\n" + qa_memory_context
         print("✓ Memory context loaded for QA reviewer")
         debug_success("qa_reviewer", "Graphiti memory context loaded for QA")
 
     # Add session context
+    context_started = time.perf_counter()
     prompt += f"\n\n---\n\n**QA Session**: {qa_session}\n"
     prompt += f"**Max Iterations**: {max_iterations}\n"
 
@@ -194,6 +206,10 @@ This is attempt {previous_error.get("consecutive_errors", 1) + 1}. If you fail t
 """
         print(
             f"\n⚠️  Retry with self-correction context (attempt {previous_error.get('consecutive_errors', 1) + 1})"
+        )
+    if task_logger:
+        task_logger.record_timing(
+            "context_build", time.perf_counter() - context_started
         )
 
     try:

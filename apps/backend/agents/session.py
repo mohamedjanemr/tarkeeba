@@ -8,6 +8,8 @@ memory updates, recovery tracking, and Linear integration.
 
 import logging
 import os
+import re
+import time
 from pathlib import Path
 
 from claude_agent_sdk import ClaudeSDKClient
@@ -54,6 +56,25 @@ from .utils import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _classify_bash_timings(command: str) -> tuple[str, ...]:
+    """Classify shell segments without mistaking search text for execution."""
+    categories: set[str] = set()
+    verification_patterns = (
+        r"^(?:pytest|py\.test)\b",
+        r"^(?:npm|pnpm|yarn|bun)\s+(?:run\s+)?(?:test|typecheck|lint|build|check)\b",
+        r"^(?:npx|bunx)\s+(?:tsc|vitest|eslint)\b",
+        r"^(?:cargo|go)\s+test\b",
+        r"^python(?:3)?\s+-m\s+(?:pytest|compileall|py_compile)\b",
+    )
+    for segment in re.split(r"\s*(?:&&|\|\||;|\|)\s*", command):
+        segment = segment.strip()
+        if re.match(r"^git\s+commit\b", segment):
+            categories.add("commit")
+        if any(re.match(pattern, segment) for pattern in verification_patterns):
+            categories.add("verification")
+    return tuple(sorted(categories))
 
 
 def _execute_recovery_action(
@@ -143,8 +164,14 @@ async def post_session_processing(
     subtask_status = subtask.get("status", "pending")
 
     # Check for new commits
+    commit_tracking_started = time.perf_counter()
     commit_after = get_latest_commit(project_dir)
     commit_count_after = get_commit_count(project_dir)
+    task_logger = get_task_logger(spec_dir)
+    if task_logger:
+        task_logger.record_timing(
+            "commit_tracking", time.perf_counter() - commit_tracking_started
+        )
     new_commits = commit_count_after - commit_count_before
 
     print_key_value("Subtask status", subtask_status)
@@ -189,6 +216,7 @@ async def post_session_processing(
             print_status("Linear progress recorded", "success")
 
         # Extract rich insights from session (LLM-powered analysis)
+        insight_started = time.perf_counter()
         try:
             extracted_insights = await extract_session_insights(
                 spec_dir=spec_dir,
@@ -210,8 +238,14 @@ async def post_session_processing(
         except Exception as e:
             logger.warning(f"Insight extraction failed: {e}")
             extracted_insights = None
+        finally:
+            if task_logger:
+                task_logger.record_timing(
+                    "insight_extraction", time.perf_counter() - insight_started
+                )
 
         # Save session memory (Graphiti=primary, file-based=fallback)
+        memory_started = time.perf_counter()
         try:
             save_success, storage_type = await save_session_memory(
                 spec_dir=spec_dir,
@@ -234,6 +268,11 @@ async def post_session_processing(
         except Exception as e:
             logger.warning(f"Error saving session memory: {e}")
             print_status("Memory save failed", "warning")
+        finally:
+            if task_logger:
+                task_logger.record_timing(
+                    "memory_save", time.perf_counter() - memory_started
+                )
 
         return True
 
@@ -338,6 +377,7 @@ async def post_session_processing(
             )
 
         # Extract insights even from failed sessions (valuable for future attempts)
+        insight_started = time.perf_counter()
         try:
             extracted_insights = await extract_session_insights(
                 spec_dir=spec_dir,
@@ -352,8 +392,14 @@ async def post_session_processing(
         except Exception as e:
             logger.debug(f"Insight extraction failed for incomplete session: {e}")
             extracted_insights = None
+        finally:
+            if task_logger:
+                task_logger.record_timing(
+                    "insight_extraction", time.perf_counter() - insight_started
+                )
 
         # Save failed session memory (to track what didn't work)
+        memory_started = time.perf_counter()
         try:
             await save_session_memory(
                 spec_dir=spec_dir,
@@ -366,6 +412,11 @@ async def post_session_processing(
             )
         except Exception as e:
             logger.debug(f"Failed to save incomplete session memory: {e}")
+        finally:
+            if task_logger:
+                task_logger.record_timing(
+                    "memory_save", time.perf_counter() - memory_started
+                )
 
         return False
 
@@ -409,6 +460,7 @@ async def post_session_processing(
             )
 
         # Extract insights even from completely failed sessions
+        insight_started = time.perf_counter()
         try:
             extracted_insights = await extract_session_insights(
                 spec_dir=spec_dir,
@@ -423,8 +475,14 @@ async def post_session_processing(
         except Exception as e:
             logger.debug(f"Insight extraction failed for failed session: {e}")
             extracted_insights = None
+        finally:
+            if task_logger:
+                task_logger.record_timing(
+                    "insight_extraction", time.perf_counter() - insight_started
+                )
 
         # Save failed session memory (to track what didn't work)
+        memory_started = time.perf_counter()
         try:
             await save_session_memory(
                 spec_dir=spec_dir,
@@ -437,6 +495,11 @@ async def post_session_processing(
             )
         except Exception as e:
             logger.debug(f"Failed to save failed session memory: {e}")
+        finally:
+            if task_logger:
+                task_logger.record_timing(
+                    "memory_save", time.perf_counter() - memory_started
+                )
 
         return False
 
@@ -484,7 +547,8 @@ async def run_agent_session(
 
     # Get task logger for this spec
     task_logger = get_task_logger(spec_dir)
-    current_tool = None
+    active_tools: dict[str, tuple[str, tuple[str, ...], float]] = {}
+    tool_order: list[str] = []
     message_count = 0
     tool_count = 0
 
@@ -571,7 +635,17 @@ async def run_agent_session(
                                 print(f"   Input: {input_str[:300]}...", flush=True)
                             else:
                                 print(f"   Input: {input_str}", flush=True)
-                        current_tool = tool_name
+                        tool_use_id = str(
+                            getattr(block, "id", None) or f"tool-{tool_count}"
+                        )
+                        active_tools[tool_use_id] = (
+                            tool_name,
+                            _classify_bash_timings(str(inp.get("command", "")))
+                            if tool_name == "Bash" and inp
+                            else (),
+                            time.perf_counter(),
+                        )
+                        tool_order.append(tool_use_id)
 
             # Handle UserMessage (tool results)
             elif msg_type == "UserMessage" and hasattr(msg, "content"):
@@ -581,19 +655,27 @@ async def run_agent_session(
                     if block_type == "ToolResultBlock":
                         result_content = getattr(block, "content", "")
                         is_error = getattr(block, "is_error", False)
+                        tool_use_id = str(getattr(block, "tool_use_id", "") or "")
+                        if tool_use_id and tool_use_id in active_tools:
+                            tool_order.remove(tool_use_id)
+                        elif tool_order:
+                            tool_use_id = tool_order.pop(0)
+                        tool_name, tool_timings, tool_started = active_tools.pop(
+                            tool_use_id, ("unknown", (), time.perf_counter())
+                        )
 
                         # Check if this is an error (not just content containing "blocked")
                         if is_error and "blocked" in str(result_content).lower():
                             # Actual blocked command by security hook
                             debug_error(
                                 "session",
-                                f"Tool BLOCKED: {current_tool}",
+                                f"Tool BLOCKED: {tool_name}",
                                 result=str(result_content)[:300],
                             )
                             print(f"   [BLOCKED] {result_content}", flush=True)
-                            if task_logger and current_tool:
+                            if task_logger:
                                 task_logger.tool_end(
-                                    current_tool,
+                                    tool_name,
                                     success=False,
                                     result="BLOCKED",
                                     detail=str(result_content),
@@ -604,14 +686,14 @@ async def run_agent_session(
                             error_str = str(result_content)[:500]
                             debug_error(
                                 "session",
-                                f"Tool error: {current_tool}",
+                                f"Tool error: {tool_name}",
                                 error=error_str[:200],
                             )
                             print(f"   [Error] {error_str}", flush=True)
-                            if task_logger and current_tool:
+                            if task_logger:
                                 # Store full error in detail for expandable view
                                 task_logger.tool_end(
-                                    current_tool,
+                                    tool_name,
                                     success=False,
                                     result=error_str[:100],
                                     detail=str(result_content),
@@ -621,7 +703,7 @@ async def run_agent_session(
                             # Tool succeeded
                             debug_detailed(
                                 "session",
-                                f"Tool success: {current_tool}",
+                                f"Tool success: {tool_name}",
                                 result_length=len(str(result_content)),
                             )
                             if verbose:
@@ -629,11 +711,11 @@ async def run_agent_session(
                                 print(f"   [Done] {result_str}", flush=True)
                             else:
                                 print("   [Done]", flush=True)
-                            if task_logger and current_tool:
+                            if task_logger:
                                 # Store full result in detail for expandable view (only for certain tools)
                                 # Skip storing for very large outputs like Glob results
                                 detail_content = None
-                                if current_tool in (
+                                if tool_name in (
                                     "Read",
                                     "Grep",
                                     "Bash",
@@ -647,13 +729,20 @@ async def run_agent_session(
                                     ):  # 50KB max before truncation
                                         detail_content = result_str
                                 task_logger.tool_end(
-                                    current_tool,
+                                    tool_name,
                                     success=True,
                                     detail=detail_content,
                                     phase=phase,
                                 )
 
-                        current_tool = None
+                        if task_logger and tool_timings:
+                            duration = time.perf_counter() - tool_started
+                            if len(tool_timings) == 1:
+                                task_logger.record_timing(tool_timings[0], duration)
+                            else:
+                                task_logger.record_timing(
+                                    "verification_commit_mixed", duration
+                                )
 
             # Handle ResultMessage (usage/cost reporting for the session)
             elif msg_type == "ResultMessage":

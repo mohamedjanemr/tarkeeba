@@ -10,6 +10,7 @@ import json
 import logging
 import os
 import re
+import time
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -821,6 +822,7 @@ async def run_autonomous_agent(
         from spec.validate_pkg import SpecValidator, auto_fix_plan
 
         spec_validator = SpecValidator(spec_dir)
+        auto_fix_plan(spec_dir)
         result = spec_validator.validate_implementation_plan()
         if result.valid:
             return True, []
@@ -963,10 +965,6 @@ async def run_autonomous_agent(
             else 1,
         )
 
-        # Capture state before session for post-processing
-        commit_before = get_latest_commit(project_dir)
-        commit_count_before = get_commit_count(project_dir)
-
         # Get the phase-specific model and thinking level (respects task_metadata.json configuration)
         # first_run means we're in planning phase, otherwise coding phase
         current_phase = "planning" if first_run else "coding"
@@ -983,7 +981,23 @@ async def run_autonomous_agent(
         )
 
         if first_run:
+            current_log_phase = LogPhase.PLANNING
+            if task_logger:
+                task_logger.set_session(iteration)
+                task_logger.set_subtask(None)
+                task_logger.start_session_timing(current_log_phase)
+
+            commit_tracking_started = time.perf_counter()
+            commit_before = get_latest_commit(project_dir)
+            commit_count_before = get_commit_count(project_dir)
+            if task_logger:
+                task_logger.record_timing(
+                    "commit_tracking",
+                    time.perf_counter() - commit_tracking_started,
+                )
+
             # Create client for planning phase
+            client_started = time.perf_counter()
             client = create_client(
                 project_dir,
                 spec_dir,
@@ -993,12 +1007,23 @@ async def run_autonomous_agent(
                 fast_mode=fast_mode,
                 **thinking_kwargs,
             )
+            if task_logger:
+                task_logger.record_timing(
+                    "client_configuration", time.perf_counter() - client_started
+                )
+
+            context_started = time.perf_counter()
             prompt = generate_planner_prompt(spec_dir, project_dir)
             if planning_retry_context:
                 prompt += "\n\n" + planning_retry_context
+            if task_logger:
+                task_logger.record_timing(
+                    "context_build", time.perf_counter() - context_started
+                )
 
             # Retrieve Graphiti memory context for planning phase
             # This gives the planner knowledge of previous patterns, gotchas, and insights
+            graphiti_started = time.perf_counter()
             planner_context = await get_graphiti_context(
                 spec_dir,
                 project_dir,
@@ -1007,16 +1032,15 @@ async def run_autonomous_agent(
                     "id": "planner",
                 },
             )
+            if task_logger:
+                task_logger.record_timing(
+                    "graphiti_retrieval", time.perf_counter() - graphiti_started
+                )
             if planner_context:
                 prompt += "\n\n" + planner_context
                 print_status("Graphiti memory context loaded for planner", "success")
 
             first_run = False
-            current_log_phase = LogPhase.PLANNING
-
-            # Set session info in logger
-            if task_logger:
-                task_logger.set_session(iteration)
         else:
             # Switch to coding phase after planning
             just_transitioned_from_planning = False
@@ -1131,7 +1155,22 @@ async def run_autonomous_agent(
                 await asyncio.sleep(AUTO_CONTINUE_DELAY_SECONDS)
                 continue  # Skip to next iteration
 
+            if task_logger:
+                task_logger.set_session(iteration)
+                task_logger.set_subtask(subtask_id)
+                task_logger.start_session_timing(LogPhase.CODING)
+
+            commit_tracking_started = time.perf_counter()
+            commit_before = get_latest_commit(project_dir)
+            commit_count_before = get_commit_count(project_dir)
+            if task_logger:
+                task_logger.record_timing(
+                    "commit_tracking",
+                    time.perf_counter() - commit_tracking_started,
+                )
+
             # Create client for coding phase (after file validation passes)
+            client_started = time.perf_counter()
             client = create_client(
                 project_dir,
                 spec_dir,
@@ -1141,7 +1180,12 @@ async def run_autonomous_agent(
                 fast_mode=fast_mode,
                 **thinking_kwargs,
             )
+            if task_logger:
+                task_logger.record_timing(
+                    "client_configuration", time.perf_counter() - client_started
+                )
 
+            context_started = time.perf_counter()
             # Get attempt count for recovery context
             attempt_count = recovery_manager.get_attempt_count(subtask_id)
             recovery_hints = (
@@ -1168,11 +1212,20 @@ async def run_autonomous_agent(
             context = load_subtask_context(spec_dir, project_dir, next_subtask)
             if context.get("patterns") or context.get("files_to_modify"):
                 prompt += "\n\n" + format_context_for_prompt(context)
+            if task_logger:
+                task_logger.record_timing(
+                    "context_build", time.perf_counter() - context_started
+                )
 
             # Retrieve and append Graphiti memory context (if enabled)
+            graphiti_started = time.perf_counter()
             graphiti_context = await get_graphiti_context(
                 spec_dir, project_dir, next_subtask
             )
+            if task_logger:
+                task_logger.record_timing(
+                    "graphiti_retrieval", time.perf_counter() - graphiti_started
+                )
             if graphiti_context:
                 prompt += "\n\n" + graphiti_context
                 print_status("Graphiti memory context loaded", "success")
@@ -1192,13 +1245,14 @@ async def run_autonomous_agent(
                 print_status(f"Previous attempts: {attempt_count}", "warning")
             print()
 
-        # Set subtask info in logger
-        if task_logger and subtask_id:
-            task_logger.set_subtask(subtask_id)
-            task_logger.set_session(iteration)
-
-        # Run session with async context manager
+        # Entering the SDK context starts the subprocess and MCP connections.
+        client_startup_started = time.perf_counter()
         async with client:
+            if task_logger:
+                task_logger.record_timing(
+                    "client_startup", time.perf_counter() - client_startup_started
+                )
+            agent_started = time.perf_counter()
             status, response, error_info = await run_agent_session(
                 client,
                 prompt,
@@ -1206,6 +1260,19 @@ async def run_autonomous_agent(
                 verbose,
                 phase=current_log_phase,
                 model=phase_model,
+            )
+            agent_duration = time.perf_counter() - agent_started
+        if task_logger:
+            task_logger.record_timing("agent_execution_total", agent_duration)
+            implementation_duration = max(
+                0.0,
+                agent_duration
+                - task_logger.get_timing_total("verification")
+                - task_logger.get_timing_total("commit")
+                - task_logger.get_timing_total("verification_commit_mixed"),
+            )
+            task_logger.record_timing(
+                "implementation_estimate", implementation_duration
             )
 
         plan_validated = False
@@ -1244,6 +1311,8 @@ async def run_autonomous_agent(
                     for err in errors:
                         print(f"  - {err}")
                     status_manager.update(state=BuildState.ERROR)
+                    if task_logger:
+                        task_logger.end_session_timing("invalid_plan")
                     return
 
                 print_status(
@@ -1271,6 +1340,7 @@ async def run_autonomous_agent(
             linear_is_enabled = (
                 linear_task is not None and linear_task.task_id is not None
             )
+            postprocess_started = time.perf_counter()
             success = await post_session_processing(
                 spec_dir=spec_dir,
                 project_dir=project_dir,
@@ -1284,6 +1354,11 @@ async def run_autonomous_agent(
                 source_spec_dir=source_spec_dir,
                 error_info=error_info,
             )
+            if task_logger:
+                task_logger.record_timing(
+                    "post_processing_total",
+                    time.perf_counter() - postprocess_started,
+                )
 
             # Check for stuck subtasks
             attempt_count = recovery_manager.get_attempt_count(subtask_id)
@@ -1315,6 +1390,9 @@ async def run_autonomous_agent(
             # After planning phase, sync the newly created implementation plan back to source
             if sync_spec_to_source(spec_dir, source_spec_dir):
                 print_status("Implementation plan synced to main project", "success")
+
+        if task_logger:
+            task_logger.end_session_timing(status)
 
         # Handle session status
         if status == "complete":

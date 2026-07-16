@@ -84,6 +84,22 @@ class ImplementationPlanValidator:
             errors.append("No subtasks defined in any phase")
             fixes.append("Add subtasks to phases")
 
+        summary = plan.get("summary")
+        if isinstance(summary, dict):
+            if "total_phases" in summary and summary.get("total_phases") != len(phases):
+                warnings.append(
+                    "summary.total_phases does not match the phase array; "
+                    "the phase array is authoritative"
+                )
+            if (
+                "total_subtasks" in summary
+                and summary.get("total_subtasks") != total_subtasks
+            ):
+                warnings.append(
+                    "summary.total_subtasks does not match the phase arrays; "
+                    "the phase arrays are authoritative"
+                )
+
         max_subtasks = get_max_subtasks(self.spec_dir)
         if max_subtasks is not None and total_subtasks > max_subtasks:
             errors.append(

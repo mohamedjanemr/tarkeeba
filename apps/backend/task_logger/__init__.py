@@ -24,6 +24,7 @@ from .models import LogEntry, LogEntryType, LogPhase, PhaseLog
 
 # Export storage utilities
 from .storage import get_active_phase, load_task_logs
+from .timing_storage import SessionTimingStorage, load_session_metrics
 from .utils import (
     clear_task_logger,
     get_task_logger,
@@ -41,6 +42,8 @@ __all__ = [
     # Storage utilities
     "load_task_logs",
     "get_active_phase",
+    "SessionTimingStorage",
+    "load_session_metrics",
     # Utility functions
     "get_task_logger",
     "clear_task_logger",
