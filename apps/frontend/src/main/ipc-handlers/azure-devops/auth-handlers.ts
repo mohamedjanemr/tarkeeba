@@ -13,13 +13,22 @@ import type { AzureDevOpsConfig, AzureDevOpsAPIUser } from './types';
 // This is intentionally more restrictive than other handlers to prevent accidental token logging
 const DEBUG = process.env.NODE_ENV === 'development' && process.env.DEBUG === 'true';
 
+// Matches a URL with embedded basic-auth credentials, e.g. https://user:pass@host/...
+const CREDENTIAL_URL_PATTERN = /https?:\/\/[^/\s@]+:[^/\s@]+@/i;
+// Matches any long contiguous run of token-like characters (no whitespace),
+// which is how PATs typically appear even when embedded in a longer message
+// or URL path (so length/space heuristics alone can't be relied on).
+const LONG_TOKEN_PATTERN = /[A-Za-z0-9_\-.]{16,}/;
+
 /**
  * Redact sensitive information from data before logging
  */
 function redactSensitiveData(data: unknown): unknown {
   if (typeof data === 'string') {
-    // Redact anything that looks like a PAT (typically base64 or similar)
-    if (data.length > 20 && !data.includes(' ') && !data.includes('/')) {
+    // Redact anything that looks like a PAT (a long token-like run of
+    // characters) or a URL with embedded credentials, regardless of
+    // surrounding whitespace/slashes.
+    if (CREDENTIAL_URL_PATTERN.test(data) || LONG_TOKEN_PATTERN.test(data)) {
       return '[REDACTED_PAT]';
     }
     return data;
@@ -30,9 +39,14 @@ function redactSensitiveData(data: unknown): unknown {
     }
     const result: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(data)) {
-      // Redact known sensitive keys
+      // Redact known sensitive keys. If the value is itself an object/array
+      // (e.g. a "credentials" container), recurse into it instead of
+      // blanket-masking the whole structure, so nested non-sensitive fields
+      // are preserved.
       if (/token|password|secret|credential|pat|auth/i.test(key)) {
-        result[key] = '[REDACTED]';
+        result[key] = typeof value === 'object' && value !== null
+          ? redactSensitiveData(value)
+          : '[REDACTED]';
       } else {
         result[key] = redactSensitiveData(value);
       }

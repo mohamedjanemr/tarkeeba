@@ -110,10 +110,11 @@ function formatReviewBody(result: PRReviewResult, selectedFindingIds?: string[])
 
   let body = `## Tarkeeba PR Review\n\n${result.summary}\n\n`;
 
+  const countText = selectedSet
+    ? `${findings.length} selected of ${result.findings.length} total`
+    : `${findings.length} total`;
+
   if (findings.length > 0) {
-    const countText = selectedSet
-      ? `${findings.length} selected of ${result.findings.length} total`
-      : `${findings.length} total`;
     body += `### Findings (${countText})\n\n`;
 
     for (const f of findings) {
@@ -127,6 +128,12 @@ function formatReviewBody(result: PRReviewResult, selectedFindingIds?: string[])
       }
     }
   } else {
+    // Only show the "X selected of Y total" header when a selection filter
+    // was actually applied; a naturally empty findings list has no count
+    // worth summarizing.
+    if (selectedSet) {
+      body += `### Findings (${countText})\n\n`;
+    }
     body += `*No findings selected for this review.*\n\n`;
   }
 

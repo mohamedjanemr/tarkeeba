@@ -1,30 +1,18 @@
 """Tests for Azure DevOps REST API client."""
 
 import base64
-import importlib.util
 import json
-import sys
 from pathlib import Path
 from unittest import mock
 from urllib.error import HTTPError
 
 import pytest
 
-# Import the azure_devops_client module using importlib to handle the hyphen in directory name
-BACKEND_DIR = Path(__file__).resolve().parent.parent.parent.parent
-azure_devops_client_path = BACKEND_DIR / "runners" / "azure-devops" / "azure_devops_client.py"
-
-spec = importlib.util.spec_from_file_location(
-    "azure_devops_client",
-    azure_devops_client_path,
+from runners.azure_devops.azure_devops_client import (
+    AzureDevOpsClient,
+    AzureDevOpsConfig,
+    load_azure_devops_config,
 )
-azure_devops_client = importlib.util.module_from_spec(spec)
-sys.modules["azure_devops_client"] = azure_devops_client
-spec.loader.exec_module(azure_devops_client)
-
-AzureDevOpsClient = azure_devops_client.AzureDevOpsClient
-AzureDevOpsConfig = azure_devops_client.AzureDevOpsConfig
-load_azure_devops_config = azure_devops_client.load_azure_devops_config
 
 
 class TestAzureDevOpsClientAuth:

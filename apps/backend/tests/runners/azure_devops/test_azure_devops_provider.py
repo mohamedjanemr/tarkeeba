@@ -1,64 +1,54 @@
 """Tests for Azure DevOps Provider implementation."""
 
-import importlib.util
 import json
 import sys
+import types
 from datetime import datetime, timezone
 from pathlib import Path
 from unittest import mock
 
 import pytest
 
-# Import the azure_devops_provider module using importlib to handle the hyphen in directory name
-BACKEND_DIR = Path(__file__).resolve().parent.parent.parent.parent
-azure_devops_provider_path = (
-    BACKEND_DIR / "runners" / "azure-devops" / "providers" / "azure_devops_provider.py"
+# The real runners/github/__init__.py eagerly imports orchestrator.py, which in
+# turn relies on runner.py's sys.path bootstrap (treating runners/github as a
+# flat import root) rather than proper relative-import semantics. Importing
+# `runners.github.providers.factory` normally would therefore fail even though
+# it has nothing to do with Azure DevOps. Pre-register a lightweight namespace
+# package for `runners.github` so Python resolves `runners.github.providers`
+# without executing the real (broken outside of runner.py) __init__.py.
+_BACKEND_DIR = Path(__file__).resolve().parent.parent.parent.parent
+if "runners.github" not in sys.modules:
+    import runners  # noqa: F401  (ensures the real `runners` package is loaded first)
+
+    _github_pkg = types.ModuleType("runners.github")
+    _github_pkg.__path__ = [str(_BACKEND_DIR / "runners" / "github")]
+    sys.modules["runners.github"] = _github_pkg
+    # Import machinery skips setting the parent attribute when a submodule is
+    # found in sys.modules without going through the normal loader path, so
+    # set it explicitly to keep `runners.github.providers...` resolvable.
+    setattr(sys.modules["runners"], "github", _github_pkg)
+
+# NOTE: `runners.github.providers.factory` / `.protocol` must be imported
+# *before* `runners.azure_devops.providers.azure_devops_provider`. The provider
+# module imports `runners.github.providers.protocol`, which forces Python to
+# first run `runners/github/providers/__init__.py` (which imports `factory`,
+# which imports the provider module back) — a pre-existing circular import.
+# If the provider module is mid-import when that happens, factory's own
+# `AzureDevOpsProvider` binding silently fails and caches as None for the rest
+# of the process. Importing factory/protocol first avoids ever hitting that
+# partially-initialized state.
+from runners.github.providers.factory import get_provider
+from runners.github.providers.protocol import (
+    IssueData,
+    IssueFilters,
+    PRData,
+    PRFilters,
+    ProviderType,
+    ReviewData,
+    ReviewFinding,
 )
-
-spec = importlib.util.spec_from_file_location(
-    "azure_devops_provider",
-    azure_devops_provider_path,
-)
-azure_devops_provider = importlib.util.module_from_spec(spec)
-sys.modules["azure_devops_provider"] = azure_devops_provider
-spec.loader.exec_module(azure_devops_provider)
-
-AzureDevOpsProvider = azure_devops_provider.AzureDevOpsProvider
-
-# Import protocol types
-protocol_path = BACKEND_DIR / "runners" / "github" / "providers" / "protocol.py"
-protocol_spec = importlib.util.spec_from_file_location("protocol", protocol_path)
-protocol_module = importlib.util.module_from_spec(protocol_spec)
-sys.modules["protocol"] = protocol_module
-protocol_spec.loader.exec_module(protocol_module)
-
-ProviderType = protocol_module.ProviderType
-PRData = protocol_module.PRData
-IssueData = protocol_module.IssueData
-ReviewData = protocol_module.ReviewData
-ReviewFinding = protocol_module.ReviewFinding
-IssueFilters = protocol_module.IssueFilters
-PRFilters = protocol_module.PRFilters
-
-# Import factory to test provider registration
-factory_path = BACKEND_DIR / "runners" / "github" / "providers" / "factory.py"
-factory_spec = importlib.util.spec_from_file_location("factory", factory_path)
-factory_module = importlib.util.module_from_spec(factory_spec)
-sys.modules["factory"] = factory_module
-factory_spec.loader.exec_module(factory_module)
-
-get_provider = factory_module.get_provider
-
-# Import client config
-azure_devops_client_path = BACKEND_DIR / "runners" / "azure-devops" / "azure_devops_client.py"
-client_spec = importlib.util.spec_from_file_location(
-    "azure_devops_client", azure_devops_client_path
-)
-client_module = importlib.util.module_from_spec(client_spec)
-sys.modules["azure_devops_client"] = client_module
-client_spec.loader.exec_module(client_module)
-
-AzureDevOpsConfig = client_module.AzureDevOpsConfig
+from runners.azure_devops.azure_devops_client import AzureDevOpsConfig
+from runners.azure_devops.providers.azure_devops_provider import AzureDevOpsProvider
 
 
 # ============================================================================
@@ -161,7 +151,7 @@ class TestFetchIssuesWiqlAndFetchByIds:
             provider._client = mock_client
         return provider
 
-    @mock.patch("azure_devops_client.AzureDevOpsClient")
+    @mock.patch("runners.azure_devops.providers.azure_devops_provider.AzureDevOpsClient")
     def test_fetch_issues_uses_wiql_and_fetch_by_ids(self, mock_client_class):
         """Test that fetch_issues() calls WIQL first, then fetch-by-ids."""
         # Mock the client
@@ -230,7 +220,7 @@ class TestFetchIssuesWiqlAndFetchByIds:
         assert issues[1].number == 2
         assert issues[2].number == 3
 
-    @mock.patch("azure_devops_client.AzureDevOpsClient")
+    @mock.patch("runners.azure_devops.providers.azure_devops_provider.AzureDevOpsClient")
     def test_fetch_issues_zero_results_no_fetch_by_ids(self, mock_client_class):
         """Test that fetch_issues() does not call fetch-by-ids when WIQL returns zero results."""
         mock_client = mock.MagicMock()
@@ -255,7 +245,7 @@ class TestFetchIssuesWiqlAndFetchByIds:
         # Verify empty result
         assert issues == []
 
-    @mock.patch("azure_devops_client.AzureDevOpsClient")
+    @mock.patch("runners.azure_devops.providers.azure_devops_provider.AzureDevOpsClient")
     def test_fetch_issues_respects_filters(self, mock_client_class):
         """Test that fetch_issues() applies filters correctly."""
         mock_client = mock.MagicMock()
@@ -320,7 +310,7 @@ class TestMergePRPatch:
             provider._client = mock_client
         return provider
 
-    @mock.patch("azure_devops_client.AzureDevOpsClient")
+    @mock.patch("runners.azure_devops.providers.azure_devops_provider.AzureDevOpsClient")
     def test_merge_pr_sends_correct_patch_data(self, mock_client_class):
         """Test that merge_pr() sends correct PATCH data with status=completed."""
         mock_client = mock.MagicMock()
@@ -371,7 +361,7 @@ class TestMergePRPatch:
         # Verify result
         assert result is True
 
-    @mock.patch("azure_devops_client.AzureDevOpsClient")
+    @mock.patch("runners.azure_devops.providers.azure_devops_provider.AzureDevOpsClient")
     def test_merge_pr_includes_completion_options(self, mock_client_class):
         """Test that merge_pr() includes completionOptions in PATCH."""
         mock_client = mock.MagicMock()
@@ -430,7 +420,7 @@ class TestClosePRPatch:
             provider._client = mock_client
         return provider
 
-    @mock.patch("azure_devops_client.AzureDevOpsClient")
+    @mock.patch("runners.azure_devops.providers.azure_devops_provider.AzureDevOpsClient")
     def test_close_pr_sends_status_abandoned(self, mock_client_class):
         """Test that close_pr() sends PATCH with status=abandoned."""
         mock_client = mock.MagicMock()
@@ -468,7 +458,7 @@ class TestClosePRPatch:
         # Verify result
         assert result is True
 
-    @mock.patch("azure_devops_client.AzureDevOpsClient")
+    @mock.patch("runners.azure_devops.providers.azure_devops_provider.AzureDevOpsClient")
     def test_close_pr_with_comment(self, mock_client_class):
         """Test that close_pr() adds a comment if provided."""
         mock_client = mock.MagicMock()
@@ -512,7 +502,7 @@ class TestPostReviewThreadAndVote:
             provider._client = mock_client
         return provider
 
-    @mock.patch("azure_devops_client.AzureDevOpsClient")
+    @mock.patch("runners.azure_devops.providers.azure_devops_provider.AzureDevOpsClient")
     def test_post_review_creates_comment_thread(self, mock_client_class):
         """Test that post_review() creates a comment thread."""
         mock_client = mock.MagicMock()
@@ -554,7 +544,7 @@ class TestPostReviewThreadAndVote:
         # Verify return value
         assert thread_id == 456
 
-    @mock.patch("azure_devops_client.AzureDevOpsClient")
+    @mock.patch("runners.azure_devops.providers.azure_devops_provider.AzureDevOpsClient")
     def test_post_review_vote_mapping(self, mock_client_class):
         """Test that post_review() maps review events to correct vote values."""
         mock_client = mock.MagicMock()
@@ -602,7 +592,7 @@ class TestPostReviewThreadAndVote:
         ]
         assert len(post_calls) >= 3
 
-    @mock.patch("azure_devops_client.AzureDevOpsClient")
+    @mock.patch("runners.azure_devops.providers.azure_devops_provider.AzureDevOpsClient")
     def test_post_review_with_findings(self, mock_client_class):
         """Test that post_review() includes findings in thread comment."""
         mock_client = mock.MagicMock()
@@ -742,7 +732,7 @@ class TestDataTypeMapping:
             provider._client = mock_client
         return provider
 
-    @mock.patch("azure_devops_client.AzureDevOpsClient")
+    @mock.patch("runners.azure_devops.providers.azure_devops_provider.AzureDevOpsClient")
     def test_fetch_issue_returns_issue_data(self, mock_client_class):
         """Test that fetch_issue() returns IssueData with correct provider."""
         mock_client = mock.MagicMock()
@@ -774,7 +764,7 @@ class TestDataTypeMapping:
         assert issue.number == 42
         assert issue.title == "Test Issue"
 
-    @mock.patch("azure_devops_client.AzureDevOpsClient")
+    @mock.patch("runners.azure_devops.providers.azure_devops_provider.AzureDevOpsClient")
     def test_fetch_pr_returns_pr_data(self, mock_client_class):
         """Test that fetch_pr() returns PRData with correct provider."""
         mock_client = mock.MagicMock()
@@ -830,7 +820,7 @@ class TestErrorHandling:
             provider._client = mock_client
         return provider
 
-    @mock.patch("azure_devops_client.AzureDevOpsClient")
+    @mock.patch("runners.azure_devops.providers.azure_devops_provider.AzureDevOpsClient")
     def test_merge_pr_handles_missing_commit_id(self, mock_client_class):
         """Test that merge_pr() handles missing lastMergeSourceCommit gracefully."""
         mock_client = mock.MagicMock()
@@ -851,7 +841,7 @@ class TestErrorHandling:
         # Should return False when commitId is missing
         assert result is False
 
-    @mock.patch("azure_devops_client.AzureDevOpsClient")
+    @mock.patch("runners.azure_devops.providers.azure_devops_provider.AzureDevOpsClient")
     def test_fetch_issue_handles_missing_work_item(self, mock_client_class):
         """Test that fetch_issue() raises ValueError for missing work item."""
         mock_client = mock.MagicMock()
