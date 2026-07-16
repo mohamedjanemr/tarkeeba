@@ -14,6 +14,7 @@ from analysis.analyzers import analyze_project
 from core.error_utils import RateLimitError
 from core.task_event import TaskEventEmitter
 from core.workspace.models import SpecNumberLock
+from execution_budget import get_execution_budget
 from phase_config import get_thinking_budget
 from prompts_pkg.project_context import should_refresh_project_index
 from review import run_review_checkpoint
@@ -171,6 +172,10 @@ class SpecOrchestrator:
         Args:
             phase_name: Name of the completed phase
         """
+        budget = get_execution_budget(self.spec_dir)
+        if not budget.use_ai_phase_summaries:
+            return
+
         try:
             # Gather outputs from this phase
             phase_output = gather_phase_outputs(self.spec_dir, phase_name)
@@ -434,6 +439,13 @@ class SpecOrchestrator:
         phases_to_run = [
             p for p in all_phases_to_run if p not in ["discovery", "requirements"]
         ]
+        budget = get_execution_budget(self.spec_dir)
+        if not budget.include_optional_spec_phases:
+            phases_to_run = [
+                phase
+                for phase in phases_to_run
+                if phase not in {"research", "self_critique"}
+            ]
 
         print()
         print(

@@ -225,6 +225,7 @@ export interface TaskDraft {
   referencedFiles: ReferencedFile[];
   requireReviewBeforeCoding?: boolean;
   fastMode?: boolean;
+  executionMode?: ExecutionMode;
   savedAt: Date;
 }
 
@@ -232,6 +233,7 @@ export interface TaskDraft {
 export type TaskComplexity = 'trivial' | 'small' | 'medium' | 'large' | 'complex';
 export type TaskImpact = 'low' | 'medium' | 'high' | 'critical';
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
+export type ExecutionMode = 'efficient' | 'full';
 // Re-export ThinkingLevel (defined in settings.ts) for convenience
 export type { ThinkingLevel };
 export type ModelType = import('./settings').ModelTypeShort;
@@ -308,6 +310,11 @@ export interface TaskMetadata {
   phaseModels?: PhaseModelConfig;  // Per-phase model configuration
   phaseThinking?: PhaseThinkingConfig;  // Per-phase thinking configuration
   fastMode?: boolean;  // Fast Mode — faster Opus 4.6 output, higher cost per token
+  executionMode?: ExecutionMode;  // Efficient uses bounded agent/QA loops; full preserves exhaustive autonomy
+  maxSubtasks?: number;  // Optional advanced override for implementation-plan size
+  maxAgentSessions?: number;  // Optional advanced override for coding sessions
+  maxQaIterations?: number;  // Optional advanced override for QA review/fix cycles
+  maxSpecAttempts?: number;  // Optional advanced override for spec phase attempts
 
   // Git/Worktree configuration
   baseBranch?: string;  // Override base branch for this task's worktree

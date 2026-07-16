@@ -258,17 +258,18 @@ async def escalate_to_human(
         recurring_issues: Issues that have recurred
         iteration: Current iteration number
     """
-    from .loop import MAX_QA_ITERATIONS
+    from execution_budget import get_execution_budget
 
     history = get_iteration_history(spec_dir)
     summary = get_recurring_issue_summary(history)
+    max_qa_iterations = get_execution_budget(spec_dir).max_qa_iterations
 
     escalation_file = spec_dir / "QA_ESCALATION.md"
 
     content = f"""# QA Escalation - Human Intervention Required
 
 **Generated**: {datetime.now(timezone.utc).isoformat()}
-**Iteration**: {iteration}/{MAX_QA_ITERATIONS}
+**Iteration**: {iteration}/{max_qa_iterations}
 **Reason**: Recurring issues detected ({RECURRING_ISSUE_THRESHOLD}+ occurrences)
 
 ## Summary

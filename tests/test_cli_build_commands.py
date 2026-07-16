@@ -51,7 +51,9 @@ def build_spec_dir(review_spec_dir):
     """Create a spec directory ready for building."""
     # Add spec.md if not present
     if not (review_spec_dir / "spec.md").exists():
-        (review_spec_dir / "spec.md").write_text("# Test Spec\n\n## Overview\nTest feature.")
+        (review_spec_dir / "spec.md").write_text(
+            "# Test Spec\n\n## Overview\nTest feature."
+        )
     # Add implementation_plan.json
     if not (review_spec_dir / "implementation_plan.json").exists():
         plan = {
@@ -79,7 +81,9 @@ def build_spec_dir(review_spec_dir):
 def approved_build_spec(build_spec_dir):
     """Create an approved spec directory ready for building."""
     # Create and save an approved ReviewState
-    state = ReviewState(approved=True, approved_by="test_user", approved_at="2024-01-15T10:00:00")
+    state = ReviewState(
+        approved=True, approved_by="test_user", approved_at="2024-01-15T10:00:00"
+    )
     state.approve(build_spec_dir, approved_by="test_user")
     return build_spec_dir
 
@@ -115,9 +119,13 @@ class TestHandleBuildCommandApproval:
         """Build proceeds when spec has valid approval."""
         # Setup using helper
         configure_build_mocks(
-            mock_validate_env, mock_should_run_qa, mock_get_phase_model,
-            mock_choose_workspace, mock_get_existing, mock_run_agent,
-            successful_agent_fn
+            mock_validate_env,
+            mock_should_run_qa,
+            mock_get_phase_model,
+            mock_choose_workspace,
+            mock_get_existing,
+            mock_run_agent,
+            successful_agent_fn,
         )
 
         # Execute - should not raise SystemExit
@@ -149,7 +157,9 @@ class TestHandleBuildCommandApproval:
         """Build exits with error when spec has no approval."""
         # Setup
         mock_validate_env.return_value = True
-        mock_get_phase_model.side_effect = lambda spec_dir, phase, model: model or "sonnet"
+        mock_get_phase_model.side_effect = (
+            lambda spec_dir, phase, model: model or "sonnet"
+        )
 
         # Execute - should exit with SystemExit
         with pytest.raises(SystemExit) as exc_info:
@@ -192,9 +202,13 @@ class TestHandleBuildCommandApproval:
         # Setup
         # Setup using helper
         configure_build_mocks(
-            mock_validate_env, mock_should_run_qa, mock_get_phase_model,
-            mock_choose_workspace, mock_get_existing, mock_run_agent,
-            successful_agent_fn
+            mock_validate_env,
+            mock_should_run_qa,
+            mock_get_phase_model,
+            mock_choose_workspace,
+            mock_get_existing,
+            mock_run_agent,
+            successful_agent_fn,
         )
 
         # Execute - should not raise SystemExit
@@ -226,11 +240,15 @@ class TestHandleBuildCommandApproval:
         """Build exits when spec changed after approval."""
         # Setup
         mock_validate_env.return_value = True
-        mock_get_phase_model.side_effect = lambda spec_dir, phase, model: model or "sonnet"
+        mock_get_phase_model.side_effect = (
+            lambda spec_dir, phase, model: model or "sonnet"
+        )
 
         # Modify spec after approval to invalidate hash
         spec_content = (approved_build_spec / "spec.md").read_text()
-        (approved_build_spec / "spec.md").write_text(spec_content + "\n\n## New Change\n")
+        (approved_build_spec / "spec.md").write_text(
+            spec_content + "\n\n## New Change\n"
+        )
 
         # Execute - should exit with SystemExit
         with pytest.raises(SystemExit) as exc_info:
@@ -270,7 +288,9 @@ class TestHandleBuildCommandEnvironment:
         """Build exits when environment validation fails."""
         # Setup
         mock_validate_env.return_value = False
-        mock_get_phase_model.side_effect = lambda spec_dir, phase, model: model or "sonnet"
+        mock_get_phase_model.side_effect = (
+            lambda spec_dir, phase, model: model or "sonnet"
+        )
 
         # Execute - should exit with SystemExit
         with pytest.raises(SystemExit) as exc_info:
@@ -323,9 +343,13 @@ class TestHandleBuildCommandModels:
         # Setup
         # Setup using helper
         configure_build_mocks(
-            mock_validate_env, mock_should_run_qa, mock_get_phase_model,
-            mock_choose_workspace, mock_get_existing, mock_run_agent,
-            successful_agent_fn
+            mock_validate_env,
+            mock_should_run_qa,
+            mock_get_phase_model,
+            mock_choose_workspace,
+            mock_get_existing,
+            mock_run_agent,
+            successful_agent_fn,
         )
 
         # Execute
@@ -371,9 +395,13 @@ class TestHandleBuildCommandModels:
         # Setup
         # Setup using helper
         configure_build_mocks(
-            mock_validate_env, mock_should_run_qa, mock_get_phase_model,
-            mock_choose_workspace, mock_get_existing, mock_run_agent,
-            successful_agent_fn
+            mock_validate_env,
+            mock_should_run_qa,
+            mock_get_phase_model,
+            mock_choose_workspace,
+            mock_get_existing,
+            mock_run_agent,
+            successful_agent_fn,
         )
 
         # Execute
@@ -428,9 +456,13 @@ class TestHandleBuildCommandMaxIterations:
         # Setup
         # Setup using helper
         configure_build_mocks(
-            mock_validate_env, mock_should_run_qa, mock_get_phase_model,
-            mock_choose_workspace, mock_get_existing, mock_run_agent,
-            successful_agent_fn
+            mock_validate_env,
+            mock_should_run_qa,
+            mock_get_phase_model,
+            mock_choose_workspace,
+            mock_get_existing,
+            mock_run_agent,
+            successful_agent_fn,
         )
 
         # Execute
@@ -476,9 +508,13 @@ class TestHandleBuildCommandMaxIterations:
         # Setup
         # Setup using helper
         configure_build_mocks(
-            mock_validate_env, mock_should_run_qa, mock_get_phase_model,
-            mock_choose_workspace, mock_get_existing, mock_run_agent,
-            successful_agent_fn
+            mock_validate_env,
+            mock_should_run_qa,
+            mock_get_phase_model,
+            mock_choose_workspace,
+            mock_get_existing,
+            mock_run_agent,
+            successful_agent_fn,
         )
 
         # Execute
@@ -498,6 +534,55 @@ class TestHandleBuildCommandMaxIterations:
         # Verify unlimited message was displayed
         captured = capsys.readouterr()
         assert "Unlimited" in captured.out
+
+    @patch("phase_config.get_phase_model")
+    @patch("qa_loop.should_run_qa")
+    @patch("agent.run_autonomous_agent")
+    @patch("workspace.get_existing_build_worktree")
+    @patch("cli.build_commands.choose_workspace")
+    @patch("cli.utils.validate_environment")
+    @patch("cli.utils.print_banner")
+    def test_efficient_mode_applies_session_budget(
+        self,
+        mock_print_banner,
+        mock_validate_env,
+        mock_choose_workspace,
+        mock_get_existing,
+        mock_run_agent,
+        mock_should_run_qa,
+        mock_get_phase_model,
+        approved_build_spec,
+        temp_git_repo,
+        successful_agent_fn,
+    ):
+        """Efficient tasks are bounded even when the CLI omits a limit."""
+        configure_build_mocks(
+            mock_validate_env,
+            mock_should_run_qa,
+            mock_get_phase_model,
+            mock_choose_workspace,
+            mock_get_existing,
+            mock_run_agent,
+            successful_agent_fn,
+        )
+        (approved_build_spec / "task_metadata.json").write_text(
+            json.dumps({"executionMode": "efficient"}), encoding="utf-8"
+        )
+
+        handle_build_command(
+            project_dir=temp_git_repo,
+            spec_dir=approved_build_spec,
+            model="sonnet",
+            max_iterations=None,
+            verbose=False,
+            force_isolated=False,
+            force_direct=False,
+            auto_continue=False,
+            skip_qa=True,
+            force_bypass_approval=False,
+        )
+
+        assert mock_run_agent.call_args.kwargs["max_iterations"] == 8
 
 
 # =============================================================================
@@ -538,7 +623,9 @@ class TestHandleBuildCommandWorkspace:
         # Setup
         mock_validate_env.return_value = True
         mock_should_run_qa.return_value = False
-        mock_get_phase_model.side_effect = lambda spec_dir, phase, model: model or "sonnet"
+        mock_get_phase_model.side_effect = (
+            lambda spec_dir, phase, model: model or "sonnet"
+        )
         mock_choose_workspace.return_value = WorkspaceMode.ISOLATED
         mock_get_existing.return_value = None
         mock_setup_workspace.return_value = (temp_git_repo, None, approved_build_spec)
@@ -588,9 +675,13 @@ class TestHandleBuildCommandWorkspace:
         # Setup
         # Setup using helper
         configure_build_mocks(
-            mock_validate_env, mock_should_run_qa, mock_get_phase_model,
-            mock_choose_workspace, mock_get_existing, mock_run_agent,
-            successful_agent_fn
+            mock_validate_env,
+            mock_should_run_qa,
+            mock_get_phase_model,
+            mock_choose_workspace,
+            mock_get_existing,
+            mock_run_agent,
+            successful_agent_fn,
         )
 
         # Execute
@@ -647,7 +738,9 @@ class TestHandleBuildCommandQA:
         # Setup
         mock_validate_env.return_value = True
         mock_should_run_qa.return_value = True
-        mock_get_phase_model.side_effect = lambda spec_dir, phase, model: model or "sonnet"
+        mock_get_phase_model.side_effect = (
+            lambda spec_dir, phase, model: model or "sonnet"
+        )
         mock_choose_workspace.return_value = WorkspaceMode.DIRECT
         mock_get_existing.return_value = None
         mock_run_qa.return_value = True
@@ -697,7 +790,9 @@ class TestHandleBuildCommandQA:
         # Setup
         mock_validate_env.return_value = True
         mock_should_run_qa.return_value = True
-        mock_get_phase_model.side_effect = lambda spec_dir, phase, model: model or "sonnet"
+        mock_get_phase_model.side_effect = (
+            lambda spec_dir, phase, model: model or "sonnet"
+        )
         mock_choose_workspace.return_value = WorkspaceMode.DIRECT
         mock_get_existing.return_value = None
 
@@ -754,9 +849,13 @@ class TestHandleBuildCommandAutoContinue:
         # Setup
         mock_validate_env.return_value = True
         mock_should_run_qa.return_value = False
-        mock_get_phase_model.side_effect = lambda spec_dir, phase, model: model or "sonnet"
+        mock_get_phase_model.side_effect = (
+            lambda spec_dir, phase, model: model or "sonnet"
+        )
         mock_choose_workspace.return_value = WorkspaceMode.DIRECT
-        mock_get_existing.return_value = temp_git_repo / ".auto-claude" / "worktrees" / "tasks" / "test-spec"
+        mock_get_existing.return_value = (
+            temp_git_repo / ".auto-claude" / "worktrees" / "tasks" / "test-spec"
+        )
 
         mock_run_agent.side_effect = successful_agent_fn
 
@@ -805,10 +904,14 @@ class TestHandleBuildCommandAutoContinue:
         # Setup
         mock_validate_env.return_value = True
         mock_should_run_qa.return_value = False
-        mock_get_phase_model.side_effect = lambda spec_dir, phase, model: model or "sonnet"
+        mock_get_phase_model.side_effect = (
+            lambda spec_dir, phase, model: model or "sonnet"
+        )
         mock_choose_workspace.return_value = WorkspaceMode.DIRECT
         # Return a truthy value to trigger existing build detection
-        worktree_path = temp_git_repo / ".auto-claude" / "worktrees" / "tasks" / "test-spec"
+        worktree_path = (
+            temp_git_repo / ".auto-claude" / "worktrees" / "tasks" / "test-spec"
+        )
         mock_get_existing.return_value = worktree_path
 
         mock_run_agent.side_effect = successful_agent_fn
@@ -832,8 +935,10 @@ class TestHandleBuildCommandAutoContinue:
 
         # Verify debug was called with auto-continue message
         auto_continue_calls = [
-            call for call in mock_debug.call_args_list
-            if len(call[0]) >= 2 and ("Auto-continue" in call[0][1] or "auto-continue" in call[0][1])
+            call
+            for call in mock_debug.call_args_list
+            if len(call[0]) >= 2
+            and ("Auto-continue" in call[0][1] or "auto-continue" in call[0][1])
         ]
         assert len(auto_continue_calls) > 0, "Auto-continue debug message not found"
         assert "run.py" in auto_continue_calls[0][0][0]
@@ -883,6 +988,7 @@ class TestHandleBuildInterrupt:
         temp_git_repo,
     ):
         """Interrupt handler resumes build when user chooses skip."""
+
         # Setup
         async def agent_fn(*args, **kwargs):
             return (True, "Resumed successfully")
@@ -919,7 +1025,9 @@ class TestHandleBuildInterrupt:
         # Mock select_menu to return "type" and read_multiline_input
         # Need to mock read_multiline_input in the build_commands module where it's imported
         with patch("cli.build_commands.select_menu", return_value="type"):
-            with patch("cli.build_commands.read_multiline_input", return_value=test_input):
+            with patch(
+                "cli.build_commands.read_multiline_input", return_value=test_input
+            ):
                 # Execute
                 _handle_build_interrupt(
                     spec_dir=build_spec_dir,
@@ -1024,13 +1132,16 @@ class TestHandleBuildCommandErrors:
         # Setup
         mock_validate_env.return_value = True
         mock_should_run_qa.return_value = False
-        mock_get_phase_model.side_effect = lambda spec_dir, phase, model: model or "sonnet"
+        mock_get_phase_model.side_effect = (
+            lambda spec_dir, phase, model: model or "sonnet"
+        )
         mock_choose_workspace.return_value = WorkspaceMode.DIRECT
         mock_get_existing.return_value = None
 
         # Mock agent to raise exception
         async def failing_agent(*args, **kwargs):
             raise RuntimeError("Agent failed unexpectedly")
+
         mock_run_agent.side_effect = failing_agent
 
         # Execute - should exit with error
@@ -1077,13 +1188,16 @@ class TestHandleBuildCommandErrors:
         # Setup
         mock_validate_env.return_value = True
         mock_should_run_qa.return_value = False
-        mock_get_phase_model.side_effect = lambda spec_dir, phase, model: model or "sonnet"
+        mock_get_phase_model.side_effect = (
+            lambda spec_dir, phase, model: model or "sonnet"
+        )
         mock_choose_workspace.return_value = WorkspaceMode.DIRECT
         mock_get_existing.return_value = None
 
         # Mock agent to raise exception
         async def failing_agent(*args, **kwargs):
             raise ValueError("Test error with traceback")
+
         mock_run_agent.side_effect = failing_agent
 
         # Execute in verbose mode
@@ -1207,7 +1321,9 @@ class TestHandleBuildCommandExistingBuild:
         # Setup
         mock_validate_env.return_value = True
         mock_should_run_qa.return_value = False
-        mock_get_phase_model.side_effect = lambda spec_dir, phase, model: model or "sonnet"
+        mock_get_phase_model.side_effect = (
+            lambda spec_dir, phase, model: model or "sonnet"
+        )
         mock_choose_workspace.return_value = WorkspaceMode.DIRECT
         # Return None for auto_continue (no user prompt)
 
@@ -1217,7 +1333,13 @@ class TestHandleBuildCommandExistingBuild:
         # This triggers the if block on line 173
         with patch("workspace.get_existing_build_worktree") as mock_get_existing:
             # Return a truthy value to trigger the existing build check
-            mock_get_existing.return_value = temp_git_repo / ".auto-claude" / "worktrees" / "tasks" / approved_build_spec.name
+            mock_get_existing.return_value = (
+                temp_git_repo
+                / ".auto-claude"
+                / "worktrees"
+                / "tasks"
+                / approved_build_spec.name
+            )
 
             # Execute with auto_continue=True
             handle_build_command(
@@ -1263,15 +1385,25 @@ class TestHandleBuildCommandExistingBuild:
         # Setup
         mock_validate_env.return_value = True
         mock_should_run_qa.return_value = False
-        mock_get_phase_model.side_effect = lambda spec_dir, phase, model: model or "sonnet"
+        mock_get_phase_model.side_effect = (
+            lambda spec_dir, phase, model: model or "sonnet"
+        )
         mock_choose_workspace.return_value = WorkspaceMode.DIRECT
         mock_check_existing.return_value = True  # User chose to continue
 
         mock_run_agent.side_effect = successful_agent_fn
 
         # Mock get_existing_build_worktree to return a path
-        with patch("cli.build_commands.get_existing_build_worktree") as mock_get_existing:
-            mock_get_existing.return_value = temp_git_repo / ".auto-claude" / "worktrees" / "tasks" / approved_build_spec.name
+        with patch(
+            "cli.build_commands.get_existing_build_worktree"
+        ) as mock_get_existing:
+            mock_get_existing.return_value = (
+                temp_git_repo
+                / ".auto-claude"
+                / "worktrees"
+                / "tasks"
+                / approved_build_spec.name
+            )
 
             # Execute without auto_continue (interactive mode)
             handle_build_command(
@@ -1288,7 +1420,9 @@ class TestHandleBuildCommandExistingBuild:
             )
 
         # Verify check_existing_build was called
-        mock_check_existing.assert_called_once_with(temp_git_repo, approved_build_spec.name)
+        mock_check_existing.assert_called_once_with(
+            temp_git_repo, approved_build_spec.name
+        )
 
     @patch("phase_config.get_phase_model")
     @patch("qa_loop.should_run_qa")
@@ -1314,15 +1448,25 @@ class TestHandleBuildCommandExistingBuild:
         # Setup
         mock_validate_env.return_value = True
         mock_should_run_qa.return_value = False
-        mock_get_phase_model.side_effect = lambda spec_dir, phase, model: model or "sonnet"
+        mock_get_phase_model.side_effect = (
+            lambda spec_dir, phase, model: model or "sonnet"
+        )
         mock_choose_workspace.return_value = WorkspaceMode.DIRECT
         mock_check_existing.return_value = False  # User chose fresh start
 
         mock_run_agent.side_effect = successful_agent_fn
 
         # Mock get_existing_build_worktree to return a path
-        with patch("cli.build_commands.get_existing_build_worktree") as mock_get_existing:
-            mock_get_existing.return_value = temp_git_repo / ".auto-claude" / "worktrees" / "tasks" / approved_build_spec.name
+        with patch(
+            "cli.build_commands.get_existing_build_worktree"
+        ) as mock_get_existing:
+            mock_get_existing.return_value = (
+                temp_git_repo
+                / ".auto-claude"
+                / "worktrees"
+                / "tasks"
+                / approved_build_spec.name
+            )
 
             # Execute without auto_continue
             handle_build_command(
@@ -1339,7 +1483,9 @@ class TestHandleBuildCommandExistingBuild:
             )
 
         # Verify check_existing_build was called
-        mock_check_existing.assert_called_once_with(temp_git_repo, approved_build_spec.name)
+        mock_check_existing.assert_called_once_with(
+            temp_git_repo, approved_build_spec.name
+        )
 
 
 # =============================================================================
@@ -1374,7 +1520,9 @@ class TestHandleBuildCommandBaseBranch:
         # Setup
         mock_validate_env.return_value = True
         mock_should_run_qa.return_value = False
-        mock_get_phase_model.side_effect = lambda spec_dir, phase, model: model or "sonnet"
+        mock_get_phase_model.side_effect = (
+            lambda spec_dir, phase, model: model or "sonnet"
+        )
         mock_choose_workspace.return_value = WorkspaceMode.DIRECT
         mock_get_existing.return_value = None
 
@@ -1385,7 +1533,9 @@ class TestHandleBuildCommandBaseBranch:
         mock_run_agent.side_effect = successful_agent_fn
 
         # Mock get_base_branch_from_metadata to return "develop"
-        with patch("prompts_pkg.prompts.get_base_branch_from_metadata", return_value="develop"):
+        with patch(
+            "prompts_pkg.prompts.get_base_branch_from_metadata", return_value="develop"
+        ):
             # Execute without base_branch parameter (should read from metadata)
             handle_build_command(
                 project_dir=temp_git_repo,
@@ -1428,7 +1578,9 @@ class TestHandleBuildCommandBaseBranch:
         # Setup
         mock_validate_env.return_value = True
         mock_should_run_qa.return_value = False
-        mock_get_phase_model.side_effect = lambda spec_dir, phase, model: model or "sonnet"
+        mock_get_phase_model.side_effect = (
+            lambda spec_dir, phase, model: model or "sonnet"
+        )
         mock_choose_workspace.return_value = WorkspaceMode.DIRECT
         mock_get_existing.return_value = None
 
@@ -1491,7 +1643,9 @@ class TestHandleBuildCommandQAOutcomes:
         # Setup
         mock_validate_env.return_value = True
         mock_should_run_qa.return_value = True
-        mock_get_phase_model.side_effect = lambda spec_dir, phase, model: model or "sonnet"
+        mock_get_phase_model.side_effect = (
+            lambda spec_dir, phase, model: model or "sonnet"
+        )
         mock_choose_workspace.return_value = WorkspaceMode.DIRECT
         mock_get_existing.return_value = None
         mock_run_qa.return_value = False  # QA incomplete
@@ -1514,7 +1668,10 @@ class TestHandleBuildCommandQAOutcomes:
 
         # Verify QA incomplete message
         captured = capsys.readouterr()
-        assert "QA VALIDATION INCOMPLETE" in captured.out or "incomplete" in captured.out.lower()
+        assert (
+            "QA VALIDATION INCOMPLETE" in captured.out
+            or "incomplete" in captured.out.lower()
+        )
 
     @patch("phase_config.get_phase_model")
     @patch("qa_loop.should_run_qa")
@@ -1544,7 +1701,9 @@ class TestHandleBuildCommandQAOutcomes:
         # Setup
         mock_validate_env.return_value = True
         mock_should_run_qa.return_value = True
-        mock_get_phase_model.side_effect = lambda spec_dir, phase, model: model or "sonnet"
+        mock_get_phase_model.side_effect = (
+            lambda spec_dir, phase, model: model or "sonnet"
+        )
         mock_choose_workspace.return_value = WorkspaceMode.DIRECT
         mock_get_existing.return_value = None
         mock_run_qa.return_value = True  # QA passed
@@ -1596,13 +1755,16 @@ class TestHandleBuildCommandQAOutcomes:
         # Setup
         mock_validate_env.return_value = True
         mock_should_run_qa.return_value = True
-        mock_get_phase_model.side_effect = lambda spec_dir, phase, model: model or "sonnet"
+        mock_get_phase_model.side_effect = (
+            lambda spec_dir, phase, model: model or "sonnet"
+        )
         mock_choose_workspace.return_value = WorkspaceMode.DIRECT
         mock_get_existing.return_value = None
 
         # Mock QA to raise KeyboardInterrupt
         async def qa_interrupt(*args, **kwargs):
             raise KeyboardInterrupt()
+
         mock_run_qa.side_effect = qa_interrupt
 
         mock_run_agent.side_effect = successful_agent_fn
@@ -1623,7 +1785,9 @@ class TestHandleBuildCommandQAOutcomes:
 
         # Verify QA paused message
         captured = capsys.readouterr()
-        assert "QA validation paused" in captured.out or "paused" in captured.out.lower()
+        assert (
+            "QA validation paused" in captured.out or "paused" in captured.out.lower()
+        )
 
 
 # =============================================================================
@@ -1664,13 +1828,19 @@ class TestHandleBuildCommandWorkspaceFinalization:
         # Setup
         mock_validate_env.return_value = True
         mock_should_run_qa.return_value = False
-        mock_get_phase_model.side_effect = lambda spec_dir, phase, model: model or "sonnet"
+        mock_get_phase_model.side_effect = (
+            lambda spec_dir, phase, model: model or "sonnet"
+        )
         mock_choose_workspace.return_value = WorkspaceMode.ISOLATED
         mock_get_existing.return_value = None
 
         # Mock worktree manager
         mock_worktree_manager = MagicMock()
-        mock_setup_workspace.return_value = (temp_git_repo, mock_worktree_manager, approved_build_spec)
+        mock_setup_workspace.return_value = (
+            temp_git_repo,
+            mock_worktree_manager,
+            approved_build_spec,
+        )
 
         # Mock finalize to return a choice
         mock_finalize_workspace.return_value = "merge"
@@ -1725,13 +1895,19 @@ class TestHandleBuildCommandWorkspaceFinalization:
         # Setup
         mock_validate_env.return_value = True
         mock_should_run_qa.return_value = False
-        mock_get_phase_model.side_effect = lambda spec_dir, phase, model: model or "sonnet"
+        mock_get_phase_model.side_effect = (
+            lambda spec_dir, phase, model: model or "sonnet"
+        )
         mock_choose_workspace.return_value = WorkspaceMode.ISOLATED
         mock_get_existing.return_value = None
 
         # Mock worktree manager
         mock_worktree_manager = MagicMock()
-        mock_setup_workspace.return_value = (temp_git_repo, mock_worktree_manager, approved_build_spec)
+        mock_setup_workspace.return_value = (
+            temp_git_repo,
+            mock_worktree_manager,
+            approved_build_spec,
+        )
 
         # Mock finalize to return a choice
         mock_finalize_workspace.return_value = "keep"
@@ -1786,13 +1962,16 @@ class TestHandleBuildCommandOuterInterrupt:
         """KeyboardInterrupt in outer try block calls interrupt handler (line 316)."""
         # Setup
         mock_validate_env.return_value = True
-        mock_get_phase_model.side_effect = lambda spec_dir, phase, model: model or "sonnet"
+        mock_get_phase_model.side_effect = (
+            lambda spec_dir, phase, model: model or "sonnet"
+        )
         mock_choose_workspace.return_value = WorkspaceMode.DIRECT
         mock_get_existing.return_value = None
 
         # Mock agent to raise KeyboardInterrupt
         async def interrupt_agent(*args, **kwargs):
             raise KeyboardInterrupt()
+
         mock_run_agent.side_effect = interrupt_agent
 
         # Mock the interrupt handler to prevent it from actually exiting
@@ -1882,7 +2061,9 @@ class TestHandleBuildInterruptEdgeCases:
         assert exc_info.value.code == 0
 
         captured = capsys.readouterr()
-        assert "Exiting without saving" in captured.out or "exit" in captured.out.lower()
+        assert (
+            "Exiting without saving" in captured.out or "exit" in captured.out.lower()
+        )
 
     def test_interrupt_with_paste_input_returns_none(
         self,
@@ -1910,7 +2091,9 @@ class TestHandleBuildInterruptEdgeCases:
         assert exc_info.value.code == 0
 
         captured = capsys.readouterr()
-        assert "Exiting without saving" in captured.out or "exit" in captured.out.lower()
+        assert (
+            "Exiting without saving" in captured.out or "exit" in captured.out.lower()
+        )
 
     def test_interrupt_with_empty_human_input(
         self,
@@ -1939,7 +2122,10 @@ class TestHandleBuildInterruptEdgeCases:
             assert human_input_file.read_text() == ""
 
         captured = capsys.readouterr()
-        assert "No instructions provided" in captured.out or "no instructions" in captured.out.lower()
+        assert (
+            "No instructions provided" in captured.out
+            or "no instructions" in captured.out.lower()
+        )
 
     def test_interrupt_with_eof_error(
         self,
@@ -1963,7 +2149,9 @@ class TestHandleBuildInterruptEdgeCases:
 
         # Should show resume instructions after EOFError is handled
         captured = capsys.readouterr()
-        assert "TO RESUME" in captured.out or "python auto-claude/run.py" in captured.out
+        assert (
+            "TO RESUME" in captured.out or "python auto-claude/run.py" in captured.out
+        )
 
     def test_interrupt_with_worktree_shows_safety_message(
         self,
@@ -2087,13 +2275,19 @@ class TestHandleBuildCommandLocalBranch:
         # Setup
         mock_validate_env.return_value = True
         mock_should_run_qa.return_value = False
-        mock_get_phase_model.side_effect = lambda spec_dir, phase, model: model or "sonnet"
+        mock_get_phase_model.side_effect = (
+            lambda spec_dir, phase, model: model or "sonnet"
+        )
         mock_choose_workspace.return_value = WorkspaceMode.ISOLATED
         mock_get_existing.return_value = None
 
         # Mock worktree manager
         mock_worktree_manager = MagicMock()
-        mock_setup_workspace.return_value = (temp_git_repo, mock_worktree_manager, approved_build_spec)
+        mock_setup_workspace.return_value = (
+            temp_git_repo,
+            mock_worktree_manager,
+            approved_build_spec,
+        )
         mock_finalize_workspace.return_value = "quit"
 
         # Create task_metadata.json with use_local_branch
@@ -2103,7 +2297,9 @@ class TestHandleBuildCommandLocalBranch:
         mock_run_agent.side_effect = successful_agent_fn
 
         # Mock get_use_local_branch_from_metadata
-        with patch("prompts_pkg.prompts.get_use_local_branch_from_metadata", return_value=True):
+        with patch(
+            "prompts_pkg.prompts.get_use_local_branch_from_metadata", return_value=True
+        ):
             # Execute
             handle_build_command(
                 project_dir=temp_git_repo,
@@ -2162,13 +2358,19 @@ class TestHandleBuildCommandSourceSpecSync:
         # Setup
         mock_validate_env.return_value = True
         mock_should_run_qa.return_value = False
-        mock_get_phase_model.side_effect = lambda spec_dir, phase, model: model or "sonnet"
+        mock_get_phase_model.side_effect = (
+            lambda spec_dir, phase, model: model or "sonnet"
+        )
         mock_choose_workspace.return_value = WorkspaceMode.ISOLATED
         mock_get_existing.return_value = None
 
         # Mock worktree manager
         mock_worktree_manager = MagicMock()
-        mock_setup_workspace.return_value = (temp_git_repo, mock_worktree_manager, approved_build_spec)
+        mock_setup_workspace.return_value = (
+            temp_git_repo,
+            mock_worktree_manager,
+            approved_build_spec,
+        )
         mock_finalize_workspace.return_value = "quit"
 
         mock_run_agent.side_effect = successful_agent_fn
@@ -2231,7 +2433,9 @@ class TestHandleBuildCommandQAApproved:
         # Setup
         mock_validate_env.return_value = True
         mock_should_run_qa.return_value = True
-        mock_get_phase_model.side_effect = lambda spec_dir, phase, model: model or "sonnet"
+        mock_get_phase_model.side_effect = (
+            lambda spec_dir, phase, model: model or "sonnet"
+        )
         mock_choose_workspace.return_value = WorkspaceMode.DIRECT
         mock_get_existing.return_value = None
         mock_run_qa.return_value = True  # QA approved
@@ -2255,7 +2459,10 @@ class TestHandleBuildCommandQAApproved:
 
         # Verify QA success message
         captured = capsys.readouterr()
-        assert "QA VALIDATION PASSED" in captured.out or "production-ready" in captured.out.lower()
+        assert (
+            "QA VALIDATION PASSED" in captured.out
+            or "production-ready" in captured.out.lower()
+        )
 
 
 # =============================================================================
@@ -2296,15 +2503,27 @@ class TestHandleBuildCommandLocalizedSpec:
         # Setup
         mock_validate_env.return_value = True
         mock_should_run_qa.return_value = False
-        mock_get_phase_model.side_effect = lambda spec_dir, phase, model: model or "sonnet"
+        mock_get_phase_model.side_effect = (
+            lambda spec_dir, phase, model: model or "sonnet"
+        )
         mock_choose_workspace.return_value = WorkspaceMode.ISOLATED
         mock_get_existing.return_value = None
 
         # Mock worktree manager and localized spec directory
         mock_worktree_manager = MagicMock()
-        localized_spec_dir = temp_git_repo / "worktree" / ".auto-claude" / "specs" / approved_build_spec.name
+        localized_spec_dir = (
+            temp_git_repo
+            / "worktree"
+            / ".auto-claude"
+            / "specs"
+            / approved_build_spec.name
+        )
         # Return tuple with localized_spec_dir (third element)
-        mock_setup_workspace.return_value = (temp_git_repo, mock_worktree_manager, localized_spec_dir)
+        mock_setup_workspace.return_value = (
+            temp_git_repo,
+            mock_worktree_manager,
+            localized_spec_dir,
+        )
         mock_finalize_workspace.return_value = "quit"
 
         mock_run_agent.side_effect = successful_agent_fn
@@ -2348,7 +2567,10 @@ class TestHandleBuildInterruptWorktreeSafety:
 
         # Mock select_menu to return "type" and read_multiline_input to return actual input
         with patch("cli.build_commands.select_menu", return_value="type"):
-            with patch("cli.build_commands.read_multiline_input", return_value="Additional instructions"):
+            with patch(
+                "cli.build_commands.read_multiline_input",
+                return_value="Additional instructions",
+            ):
                 # Execute
                 _handle_build_interrupt(
                     spec_dir=build_spec_dir,
@@ -2362,7 +2584,10 @@ class TestHandleBuildInterruptWorktreeSafety:
 
         captured = capsys.readouterr()
         # Should show "INSTRUCTIONS SAVED" message
-        assert "INSTRUCTIONS SAVED" in captured.out or "instructions" in captured.out.lower()
+        assert (
+            "INSTRUCTIONS SAVED" in captured.out
+            or "instructions" in captured.out.lower()
+        )
         # Should show "TO RESUME" box
         assert "TO RESUME" in captured.out or "Resume" in captured.out
         # Should show worktree safety message when worktree_manager exists
@@ -2380,7 +2605,10 @@ class TestHandleBuildInterruptWorktreeSafety:
 
         # Mock select_menu to return "file" and read_from_file to return actual content
         with patch("cli.build_commands.select_menu", return_value="file"):
-            with patch("cli.build_commands.read_from_file", return_value="Instructions from file"):
+            with patch(
+                "cli.build_commands.read_from_file",
+                return_value="Instructions from file",
+            ):
                 # Execute
                 _handle_build_interrupt(
                     spec_dir=build_spec_dir,
@@ -2394,7 +2622,10 @@ class TestHandleBuildInterruptWorktreeSafety:
 
         captured = capsys.readouterr()
         # Should show "INSTRUCTIONS SAVED" message
-        assert "INSTRUCTIONS SAVED" in captured.out or "instructions" in captured.out.lower()
+        assert (
+            "INSTRUCTIONS SAVED" in captured.out
+            or "instructions" in captured.out.lower()
+        )
         # Should show "TO RESUME" box
         assert "TO RESUME" in captured.out or "Resume" in captured.out
         # Should show worktree safety message when worktree_manager exists
@@ -2412,7 +2643,10 @@ class TestHandleBuildInterruptWorktreeSafety:
 
         # Mock select_menu to return "paste" and read_multiline_input to return actual input
         with patch("cli.build_commands.select_menu", return_value="paste"):
-            with patch("cli.build_commands.read_multiline_input", return_value="Pasted instructions"):
+            with patch(
+                "cli.build_commands.read_multiline_input",
+                return_value="Pasted instructions",
+            ):
                 # Execute
                 _handle_build_interrupt(
                     spec_dir=build_spec_dir,
@@ -2426,7 +2660,10 @@ class TestHandleBuildInterruptWorktreeSafety:
 
         captured = capsys.readouterr()
         # Should show "INSTRUCTIONS SAVED" message
-        assert "INSTRUCTIONS SAVED" in captured.out or "instructions" in captured.out.lower()
+        assert (
+            "INSTRUCTIONS SAVED" in captured.out
+            or "instructions" in captured.out.lower()
+        )
         # Should show "TO RESUME" box
         assert "TO RESUME" in captured.out or "Resume" in captured.out
         # Should show worktree safety message when worktree_manager exists
@@ -2443,7 +2680,9 @@ class TestHandleBuildInterruptWorktreeSafety:
 
         # Mock select_menu to return "type" and read_multiline_input to return actual input
         with patch("cli.build_commands.select_menu", return_value="type"):
-            with patch("cli.build_commands.read_multiline_input", return_value="Instructions"):
+            with patch(
+                "cli.build_commands.read_multiline_input", return_value="Instructions"
+            ):
                 # Execute
                 _handle_build_interrupt(
                     spec_dir=build_spec_dir,
@@ -2485,7 +2724,9 @@ class TestHandleBuildInterruptWorktreeSafety:
 
         captured = capsys.readouterr()
         # Should show "No instructions provided" message (lines 444-446)
-        assert "No instructions" in captured.out or "instructions" in captured.out.lower()
+        assert (
+            "No instructions" in captured.out or "instructions" in captured.out.lower()
+        )
         # Should still show "TO RESUME" box
         assert "TO RESUME" in captured.out or "Resume" in captured.out
         # The workspace safety message should NOT be present (no worktree_manager)
@@ -2516,7 +2757,9 @@ class TestHandleBuildInterruptWorktreeSafety:
 
         captured = capsys.readouterr()
         # Should show "No instructions provided" message (lines 444-446)
-        assert "No instructions" in captured.out or "instructions" in captured.out.lower()
+        assert (
+            "No instructions" in captured.out or "instructions" in captured.out.lower()
+        )
         # Should show "TO RESUME" box
         assert "TO RESUME" in captured.out or "Resume" in captured.out
         # Should show worktree safety message when worktree_manager exists

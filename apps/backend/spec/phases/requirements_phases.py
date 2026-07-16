@@ -9,10 +9,11 @@ import json
 from datetime import datetime
 from typing import TYPE_CHECKING
 
+from execution_budget import get_execution_budget
 from task_logger import LogEntryType, LogPhase
 
 from .. import requirements, validator
-from .models import MAX_RETRIES, PhaseResult
+from .models import PhaseResult
 
 if TYPE_CHECKING:
     pass
@@ -200,7 +201,8 @@ class RequirementsPhaseMixin:
             return PhaseResult("research", True, [str(research_file)], [], 0)
 
         errors = []
-        for attempt in range(MAX_RETRIES):
+        max_attempts = get_execution_budget(self.spec_dir).max_spec_attempts
+        for attempt in range(max_attempts):
             self.ui.print_status(
                 f"Running research agent (attempt {attempt + 1})...", "progress"
             )
@@ -241,4 +243,4 @@ Output your findings to research.json.
             self.spec_dir,
             reason="Research agent failed after retries",
         )
-        return PhaseResult("research", True, [str(research_file)], errors, MAX_RETRIES)
+        return PhaseResult("research", True, [str(research_file)], errors, max_attempts)

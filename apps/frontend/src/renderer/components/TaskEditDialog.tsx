@@ -35,7 +35,7 @@ import { TaskFormFields } from './task-form/TaskFormFields';
 import { type FileReferenceData } from './task-form/useImageUpload';
 import { persistUpdateTask } from '../stores/task-store';
 import { useProjectStore } from '../stores/project-store';
-import type { Task, ImageAttachment, TaskCategory, TaskPriority, TaskComplexity, TaskImpact, ModelType, ThinkingLevel, AgentProvider, CodexReasoningEffort } from '../../shared/types';
+import type { Task, ImageAttachment, TaskCategory, TaskPriority, TaskComplexity, TaskImpact, ModelType, ThinkingLevel, AgentProvider, CodexReasoningEffort, ExecutionMode } from '../../shared/types';
 import {
   DEFAULT_AGENT_PROFILES,
   DEFAULT_PHASE_MODELS,
@@ -128,6 +128,9 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved }: TaskEditDi
 
   // Fast mode
   const [fastMode, setFastMode] = useState(task.metadata?.fastMode ?? false);
+  const [executionMode, setExecutionMode] = useState<ExecutionMode>(
+    task.metadata?.executionMode ?? 'full'
+  );
 
   // Show Fast Mode toggle when any phase uses an Opus model
   const showFastModeToggle = useMemo(() => {
@@ -183,6 +186,7 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved }: TaskEditDi
       setImages(task.metadata?.attachedImages || []);
       setRequireReviewBeforeCoding(task.metadata?.requireReviewBeforeCoding ?? false);
       setFastMode(task.metadata?.fastMode ?? false);
+      setExecutionMode(task.metadata?.executionMode ?? 'full');
       setError(null);
 
       // Auto-expand classification if it has content
@@ -228,6 +232,7 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved }: TaskEditDi
       thinkingLevel !== (task.metadata?.thinkingLevel || '') ||
       requireReviewBeforeCoding !== (task.metadata?.requireReviewBeforeCoding ?? false) ||
       fastMode !== (task.metadata?.fastMode ?? false) ||
+      executionMode !== (task.metadata?.executionMode ?? 'full') ||
       JSON.stringify(images) !== JSON.stringify(task.metadata?.attachedImages || []) ||
       JSON.stringify(phaseModels) !== JSON.stringify(task.metadata?.phaseModels || DEFAULT_PHASE_MODELS) ||
       JSON.stringify(phaseThinking) !== JSON.stringify(task.metadata?.phaseThinking || DEFAULT_PHASE_THINKING);
@@ -263,6 +268,7 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved }: TaskEditDi
     metadataUpdates.attachedImages = images.length > 0 ? images : [];
     metadataUpdates.requireReviewBeforeCoding = requireReviewBeforeCoding;
     metadataUpdates.fastMode = fastMode;
+    metadataUpdates.executionMode = executionMode;
 
     const success = await persistUpdateTask(task.id, {
       title: trimmedTitle,
@@ -356,6 +362,8 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved }: TaskEditDi
         fastMode={fastMode}
         onFastModeChange={setFastMode}
         showFastModeToggle={showFastModeToggle && isFastModeEditable}
+        executionMode={executionMode}
+        onExecutionModeChange={setExecutionMode}
         disabled={isSaving}
         error={error}
         onError={setError}

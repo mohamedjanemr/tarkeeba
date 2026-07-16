@@ -8,6 +8,8 @@ Validates implementation_plan.json structure, phases, subtasks, and dependencies
 import json
 from pathlib import Path
 
+from execution_budget import get_max_subtasks
+
 from ..models import ValidationResult
 from ..schemas import IMPLEMENTATION_PLAN_SCHEMA
 
@@ -81,6 +83,16 @@ class ImplementationPlanValidator:
         if total_subtasks == 0:
             errors.append("No subtasks defined in any phase")
             fixes.append("Add subtasks to phases")
+
+        max_subtasks = get_max_subtasks(self.spec_dir)
+        if max_subtasks is not None and total_subtasks > max_subtasks:
+            errors.append(
+                f"Plan has {total_subtasks} subtasks; efficient execution allows "
+                f"at most {max_subtasks}"
+            )
+            fixes.append(
+                "Combine related file-level steps into vertical implementation slices"
+            )
 
         # Validate dependencies don't create cycles
         dep_errors = self._validate_dependencies(phases)

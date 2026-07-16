@@ -25,6 +25,14 @@ import { usageAggregator } from '../usage-cost/usage-aggregator';
 /** How long to wait for the renderer to confirm/reject a pre-run cost warning before auto-cancelling. */
 const COST_WARNING_CONFIRMATION_TIMEOUT_MS = 5 * 60 * 1000;
 
+const SPEC_COMPLEXITY_BY_TASK_COMPLEXITY = {
+  trivial: 'simple',
+  small: 'simple',
+  medium: 'standard',
+  large: 'complex',
+  complex: 'complex'
+} as const;
+
 /**
  * Main AgentManager - orchestrates agent process lifecycle
  * This is a slim facade that delegates to focused modules
@@ -454,6 +462,13 @@ export class AgentManager extends EventEmitter {
     if (!useCodex && !metadata?.requireReviewBeforeCoding) {
       // Auto-approve: When user starts a task from the UI without requiring review
       args.push('--auto-approve');
+    }
+
+    // Classification is already a user decision. Reuse it instead of spending
+    // another agent call to reassess the same task during spec creation.
+    if (!useCodex && metadata?.complexity) {
+      args.push('--complexity', SPEC_COMPLEXITY_BY_TASK_COMPLEXITY[metadata.complexity]);
+      args.push('--no-ai-assessment');
     }
 
     // Pass model and thinking level configuration

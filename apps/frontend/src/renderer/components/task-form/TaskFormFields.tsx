@@ -36,7 +36,7 @@ import type {
   ModelType,
   ThinkingLevel
 } from '../../../shared/types';
-import type { AgentProvider, CodexModelInfo, CodexReasoningEffort, OpenAIProfile } from '../../../shared/types/task';
+import type { AgentProvider, CodexModelInfo, CodexReasoningEffort, ExecutionMode, OpenAIProfile } from '../../../shared/types/task';
 import type { PhaseModelConfig, PhaseThinkingConfig } from '../../../shared/types/settings';
 
 interface TaskFormFieldsProps {
@@ -79,6 +79,10 @@ interface TaskFormFieldsProps {
   onThinkingLevelChange: (level: ThinkingLevel | '') => void;
   onPhaseModelsChange: (config: PhaseModelConfig | undefined) => void;
   onPhaseThinkingChange: (config: PhaseThinkingConfig | undefined) => void;
+
+  // Execution budget
+  executionMode: ExecutionMode;
+  onExecutionModeChange: (mode: ExecutionMode) => void;
 
   // Classification
   category: TaskCategory | '';
@@ -161,6 +165,8 @@ export function TaskFormFields({
   onThinkingLevelChange,
   onPhaseModelsChange,
   onPhaseThinkingChange,
+  executionMode,
+  onExecutionModeChange,
   category,
   priority,
   complexity,
@@ -628,6 +634,32 @@ export function TaskFormFields({
               disabled={disabled}
             />
           )}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor={`${prefix}execution-mode`}>
+            {t('tasks:form.executionModeLabel')}
+          </Label>
+          <Select
+            value={executionMode}
+            onValueChange={(value) => onExecutionModeChange(value as ExecutionMode)}
+            disabled={disabled}
+          >
+            <SelectTrigger id={`${prefix}execution-mode`}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="efficient">
+                {t('tasks:form.executionModes.efficient')}
+              </SelectItem>
+              <SelectItem value="full">
+                {t('tasks:form.executionModes.full')}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            {t(`tasks:form.executionModes.${executionMode}Description`)}
+          </p>
         </div>
 
         {/* Classification Toggle */}

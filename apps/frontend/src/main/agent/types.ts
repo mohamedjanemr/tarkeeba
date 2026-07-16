@@ -2,7 +2,7 @@ import { ChildProcess } from 'child_process';
 import type { CompletablePhase, ExecutionPhase } from '../../shared/constants/phase-protocol';
 import type { ModelTypeShort } from '../../shared/types/settings';
 import type { TaskEventPayload } from './task-event-schema';
-import type { AgentProvider, CodexReasoningEffort } from '../../shared/types/task';
+import type { AgentProvider, CodexReasoningEffort, TaskComplexity } from '../../shared/types/task';
 
 /**
  * Agent-specific types for process and state management
@@ -60,6 +60,7 @@ export interface SpecCreationMetadata {
   codexProfileId?: string;
   codexModel?: string;
   codexReasoningEffort?: CodexReasoningEffort;
+  complexity?: TaskComplexity;
   // Auto profile - phase-based model and thinking configuration
   isAutoProfile?: boolean;
   phaseModels?: {
