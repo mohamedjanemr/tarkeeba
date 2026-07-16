@@ -265,7 +265,7 @@
     "executionModeLabel": "Stratégie d'exécution",
     "executionModes": {
       "efficient": "Efficace (recommandé)",
-      "efficientDescription": "Limite la planification à 6 sous-tâches verticales, le codage à 8 sessions et l'assurance qualité à 2 révisions. Ignore les passes IA optionnelles.",
+      "efficientDescription": "Limite la planification à 6 tranches de capacité, le codage à 6 sessions d'implémentation plus 2 nouvelles tentatives et l'assurance qualité à 2 révisions. Ignore les passes IA optionnelles.",
       "full": "Entièrement autonome",
       "fullDescription": "Utilise une planification exhaustive et des nouvelles tentatives autonomes sans limite de sessions de codage. Idéal pour les travaux exceptionnellement complexes ou à haut risque."
     },

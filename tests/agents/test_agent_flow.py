@@ -236,12 +236,52 @@ class TestPostSessionProcessing:
             )
 
         assert result is True, "Completed subtask should return True"
+        mock_insights.assert_awaited_once()
 
         # Verify attempt was recorded
         history = recovery_manager.get_subtask_history("subtask-1")
         assert len(history["attempts"]) == 1, "Should have 1 attempt"
         assert history["attempts"][0]["success"] is True, "Attempt should be successful"
         assert history["status"] == "completed", "Status should be completed"
+
+    async def test_efficient_completed_subtask_skips_rich_insights(self, test_env):
+        """Efficient mode saves basic memory without an extra extraction call."""
+        from agents.session import post_session_processing
+        from recovery import RecoveryManager
+
+        _, spec_dir, project_dir = test_env
+        create_implementation_plan(
+            spec_dir,
+            [{"id": "subtask-1", "description": "Test task", "status": "completed"}],
+        )
+        recovery_manager = RecoveryManager(spec_dir, project_dir)
+        commit_before = get_latest_commit(project_dir)
+
+        with (
+            patch(
+                "agents.session.extract_session_insights",
+                new_callable=AsyncMock,
+            ) as mock_insights,
+            patch(
+                "agents.session.save_session_memory",
+                new_callable=AsyncMock,
+                return_value=(True, "file"),
+            ) as mock_memory,
+        ):
+            result = await post_session_processing(
+                spec_dir=spec_dir,
+                project_dir=project_dir,
+                subtask_id="subtask-1",
+                session_num=1,
+                commit_before=commit_before,
+                commit_count_before=1,
+                recovery_manager=recovery_manager,
+                execution_mode="efficient",
+            )
+
+        assert result is True
+        mock_insights.assert_not_awaited()
+        assert mock_memory.await_args.kwargs["discoveries"] is None
 
     async def test_in_progress_subtask_records_failure(self, test_env):
         """Test that in_progress subtask is recorded as incomplete."""
@@ -275,6 +315,7 @@ class TestPostSessionProcessing:
                 commit_count_before=1,
                 recovery_manager=recovery_manager,
                 linear_enabled=False,
+                execution_mode="efficient",
             )
 
         assert result is False, "In-progress subtask should return False"
@@ -283,6 +324,7 @@ class TestPostSessionProcessing:
         history = recovery_manager.get_subtask_history("subtask-1")
         assert len(history["attempts"]) == 1, "Should have 1 attempt"
         assert history["attempts"][0]["success"] is False, "Attempt should be unsuccessful"
+        mock_insights.assert_awaited_once()
 
     async def test_pending_subtask_records_failure(self, test_env):
         """Test that pending (no progress) subtask is recorded as failure."""

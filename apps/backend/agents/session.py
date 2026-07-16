@@ -121,6 +121,7 @@ async def post_session_processing(
     status_manager: StatusManager | None = None,
     source_spec_dir: Path | None = None,
     error_info: dict | None = None,
+    execution_mode: str = "full",
 ) -> bool:
     """
     Process session results and update memory automatically.
@@ -139,6 +140,7 @@ async def post_session_processing(
         status_manager: Optional status manager for ccstatusline
         source_spec_dir: Original spec directory (for syncing back from worktree)
         error_info: Error information from run_agent_session (for rate limit detection)
+        execution_mode: Task execution strategy; efficient skips success extraction
 
     Returns:
         True if subtask was completed successfully
@@ -215,34 +217,36 @@ async def post_session_processing(
             )
             print_status("Linear progress recorded", "success")
 
-        # Extract rich insights from session (LLM-powered analysis)
-        insight_started = time.perf_counter()
-        try:
-            extracted_insights = await extract_session_insights(
-                spec_dir=spec_dir,
-                project_dir=project_dir,
-                subtask_id=subtask_id,
-                session_num=session_num,
-                commit_before=commit_before,
-                commit_after=commit_after,
-                success=True,
-                recovery_manager=recovery_manager,
-            )
-            insight_count = len(extracted_insights.get("file_insights", []))
-            pattern_count = len(extracted_insights.get("patterns_discovered", []))
-            if insight_count > 0 or pattern_count > 0:
-                print_status(
-                    f"Extracted {insight_count} file insights, {pattern_count} patterns",
-                    "success",
+        extracted_insights = None
+        if execution_mode.lower() != "efficient":
+            # Extract rich insights from session (LLM-powered analysis)
+            insight_started = time.perf_counter()
+            try:
+                extracted_insights = await extract_session_insights(
+                    spec_dir=spec_dir,
+                    project_dir=project_dir,
+                    subtask_id=subtask_id,
+                    session_num=session_num,
+                    commit_before=commit_before,
+                    commit_after=commit_after,
+                    success=True,
+                    recovery_manager=recovery_manager,
                 )
-        except Exception as e:
-            logger.warning(f"Insight extraction failed: {e}")
-            extracted_insights = None
-        finally:
-            if task_logger:
-                task_logger.record_timing(
-                    "insight_extraction", time.perf_counter() - insight_started
-                )
+                insight_count = len(extracted_insights.get("file_insights", []))
+                pattern_count = len(extracted_insights.get("patterns_discovered", []))
+                if insight_count > 0 or pattern_count > 0:
+                    print_status(
+                        f"Extracted {insight_count} file insights, {pattern_count} patterns",
+                        "success",
+                    )
+            except Exception as e:
+                logger.warning(f"Insight extraction failed: {e}")
+                extracted_insights = None
+            finally:
+                if task_logger:
+                    task_logger.record_timing(
+                        "insight_extraction", time.perf_counter() - insight_started
+                    )
 
         # Save session memory (Graphiti=primary, file-based=fallback)
         memory_started = time.perf_counter()

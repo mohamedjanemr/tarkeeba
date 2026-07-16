@@ -10,9 +10,12 @@ def test_legacy_task_preserves_full_autonomous_defaults(tmp_path):
 
     assert budget.mode == "full"
     assert budget.max_subtasks is None
+    assert budget.max_implementation_sessions is None
+    assert budget.max_retry_sessions is None
     assert budget.max_agent_sessions is None
     assert budget.max_qa_iterations == FULL_MAX_QA_ITERATIONS
     assert budget.max_spec_attempts == 3
+    assert budget.max_planner_attempts == 3
     assert budget.use_ai_phase_summaries is True
     assert budget.include_optional_spec_phases is True
 
@@ -26,9 +29,12 @@ def test_efficient_mode_uses_bounded_defaults(tmp_path):
 
     assert budget.mode == "efficient"
     assert budget.max_subtasks == 6
+    assert budget.max_implementation_sessions == 6
+    assert budget.max_retry_sessions == 2
     assert budget.max_agent_sessions == 8
     assert budget.max_qa_iterations == 2
     assert budget.max_spec_attempts == 2
+    assert budget.max_planner_attempts == 2
     assert budget.use_ai_phase_summaries is False
     assert budget.include_optional_spec_phases is False
 
@@ -50,6 +56,8 @@ def test_overrides_are_bounded_and_invalid_values_fall_back(tmp_path):
     budget = get_execution_budget(tmp_path)
 
     assert budget.max_subtasks == 1
+    assert budget.max_implementation_sessions == 100
+    assert budget.max_retry_sessions == 100
     assert budget.max_agent_sessions == 100
     assert budget.max_qa_iterations == 2
     assert budget.max_spec_attempts == 3
@@ -61,3 +69,24 @@ def test_unknown_mode_falls_back_to_full(tmp_path):
     )
 
     assert get_execution_budget(tmp_path).mode == "full"
+
+
+def test_implementation_and_retry_budgets_can_be_overridden_independently(tmp_path):
+    (tmp_path / "task_metadata.json").write_text(
+        json.dumps(
+            {
+                "executionMode": "efficient",
+                "maxImplementationSessions": 7,
+                "maxRetrySessions": 3,
+                "maxPlannerAttempts": 4,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    budget = get_execution_budget(tmp_path)
+
+    assert budget.max_implementation_sessions == 7
+    assert budget.max_retry_sessions == 3
+    assert budget.max_agent_sessions == 10
+    assert budget.max_planner_attempts == 4

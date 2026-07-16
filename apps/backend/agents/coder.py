@@ -17,6 +17,7 @@ from pathlib import Path
 from context.constants import SKIP_DIRS
 from core.client import create_client
 from core.file_utils import write_json_atomic
+from execution_budget import get_execution_budget
 from linear_updater import (
     LinearTaskState,
     is_linear_enabled,
@@ -95,6 +96,25 @@ from .utils import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+async def _get_capability_graphiti_context(
+    cache: dict[str, str | None],
+    capability_key: str,
+    spec_dir: Path,
+    project_dir: Path,
+    subtask: dict,
+    *,
+    refresh: bool = False,
+) -> tuple[str | None, bool]:
+    """Load Graphiti context once per capability, refreshing on retries."""
+    if refresh or capability_key not in cache:
+        cache.clear()
+        cache[capability_key] = await get_graphiti_context(
+            spec_dir, project_dir, subtask
+        )
+        return cache[capability_key], True
+    return cache[capability_key], False
 
 
 # =============================================================================
@@ -776,6 +796,8 @@ async def run_autonomous_agent(
 
     # Initialize recovery manager (handles memory persistence)
     recovery_manager = RecoveryManager(spec_dir, project_dir)
+    execution_budget = get_execution_budget(spec_dir)
+    execution_mode = execution_budget.mode
 
     # Initialize status manager for ccstatusline
     status_manager = StatusManager(project_dir)
@@ -894,11 +916,16 @@ async def run_autonomous_agent(
 
     # Main loop
     iteration = 0
+    planner_sessions = 0
+    implementation_sessions = 0
+    retry_sessions = 0
+    retry_subtasks: set[str] = set()
     consecutive_concurrency_errors = 0  # Track consecutive 400 tool concurrency errors
     current_retry_delay = INITIAL_RETRY_DELAY_SECONDS  # Exponential backoff delay
     concurrency_error_context: str | None = (
         None  # Context to pass to agent after concurrency error
     )
+    capability_memory_cache: dict[str, str | None] = {}
 
     def _reset_concurrency_state() -> None:
         """Reset concurrency error tracking state after a successful session or non-concurrency error."""
@@ -911,6 +938,14 @@ async def run_autonomous_agent(
         concurrency_error_context = None
 
     while True:
+        if first_run and planner_sessions >= execution_budget.max_planner_attempts:
+            print(
+                f"\nReached planner attempt budget "
+                f"({execution_budget.max_planner_attempts})"
+            )
+            status_manager.update(state=BuildState.ERROR)
+            break
+
         iteration += 1
 
         # Check for human intervention (PAUSE file)
@@ -929,12 +964,6 @@ async def run_autonomous_agent(
             print("\nThen run again:")
             print(f"  python auto-claude/run.py --spec {spec_dir.name}")
             return
-
-        # Check max iterations
-        if max_iterations and iteration > max_iterations:
-            print(f"\nReached max iterations ({max_iterations})")
-            print("To continue, run the script again without --max-iterations")
-            break
 
         # Get the next subtask to work on (planner sessions shouldn't bind to a subtask)
         next_subtask = None if first_run else get_next_subtask(spec_dir)
@@ -981,6 +1010,7 @@ async def run_autonomous_agent(
         )
 
         if first_run:
+            planner_sessions += 1
             current_log_phase = LogPhase.PLANNING
             if task_logger:
                 task_logger.set_session(iteration)
@@ -1119,6 +1149,7 @@ async def run_autonomous_agent(
                     approach="File validation failed before execution",
                     error=error_msg,
                 )
+                retry_subtasks.add(subtask_id)
 
                 # Log the validation failure
                 if task_logger:
@@ -1155,6 +1186,35 @@ async def run_autonomous_agent(
                 await asyncio.sleep(AUTO_CONTINUE_DELAY_SECONDS)
                 continue  # Skip to next iteration
 
+            attempt_count = recovery_manager.get_attempt_count(subtask_id)
+            is_retry_session = subtask_id in retry_subtasks or attempt_count > 0
+            coding_sessions = implementation_sessions + retry_sessions
+            if max_iterations and coding_sessions >= max_iterations:
+                print(f"\nReached coding session budget ({max_iterations})")
+                print("To continue, run the script again without --max-iterations")
+                break
+            if (
+                is_retry_session
+                and execution_budget.max_retry_sessions is not None
+                and retry_sessions >= execution_budget.max_retry_sessions
+            ):
+                print(
+                    f"\nReached coding retry reserve "
+                    f"({execution_budget.max_retry_sessions})"
+                )
+                break
+            if (
+                not is_retry_session
+                and execution_budget.max_implementation_sessions is not None
+                and implementation_sessions
+                >= execution_budget.max_implementation_sessions
+            ):
+                print(
+                    f"\nReached implementation session budget "
+                    f"({execution_budget.max_implementation_sessions})"
+                )
+                break
+
             if task_logger:
                 task_logger.set_session(iteration)
                 task_logger.set_subtask(subtask_id)
@@ -1187,7 +1247,6 @@ async def run_autonomous_agent(
 
             context_started = time.perf_counter()
             # Get attempt count for recovery context
-            attempt_count = recovery_manager.get_attempt_count(subtask_id)
             recovery_hints = (
                 recovery_manager.get_recovery_hints(subtask_id)
                 if attempt_count > 0
@@ -1219,10 +1278,19 @@ async def run_autonomous_agent(
 
             # Retrieve and append Graphiti memory context (if enabled)
             graphiti_started = time.perf_counter()
-            graphiti_context = await get_graphiti_context(
-                spec_dir, project_dir, next_subtask
+            capability_key = str(next_subtask.get("phase_id") or subtask_id)
+            (
+                graphiti_context,
+                graphiti_retrieved,
+            ) = await _get_capability_graphiti_context(
+                capability_memory_cache,
+                capability_key,
+                spec_dir,
+                project_dir,
+                next_subtask,
+                refresh=is_retry_session,
             )
-            if task_logger:
+            if task_logger and graphiti_retrieved:
                 task_logger.record_timing(
                     "graphiti_retrieval", time.perf_counter() - graphiti_started
                 )
@@ -1246,6 +1314,11 @@ async def run_autonomous_agent(
             print()
 
         # Entering the SDK context starts the subprocess and MCP connections.
+        if current_log_phase == LogPhase.CODING:
+            if is_retry_session:
+                retry_sessions += 1
+            else:
+                implementation_sessions += 1
         client_startup_started = time.perf_counter()
         async with client:
             if task_logger:
@@ -1353,12 +1426,17 @@ async def run_autonomous_agent(
                 status_manager=status_manager,
                 source_spec_dir=source_spec_dir,
                 error_info=error_info,
+                execution_mode=execution_mode,
             )
             if task_logger:
                 task_logger.record_timing(
                     "post_processing_total",
                     time.perf_counter() - postprocess_started,
                 )
+            if success:
+                retry_subtasks.discard(subtask_id)
+            else:
+                retry_subtasks.add(subtask_id)
 
             # Check for stuck subtasks
             attempt_count = recovery_manager.get_attempt_count(subtask_id)
@@ -1393,6 +1471,11 @@ async def run_autonomous_agent(
 
         if task_logger:
             task_logger.end_session_timing(status)
+
+        if status == "error" and current_log_phase == LogPhase.PLANNING:
+            # Any failed planner session must consume the planner-attempt budget
+            # and retry as planning, never fall through into coding.
+            first_run = True
 
         # Handle session status
         if status == "complete":
@@ -1682,7 +1765,11 @@ async def run_autonomous_agent(
                 _reset_concurrency_state()
 
         # Small delay between sessions
-        if max_iterations is None or iteration < max_iterations:
+        if (
+            first_run
+            or max_iterations is None
+            or implementation_sessions + retry_sessions < max_iterations
+        ):
             print("\nPreparing next session...\n")
             await asyncio.sleep(1)
 
@@ -1693,6 +1780,9 @@ async def run_autonomous_agent(
         f"Project: {project_dir}",
         f"Spec: {highlight(spec_dir.name)}",
         f"Sessions completed: {iteration}",
+        f"Planner sessions: {planner_sessions}",
+        f"Implementation sessions: {implementation_sessions}",
+        f"Retry sessions: {retry_sessions}",
     ]
     print()
     print(box(content, width=70, style="heavy"))
