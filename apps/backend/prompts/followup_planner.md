@@ -151,11 +151,15 @@ If existing plan has phases 1-4:
 
 1. **Build on existing work** - Reference files created in earlier subtasks
 2. **Follow established patterns** - Use the same code style and conventions
-3. **Small scope** - Each subtask should take 1-3 files max
+3. **Capability slices** - Group all files needed for one observable outcome
 4. **Clear verification** - Every subtask must have a way to verify it works
 5. **Preserve context** - Use patterns_from to point to relevant existing files
 6. **Cite acceptance criteria** - Add `acceptance_criteria_refs` with the AC-N
    criteria that drive each new capability
+7. **Shared registries last** - Isolate IPC, preload, barrel, i18n, navigation,
+   and route registry edits in one final integration slice
+8. **Budget pending work only** - Completed subtasks do not count against the
+   follow-up slice cap
 
 ---
 
@@ -165,7 +169,7 @@ If existing plan has phases 1-4:
 
 1. **PRESERVE all existing phases and subtasks** - Do not modify them
 2. **ADD new phase(s)** to the `phases` array
-3. **UPDATE summary** with new totals
+3. **PRESERVE summary metadata without writing derived totals**
 4. **UPDATE status** to "in_progress" (was "complete")
 
 ### Update Command

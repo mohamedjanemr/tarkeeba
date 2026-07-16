@@ -30,6 +30,7 @@ class PhaseType(str, Enum):
     INVESTIGATION = "investigation"  # Research, debugging, analysis
     INTEGRATION = "integration"  # Wiring services together
     CLEANUP = "cleanup"  # Removing old code, polish
+    FOLLOWUP = "followup"  # Additional work appended to a completed plan
 
 
 class SubtaskStatus(str, Enum):

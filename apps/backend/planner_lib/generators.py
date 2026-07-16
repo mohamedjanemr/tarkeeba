@@ -5,6 +5,7 @@ Plan generation logic for different workflow types.
 import re
 from pathlib import Path
 
+from execution_budget import get_max_subtasks
 from implementation_plan import (
     ImplementationPlan,
     Phase,
@@ -16,14 +17,13 @@ from implementation_plan import (
     WorkflowType,
 )
 
+from .capabilities import group_files_into_capabilities
 from .models import PlannerContext
 from .utils import (
     create_verification,
-    determine_service_order,
     extract_acceptance_criteria,
     extract_feature_name,
-    get_patterns_for_service,
-    group_files_by_service,
+    get_patterns_for_capability,
     infer_subtask_type,
 )
 
@@ -66,7 +66,7 @@ class PlanGenerator:
             for subtask in phase.subtasks:
                 if subtask.acceptance_criteria_refs:
                     continue
-                if subtask.all_services or phase.type == PhaseType.INTEGRATION:
+                if phase.type == PhaseType.INTEGRATION:
                     subtask.acceptance_criteria_refs = list(all_refs)
                     continue
 
@@ -79,7 +79,7 @@ class PlanGenerator:
                     ]
                 )
                 subtask_tokens = PlanGenerator._scope_tokens(subtask_text)
-                subtask.acceptance_criteria_refs = [
+                matching_refs = [
                     ref
                     for ref, _ in acceptance_items
                     if (
@@ -87,6 +87,14 @@ class PlanGenerator:
                         or subtask_tokens & (criterion_tokens[ref] - common_tokens)
                     )
                 ]
+                if not matching_refs and all_refs:
+                    matching_refs = [
+                        max(
+                            all_refs,
+                            key=lambda ref: len(subtask_tokens & criterion_tokens[ref]),
+                        )
+                    ]
+                subtask.acceptance_criteria_refs = matching_refs
 
     @staticmethod
     def _scope_tokens(value: str) -> set[str]:
@@ -126,111 +134,110 @@ class FeaturePlanGenerator(PlanGenerator):
     def generate(self) -> ImplementationPlan:
         """Generate a feature implementation plan."""
         feature_name = extract_feature_name(self.context)
-        files_by_service = group_files_by_service(self.context)
         final_acceptance, acceptance_items = self._acceptance_context()
+        max_slices = get_max_subtasks(self.spec_dir) or 10
+        planned_files = [
+            *self.context.files_to_modify,
+            *[
+                {**file_info, "operation": "create"}
+                for file_info in self.context.files_to_create
+            ],
+        ]
+        capability_groups = group_files_into_capabilities(
+            planned_files,
+            max_slices=max_slices,
+        )
 
         phases = []
-        phase_num = 0
+        for phase_num, group in enumerate(capability_groups, start=1):
+            paths_to_modify = []
+            paths_to_create = []
+            services = []
+            reasons = []
+            verification_steps = []
 
-        # Determine service order (backend first, then workers, then frontend)
-        service_order = determine_service_order(files_by_service)
+            for file_info in group.files:
+                path = str(file_info.get("path", ""))
+                operation = str(
+                    file_info.get("operation")
+                    or file_info.get("action")
+                    or file_info.get("change_type")
+                    or ""
+                ).lower()
+                if operation in {"add", "create", "new"}:
+                    paths_to_create.append(path)
+                else:
+                    paths_to_modify.append(path)
+                if file_info.get("service"):
+                    services.append(str(file_info["service"]))
+                if file_info.get("reason"):
+                    reasons.append(str(file_info["reason"]))
 
-        backend_phase = None
-        worker_phase = None
+                service = str(file_info.get("service") or "main")
+                verification = create_verification(
+                    self.context,
+                    service,
+                    infer_subtask_type(path),
+                ).to_dict()
+                if verification not in verification_steps:
+                    verification_steps.append(verification)
 
-        for service in service_order:
-            files = files_by_service[service]
-            if not files:
-                continue
+            services = list(dict.fromkeys(services))
+            reasons = list(dict.fromkeys(reasons))
+            capability_text = " ".join(
+                [
+                    group.label,
+                    group.description,
+                    *reasons,
+                    *paths_to_modify,
+                    *paths_to_create,
+                ]
+            )
+            description = group.description
+            if reasons:
+                description += " Outcomes: " + "; ".join(reasons)
 
-            phase_num += 1
-            patterns = get_patterns_for_service(self.context, service)
-
-            # Create subtasks for each file
-            subtasks = []
-            for file_info in files:
-                path = file_info.get("path", "")
-                reason = file_info.get("reason", "")
-
-                # Determine subtask type from path
-                subtask_type = infer_subtask_type(path)
-                subtask_id = Path(path).stem.replace(".", "-").lower()
-
-                subtasks.append(
-                    Subtask(
-                        id=f"{service}-{subtask_id}",
-                        description=f"Modify {path}: {reason}"
-                        if reason
-                        else f"Update {path}",
-                        service=service,
-                        files_to_modify=[path],
-                        patterns_from=patterns,
-                        verification=create_verification(
-                            self.context, service, subtask_type
+            phase_type = (
+                PhaseType.INTEGRATION
+                if group.key == "integration"
+                else PhaseType.IMPLEMENTATION
+            )
+            subtask = Subtask(
+                id=(
+                    "capability-"
+                    + re.sub(r"[^a-z0-9]+", "-", group.key.lower()).strip("-")
+                ),
+                description=description,
+                service=services[0] if len(services) == 1 else None,
+                services=services if len(services) > 1 else [],
+                all_services=len(services) > 1 or group.key == "integration",
+                files_to_modify=paths_to_modify,
+                files_to_create=paths_to_create,
+                patterns_from=get_patterns_for_capability(
+                    self.context,
+                    capability_text,
+                    services,
+                ),
+                verification=(
+                    Verification(
+                        type=VerificationType.BROWSER,
+                        scenario=(
+                            "All acceptance criteria work through shared entry points"
                         ),
                     )
-                )
-
-            # Determine dependencies
-            depends_on = []
-            service_type = (
-                self.context.project_index.get("services", {})
-                .get(service, {})
-                .get("type", "")
+                    if group.key == "integration"
+                    else None
+                ),
+                verification_steps=verification_steps,
             )
-
-            if service_type in ["worker", "celery", "jobs"] and backend_phase:
-                depends_on = [backend_phase]
-            elif service_type in ["frontend", "web", "client", "ui"] and backend_phase:
-                depends_on = [backend_phase]
-
-            phase = Phase(
-                phase=phase_num,
-                name=f"{service.title()} Implementation",
-                type=PhaseType.IMPLEMENTATION,
-                subtasks=subtasks,
-                depends_on=depends_on,
-                parallel_safe=len(subtasks) > 1,
-            )
-            phases.append(phase)
-
-            # Track for dependencies
-            if service_type in ["backend", "api", "server"]:
-                backend_phase = phase_num
-            elif service_type in ["worker", "celery"]:
-                worker_phase = phase_num
-
-        # Add integration phase if multiple services
-        if len(service_order) > 1:
-            phase_num += 1
-            integration_depends = list(range(1, phase_num))
-
             phases.append(
                 Phase(
                     phase=phase_num,
-                    name="Integration",
-                    type=PhaseType.INTEGRATION,
-                    depends_on=integration_depends,
-                    subtasks=[
-                        Subtask(
-                            id="integration-wiring",
-                            description="Wire all services together",
-                            all_services=True,
-                            verification=Verification(
-                                type=VerificationType.BROWSER,
-                                scenario="End-to-end flow works",
-                            ),
-                        ),
-                        Subtask(
-                            id="integration-testing",
-                            description="Verify complete feature works",
-                            all_services=True,
-                            verification=Verification(
-                                type=VerificationType.BROWSER,
-                                scenario="All acceptance criteria met",
-                            ),
-                        ),
-                    ],
+                    name=group.label,
+                    type=phase_type,
+                    subtasks=[subtask],
+                    depends_on=[phase_num - 1] if phase_num > 1 else [],
+                    parallel_safe=False,
                 )
             )
 

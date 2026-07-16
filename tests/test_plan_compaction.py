@@ -3,7 +3,9 @@
 from implementation_plan import (
     ImplementationPlan,
     Phase,
+    PhaseType,
     Subtask,
+    SubtaskStatus,
     Verification,
     VerificationType,
 )
@@ -55,9 +57,9 @@ def test_compacts_large_plan_to_requested_limit():
     assert len(merged_files) == 12
     assert plan.phases[0].parallel_safe is False
     assert plan.phases[0].subtasks[0].acceptance_criteria_refs == ["AC-1", "AC-2"]
-    assert "run=pytest tests/test_feature.py" in (
-        plan.phases[0].subtasks[0].verification.scenario or ""
-    )
+    assert plan.phases[0].subtasks[0].verification_steps == [
+        {"type": "command", "run": "pytest tests/test_feature.py"}
+    ]
 
 
 def test_does_not_change_plan_within_limit():
@@ -77,3 +79,38 @@ def test_full_mode_without_limit_does_not_compact():
     compact_plan(plan, None)
 
     assert len(plan.phases[0].subtasks) == 7
+
+
+def test_compacts_more_phases_than_the_limit_and_preserves_integration_last():
+    plan = _plan_with_subtasks([1] * 10)
+    plan.phases[-1].type = PhaseType.INTEGRATION
+
+    compact_plan(plan, 6)
+
+    assert len(plan.phases) == 6
+    assert sum(len(phase.subtasks) for phase in plan.phases) == 6
+    assert plan.phases[-1].type.value == "integration"
+    assert plan.phases[-1].depends_on == [5]
+    assert (
+        len(
+            {
+                path
+                for phase in plan.phases
+                for subtask in phase.subtasks
+                for path in subtask.files_to_modify
+            }
+        )
+        == 10
+    )
+
+
+def test_does_not_rewrite_completed_checkpoints():
+    plan = _plan_with_subtasks([4, 4])
+    plan.phases[0].subtasks[0].status = SubtaskStatus.COMPLETED
+    original_ids = [subtask.id for phase in plan.phases for subtask in phase.subtasks]
+
+    compact_plan(plan, 3)
+
+    assert [
+        subtask.id for phase in plan.phases for subtask in phase.subtasks
+    ] == original_ids

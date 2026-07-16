@@ -88,8 +88,8 @@
     "5_planning": {
       "name": "Implementation Planning",
       "agent": "planner.md",
-      "script": "planner.py",
-      "description": "Create the implementation plan (try script first, fall back to agent)",
+      "script": null,
+      "description": "Create the implementation plan (try the deterministic planner module first, then fall back to the agent)",
       "inputs": ["spec.md", "project_index.json", "context.json"],
       "outputs": {
         "implementation_plan.json": {

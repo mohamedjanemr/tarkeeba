@@ -145,6 +145,92 @@ def test_deferred_scope_cannot_become_a_subtask(tmp_path):
     assert any("implements deferred scope item" in error for error in result.errors)
 
 
+def test_file_cannot_be_owned_by_multiple_capability_slices(tmp_path):
+    _write_scope_files(tmp_path)
+    _write_plan(tmp_path, ["AC-1"])
+    plan = json.loads(
+        (tmp_path / "implementation_plan.json").read_text(encoding="utf-8")
+    )
+    plan["phases"][0]["subtasks"][0]["files_to_modify"] = ["src/provider.py"]
+    plan["phases"].append(
+        {
+            "phase": 2,
+            "name": "Second capability",
+            "subtasks": [
+                {
+                    "id": "provider-again",
+                    "description": "Second provider slice",
+                    "status": "pending",
+                    "files_to_modify": ["src/provider.py"],
+                    "acceptance_criteria_refs": ["AC-1"],
+                }
+            ],
+        }
+    )
+    (tmp_path / "implementation_plan.json").write_text(
+        json.dumps(plan),
+        encoding="utf-8",
+    )
+
+    result = ImplementationPlanValidator(tmp_path).validate()
+
+    assert result.valid is False
+    assert any("multiple capability slices" in error for error in result.errors)
+
+
+def test_legacy_plan_can_revisit_a_file_across_subtasks(tmp_path):
+    (tmp_path / "requirements.json").write_text(
+        json.dumps({"task_description": "Legacy task"}),
+        encoding="utf-8",
+    )
+    _write_plan(tmp_path, ["AC-1"])
+    plan = json.loads(
+        (tmp_path / "implementation_plan.json").read_text(encoding="utf-8")
+    )
+    plan["phases"][0]["subtasks"][0]["files_to_modify"] = ["src/provider.py"]
+    plan["phases"].append(
+        {
+            "phase": 2,
+            "name": "Legacy follow-up",
+            "subtasks": [
+                {
+                    "id": "provider-again",
+                    "description": "Update the shared file again",
+                    "status": "pending",
+                    "files_to_modify": ["src/provider.py"],
+                    "acceptance_criteria_refs": ["AC-1"],
+                }
+            ],
+        }
+    )
+    (tmp_path / "implementation_plan.json").write_text(
+        json.dumps(plan),
+        encoding="utf-8",
+    )
+
+    result = ImplementationPlanValidator(tmp_path).validate()
+
+    assert not any("multiple capability slices" in error for error in result.errors)
+
+
+def test_shared_registry_must_be_in_final_integration_slice(tmp_path):
+    _write_scope_files(tmp_path)
+    _write_plan(tmp_path, ["AC-1"])
+    plan = json.loads(
+        (tmp_path / "implementation_plan.json").read_text(encoding="utf-8")
+    )
+    plan["phases"][0]["subtasks"][0]["files_to_modify"] = ["apps/frontend/ipc/index.ts"]
+    (tmp_path / "implementation_plan.json").write_text(
+        json.dumps(plan),
+        encoding="utf-8",
+    )
+
+    result = ImplementationPlanValidator(tmp_path).validate()
+
+    assert result.valid is False
+    assert any("final integration slice" in error for error in result.errors)
+
+
 def test_deterministic_generator_adds_acceptance_refs(tmp_path):
     context = PlannerContext(
         spec_content="""# Specification: Provider

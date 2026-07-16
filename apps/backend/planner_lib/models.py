@@ -2,7 +2,7 @@
 Data models for the implementation planner.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from implementation_plan import WorkflowType
 
@@ -18,3 +18,4 @@ class PlannerContext:
     workflow_type: WorkflowType
     files_to_modify: list[dict]
     files_to_reference: list[dict]
+    files_to_create: list[dict] = field(default_factory=list)

@@ -132,9 +132,12 @@ class ChecklistGenerator:
             List of verification reminder strings
         """
         reminders = []
-        verification = subtask.get("verification", {})
+        verifications = []
+        if subtask.get("verification"):
+            verifications.append(subtask["verification"])
+        verifications.extend(subtask.get("verification_steps", []))
 
-        if verification:
+        for verification in verifications:
             ver_type = verification.get("type")
             if ver_type == "api":
                 reminders.append(
@@ -162,6 +165,6 @@ class ChecklistGenerator:
                     f"Manual check: {verification.get('instructions', 'Verify manually')}"
                 )
             elif ver_type == "none":
-                pass  # No reminder needed
+                continue
 
         return reminders

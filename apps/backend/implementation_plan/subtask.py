@@ -24,6 +24,7 @@ class Subtask:
 
     # Scoping
     service: str | None = None  # Which service (backend, frontend, worker)
+    services: list[str] = field(default_factory=list)  # Cross-service capability slice
     all_services: bool = False  # True for integration subtasks
 
     # Files
@@ -34,6 +35,7 @@ class Subtask:
 
     # Verification
     verification: Verification | None = None
+    verification_steps: list[dict] = field(default_factory=list)
 
     # For investigation subtasks
     expected_output: str | None = None  # Knowledge/decision output
@@ -56,6 +58,8 @@ class Subtask:
         }
         if self.service:
             result["service"] = self.service
+        if self.services:
+            result["services"] = self.services
         if self.all_services:
             result["all_services"] = True
         if self.files_to_modify:
@@ -68,6 +72,8 @@ class Subtask:
             result["acceptance_criteria_refs"] = self.acceptance_criteria_refs
         if self.verification:
             result["verification"] = self.verification.to_dict()
+        if self.verification_steps:
+            result["verification_steps"] = self.verification_steps
         if self.expected_output:
             result["expected_output"] = self.expected_output
         if self.actual_output:
@@ -94,12 +100,14 @@ class Subtask:
             description=data["description"],
             status=SubtaskStatus(data.get("status", "pending")),
             service=data.get("service"),
+            services=data.get("services", []),
             all_services=data.get("all_services", False),
             files_to_modify=data.get("files_to_modify", []),
             files_to_create=data.get("files_to_create", []),
             patterns_from=data.get("patterns_from", []),
             acceptance_criteria_refs=data.get("acceptance_criteria_refs", []),
             verification=verification,
+            verification_steps=data.get("verification_steps", []),
             expected_output=data.get("expected_output"),
             actual_output=data.get("actual_output"),
             started_at=data.get("started_at"),

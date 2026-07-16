@@ -58,6 +58,36 @@ def get_patterns_for_service(context: PlannerContext, service: str) -> list[str]
     return patterns[:3]  # Limit to top 3
 
 
+def get_patterns_for_capability(
+    context: PlannerContext,
+    capability_text: str,
+    services: list[str],
+    limit: int = 5,
+) -> list[str]:
+    """Rank reference files by capability similarity, then service affinity."""
+    query_tokens = set(re.findall(r"[a-z0-9]+", capability_text.lower()))
+    ranked = []
+    for index, file_info in enumerate(context.files_to_reference):
+        path = str(file_info.get("path", ""))
+        reason = str(file_info.get("reason", ""))
+        file_tokens = set(re.findall(r"[a-z0-9]+", f"{path} {reason}".lower()))
+        score = len(query_tokens & file_tokens) * 3
+        if file_info.get("service") in services:
+            score += 2
+        ranked.append((-score, index, path))
+
+    ranked.sort()
+    selected = [path for score, _, path in ranked if path and score < 0][:limit]
+    if selected:
+        return selected
+    return [
+        str(file_info.get("path", ""))
+        for file_info in context.files_to_reference
+        if file_info.get("path")
+        and (not services or file_info.get("service") in services)
+    ][:limit]
+
+
 def create_verification(
     context: PlannerContext, service: str, subtask_type: str
 ) -> Verification:

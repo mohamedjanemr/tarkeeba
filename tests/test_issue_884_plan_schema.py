@@ -25,6 +25,9 @@ def test_generate_planner_prompt_loads_repo_planner_md(spec_dir: Path):
     prompt = generate_planner_prompt(spec_dir, project_dir=spec_dir.parent)
     prompt_generator = importlib.import_module(generate_planner_prompt.__module__)
     assert prompt_generator.__file__ is not None
+    assert "observable capability slices" in prompt
+    assert "1-3 files max" not in prompt
+    assert "--parallel" not in prompt
 
     candidate_dirs = [
         Path(prompt_generator.__file__).parent.parent / "prompts",  # current layout
@@ -319,6 +322,44 @@ def test_validator_warns_when_summary_counts_are_stale(spec_dir: Path):
     assert result.valid is True
     assert any("summary.total_phases" in warning for warning in result.warnings)
     assert any("summary.total_subtasks" in warning for warning in result.warnings)
+
+
+def test_efficient_budget_counts_only_remaining_subtasks(spec_dir: Path):
+    (spec_dir / "task_metadata.json").write_text(
+        json.dumps({"executionMode": "efficient", "maxSubtasks": 2}),
+        encoding="utf-8",
+    )
+    plan = {
+        "feature": "Follow-up",
+        "workflow_type": "feature",
+        "phases": [
+            {
+                "phase": 1,
+                "name": "Completed",
+                "subtasks": [
+                    {
+                        "id": f"done-{index}",
+                        "description": "Done",
+                        "status": "completed",
+                    }
+                    for index in range(8)
+                ],
+            },
+            {
+                "phase": 2,
+                "name": "Follow-up",
+                "subtasks": [
+                    {"id": "new-1", "description": "One", "status": "pending"},
+                    {"id": "new-2", "description": "Two", "status": "pending"},
+                ],
+            },
+        ],
+    }
+    _write_plan(spec_dir / "implementation_plan.json", plan)
+
+    result = SpecValidator(spec_dir).validate_implementation_plan()
+
+    assert result.valid is True
 
 
 @pytest.mark.asyncio

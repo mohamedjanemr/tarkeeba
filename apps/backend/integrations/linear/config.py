@@ -234,16 +234,22 @@ def format_subtask_description(subtask: dict, phase: dict = None) -> str:
             lines.append(f"- `{f}`")
 
     # Verification
+    verifications = []
     if subtask.get("verification"):
-        v = subtask["verification"]
+        verifications.append(subtask["verification"])
+    verifications.extend(subtask.get("verification_steps", []))
+    if verifications:
         lines.append("\n## Verification")
-        lines.append(f"**Type:** {v.get('type', 'none')}")
-        if v.get("run"):
-            lines.append(f"**Command:** `{v['run']}`")
-        if v.get("url"):
-            lines.append(f"**URL:** {v['url']}")
-        if v.get("scenario"):
-            lines.append(f"**Scenario:** {v['scenario']}")
+        for index, v in enumerate(verifications, start=1):
+            lines.append(f"\n### Check {index}")
+            lines.append(f"**Type:** {v.get('type', 'none')}")
+            command = v.get("run") or v.get("command")
+            if command:
+                lines.append(f"**Command:** `{command}`")
+            if v.get("url"):
+                lines.append(f"**URL:** {v['url']}")
+            if v.get("scenario"):
+                lines.append(f"**Scenario:** {v['scenario']}")
 
     # Auto-build metadata
     lines.append("\n---")
