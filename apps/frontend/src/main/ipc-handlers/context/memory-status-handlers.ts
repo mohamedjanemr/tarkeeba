@@ -14,6 +14,7 @@ import {
 } from './utils';
 import { buildMemoryEnvVars } from '../../memory-env-builder';
 import { readSettingsFile } from '../../settings-utils';
+import { getMemoryService, isKuzuAvailable } from '../../memory-service';
 import type { AppSettings } from '../../../shared/types/settings';
 
 /**
@@ -83,17 +84,6 @@ export function buildMemoryStatus(
   // Project settings can override app-wide settings
   const effectiveEnvVars = { ...memoryEnvVars, ...projectEnvVars };
 
-  // If we have initialized state from specs, use it
-  if (memoryState?.initialized) {
-    const dbDetails = getGraphitiDatabaseDetails(effectiveEnvVars);
-    return {
-      enabled: true,
-      available: true,
-      database: memoryState.database || 'auto_claude_memory',
-      dbPath: dbDetails.dbPath
-    };
-  }
-
   // Check environment configuration using merged env vars
   const graphitiEnabled = isGraphitiEnabled(effectiveEnvVars);
   const embeddingValidation = validateEmbeddingConfiguration(effectiveEnvVars, globalSettings);
@@ -115,11 +105,35 @@ export function buildMemoryStatus(
   }
 
   const dbDetails = getGraphitiDatabaseDetails(effectiveEnvVars);
+  if (!isKuzuAvailable()) {
+    return {
+      enabled: true,
+      available: false,
+      dbPath: dbDetails.dbPath,
+      database: memoryState?.database || dbDetails.database,
+      reason: 'LadybugDB is not available'
+    };
+  }
+
+  const memoryService = getMemoryService({
+    dbPath: dbDetails.dbPath,
+    database: memoryState?.database || dbDetails.database
+  });
+  if (!memoryService.databaseExists()) {
+    return {
+      enabled: true,
+      available: false,
+      dbPath: dbDetails.dbPath,
+      database: memoryState?.database || dbDetails.database,
+      reason: 'Graph database is not initialized; file-based memories remain available'
+    };
+  }
+
   return {
     enabled: true,
     available: true,
     dbPath: dbDetails.dbPath,
-    database: dbDetails.database
+    database: memoryState?.database || dbDetails.database
   };
 }
 

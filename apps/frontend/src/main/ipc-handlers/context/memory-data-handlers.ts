@@ -21,9 +21,15 @@ import {
  */
 export function loadFileBasedMemories(
   specsDir: string,
-  limit: number
+  limit: number,
+  options: {
+    maxSpecs?: number;
+    maxSessionsPerSpec?: number;
+  } = {}
 ): MemoryEpisode[] {
   const memories: MemoryEpisode[] = [];
+  const maxSpecs = options.maxSpecs ?? 10;
+  const maxSessionsPerSpec = options.maxSessionsPerSpec ?? 3;
 
   if (!existsSync(specsDir)) {
     return memories;
@@ -40,7 +46,7 @@ export function loadFileBasedMemories(
     })
     .sort()
     .reverse()
-    .slice(0, 10); // Last 10 specs
+    .slice(0, maxSpecs);
 
   for (const specDir of recentSpecDirs) {
     const memoryDir = path.join(specsDir, specDir, 'memory');
@@ -54,7 +60,7 @@ export function loadFileBasedMemories(
         .sort()
         .reverse();
 
-      for (const sessionFile of sessionFiles.slice(0, 3)) {
+      for (const sessionFile of sessionFiles.slice(0, maxSessionsPerSpec)) {
         try {
           const sessionPath = path.join(sessionInsightsDir, sessionFile);
           const sessionContent = readFileSync(sessionPath, 'utf-8');

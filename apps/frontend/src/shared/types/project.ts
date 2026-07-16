@@ -267,6 +267,7 @@ export interface MemoryEpisode {
   type: MemoryType;
   timestamp: string;
   content: string;
+  storage?: 'graph' | 'file';
   session_number?: number;
   score?: number;
   // For PR reviews - extracted from content for quick access

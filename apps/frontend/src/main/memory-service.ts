@@ -613,17 +613,31 @@ export class MemoryService {
   async searchMemoriesSemantic(
     searchQuery: string,
     embedderConfig: EmbedderConfig,
-    limit: number = 20
+    limit: number = 20,
+    projectDir?: string
   ): Promise<{ memories: MemoryEpisode[]; searchType: 'semantic' | 'keyword' }> {
+    const args = [
+      this.config.dbPath,
+      this.config.database,
+      searchQuery,
+      '--limit',
+      String(limit),
+    ];
+    if (projectDir) {
+      args.push('--project-dir', projectDir);
+    }
+
     const result = await executeSemanticQuery(
-      [this.config.dbPath, this.config.database, searchQuery, '--limit', String(limit)],
+      args,
       embedderConfig
     );
 
     if (!result.success || !result.data) {
       console.error('Semantic search failed, falling back to keyword:', result.error);
       // Fall back to keyword search
-      const memories = await this.searchMemories(searchQuery, limit);
+      const memories = projectDir
+        ? await this.searchScoped(projectDir, searchQuery, limit)
+        : await this.searchMemories(searchQuery, limit);
       return { memories, searchType: 'keyword' };
     }
 

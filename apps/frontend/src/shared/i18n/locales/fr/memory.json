@@ -36,6 +36,7 @@
     "summary": "Résumé",
     "content": "Contenu",
     "empty": "Aucun contenu disponible.",
+    "fileBackedReadOnly": "Cette mémoire historique stockée dans un fichier est en lecture seule jusqu’à son importation dans la mémoire graphique.",
     "confirmDelete": "Êtes-vous sûr de vouloir élaguer cette entrée de mémoire ? Cette action est irréversible."
   },
   "timeline": {
