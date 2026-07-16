@@ -111,6 +111,7 @@ Create:
     async def phase_spec_writing(self) -> PhaseResult:
         """Write the spec.md document."""
         spec_file = self.spec_dir / "spec.md"
+        validation_context = ""
 
         if spec_file.exists():
             result = self.spec_validator.validate_spec_document()
@@ -120,6 +121,7 @@ Create:
             self.ui.print_status(
                 "spec.md exists but has issues, regenerating...", "warning"
             )
+            validation_context = self._spec_validation_context(result)
 
         is_greenfield = self._check_and_log_greenfield()
         greenfield_ctx = _greenfield_context() if is_greenfield else ""
@@ -133,7 +135,9 @@ Create:
 
             success, output = await self.run_agent_fn(
                 "spec_writer.md",
-                additional_context=greenfield_ctx,
+                additional_context="\n".join(
+                    part for part in (greenfield_ctx, validation_context) if part
+                ),
                 phase_name="spec_writing",
             )
 
@@ -151,10 +155,28 @@ Create:
                     self.ui.print_status(
                         f"Spec created but invalid: {result.errors}", "error"
                     )
+                    validation_context = self._spec_validation_context(result)
             else:
                 errors.append(f"Attempt {attempt + 1}: Agent did not create spec.md")
 
         return PhaseResult("spec_writing", False, [], errors, max_attempts)
+
+    @staticmethod
+    def _spec_validation_context(result) -> str:
+        """Give the next writer attempt the validator's actionable feedback."""
+        error_lines = "\n".join(f"- {error}" for error in result.errors)
+        fix_lines = "\n".join(f"- {fix}" for fix in result.fixes)
+        return f"""
+**RETRY: FIX THE EXISTING SPEC**
+The current `spec.md` failed validation. Read and edit it; do not merely report
+that it already exists.
+
+Validation errors:
+{error_lines or "- Unknown validation error"}
+
+Suggested fixes:
+{fix_lines or "- Correct every validation error above"}
+""".strip()
 
     async def phase_self_critique(self) -> PhaseResult:
         """Self-critique the spec using extended thinking."""

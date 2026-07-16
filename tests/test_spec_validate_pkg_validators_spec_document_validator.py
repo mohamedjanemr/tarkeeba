@@ -632,3 +632,24 @@ Connect the provider.
 
         assert result.valid is False
         assert any("does not include scope item" in error for error in result.errors)
+
+    def test_scope_item_accepts_conservative_paraphrase(self, spec_dir: Path):
+        from spec.validate_pkg.validators.spec_document_validator import (
+            SpecDocumentValidator,
+        )
+
+        self._write_requirements(spec_dir)
+        requirements = json.loads((spec_dir / "requirements.json").read_text())
+        requirements["must_have"] = [
+            "Display the selected project's absolute path."
+        ]
+        (spec_dir / "requirements.json").write_text(json.dumps(requirements))
+        content = self._base_spec("| N/A | N/A | N/A |").replace(
+            "- Connect provider",
+            "- Show the absolute path for the selected project.",
+        )
+        (spec_dir / "spec.md").write_text(content, encoding="utf-8")
+
+        result = SpecDocumentValidator(spec_dir).validate()
+
+        assert result.valid is True

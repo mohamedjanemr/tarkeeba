@@ -628,6 +628,51 @@ class TestPhaseQuickSpec:
             "AC-1"
         ]
 
+    @pytest.mark.asyncio
+    async def test_spec_writing_passes_validation_feedback_to_retry(
+        self,
+        temp_dir: Path,
+        spec_dir: Path,
+        mock_task_logger,
+        mock_ui_module,
+        mock_spec_validator,
+    ):
+        """A retry receives the previous validation errors and suggested fixes."""
+        contexts = []
+
+        async def agent_side_effect(*args, **kwargs):
+            contexts.append(kwargs["additional_context"])
+            (spec_dir / "spec.md").write_text("draft")
+            return (True, "Done")
+
+        validator = mock_spec_validator(spec_valid=False)
+        invalid = validator.validate_spec_document.return_value
+        invalid.errors = ["MVP Boundary is missing Non-Goals"]
+        invalid.fixes = ["Add the Non-Goals subsection"]
+        valid = type(invalid)(valid=True)
+        validator.validate_spec_document.side_effect = [invalid, valid]
+        (spec_dir / "task_metadata.json").write_text(
+            json.dumps({"executionMode": "efficient"})
+        )
+
+        executor = PhaseExecutor(
+            project_dir=temp_dir,
+            spec_dir=spec_dir,
+            task_description="Test task",
+            spec_validator=validator,
+            run_agent_fn=AsyncMock(side_effect=agent_side_effect),
+            task_logger=mock_task_logger,
+            ui_module=mock_ui_module,
+        )
+
+        result = await executor.phase_spec_writing()
+
+        assert result.success is True
+        assert len(contexts) == 2
+        assert "MVP Boundary is missing Non-Goals" in contexts[1]
+        assert "Add the Non-Goals subsection" in contexts[1]
+        assert "do not merely report" in contexts[1]
+
 
 class TestPhaseResearch:
     """Tests for phase_research method."""

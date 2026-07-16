@@ -7,6 +7,7 @@ Interactive and automated requirements collection from users.
 
 import json
 import os
+import re
 import shlex
 import subprocess
 import tempfile
@@ -22,6 +23,73 @@ SCOPE_FIELDS = (
 )
 DEFAULT_NON_GOAL = "Capabilities not explicitly required by the task description"
 SCOPE_CONTRACT_VERSION = 1
+
+_DESCRIPTION_SECTION_FIELDS = {
+    "requirements": "must_have",
+    "must have": "must_have",
+    "required parity": "required_parity",
+    "deferred": "deferred",
+    "reuse existing": "reuse_existing",
+    "non goals": "non_goals",
+    "acceptance criteria": "acceptance_criteria",
+    "constraints": "constraints",
+}
+
+
+def _description_heading(line: str) -> str | None:
+    """Map a Markdown/plain-text task section heading to a scope field."""
+    match = re.fullmatch(r"\s*(?:#{1,6}\s*)?([^:]+?)\s*:?[ \t]*", line)
+    if not match:
+        return None
+    label = re.sub(r"[_-]+", " ", match.group(1).strip().lower())
+    label = re.sub(r"\s+", " ", label)
+    return _DESCRIPTION_SECTION_FIELDS.get(label)
+
+
+def _description_item(line: str) -> str:
+    """Strip common Markdown list syntax from a task-description item."""
+    item = re.sub(r"^\s*(?:[-*+]|\d+[.)])\s+", "", line)
+    item = re.sub(r"^\[[ xX]\]\s*", "", item)
+    return item.strip()
+
+
+def extract_scope_from_task_description(task_description: str) -> dict[str, list[str]]:
+    """Extract explicit scope sections embedded in a non-interactive task.
+
+    Task creation commonly supplies one Markdown description rather than separate
+    scope fields. Preserve its introductory outcome as a must-have, then map
+    recognized sections such as Requirements, Non-goals, and Acceptance criteria
+    into the structured scope contract used by the spec validator.
+    """
+    extracted = {
+        field: [] for field in {*SCOPE_FIELDS, "acceptance_criteria", "constraints"}
+    }
+    preamble: list[str] = []
+    current_field: str | None = None
+    found_section = False
+
+    for line in task_description.splitlines():
+        heading = _description_heading(line)
+        if heading:
+            current_field = heading
+            found_section = True
+            continue
+
+        item = _description_item(line)
+        if not item:
+            continue
+        if current_field:
+            extracted[current_field].append(item)
+        elif not found_section:
+            preamble.append(item)
+
+    if not found_section:
+        return extracted
+
+    intro = " ".join(preamble).strip()
+    if intro:
+        extracted["must_have"].insert(0, intro)
+    return extracted
 
 
 def _string_list(value) -> list[str]:
@@ -47,6 +115,7 @@ def normalize_requirements(
         or fallback_task_description
         or "Unknown task"
     ).strip()
+    description_scope = extract_scope_from_task_description(task_description)
 
     normalized["task_description"] = task_description
     normalized["workflow_type"] = str(
@@ -56,24 +125,43 @@ def normalize_requirements(
         normalized.get("services_involved", [])
     )
 
-    if "must_have" not in normalized:
-        normalized["must_have"] = [task_description] if task_description else []
+    existing_must_have = _string_list(normalized.get("must_have", []))
+    generated_must_have = not existing_must_have or existing_must_have == [
+        task_description
+    ]
+    if generated_must_have and description_scope["must_have"]:
+        normalized["must_have"] = description_scope["must_have"]
     else:
-        normalized["must_have"] = _string_list(normalized["must_have"])
+        normalized["must_have"] = existing_must_have or (
+            [task_description] if task_description else []
+        )
 
     for field in ("required_parity", "deferred", "reuse_existing"):
-        normalized[field] = _string_list(normalized.get(field, []))
+        existing = _string_list(normalized.get(field, []))
+        normalized[field] = existing or description_scope[field]
 
-    if "non_goals" not in normalized:
-        normalized["non_goals"] = [DEFAULT_NON_GOAL]
+    non_goals_present = "non_goals" in normalized
+    existing_non_goals = _string_list(normalized.get("non_goals", []))
+    generated_non_goals = existing_non_goals == [DEFAULT_NON_GOAL]
+    if existing_non_goals and not generated_non_goals:
+        normalized["non_goals"] = existing_non_goals
+    elif description_scope["non_goals"]:
+        normalized["non_goals"] = description_scope["non_goals"]
+    elif non_goals_present and not generated_non_goals:
+        normalized["non_goals"] = []
     else:
-        normalized["non_goals"] = _string_list(normalized["non_goals"])
+        normalized["non_goals"] = [DEFAULT_NON_GOAL]
 
     existing_criteria = _string_list(normalized.get("acceptance_criteria", []))
-    normalized["acceptance_criteria"] = existing_criteria or _string_list(
-        acceptance_criteria or []
+    normalized["acceptance_criteria"] = (
+        existing_criteria
+        or description_scope["acceptance_criteria"]
+        or _string_list(acceptance_criteria or [])
     )
-    normalized["constraints"] = _string_list(normalized.get("constraints", []))
+    normalized["constraints"] = (
+        _string_list(normalized.get("constraints", []))
+        or description_scope["constraints"]
+    )
     normalized.setdefault(
         "scope_contract_version",
         SCOPE_CONTRACT_VERSION if enforce_scope_contract else 0,

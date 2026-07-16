@@ -32,7 +32,56 @@ def _section_content(content: str, section: str) -> str:
 
 
 def _normalized_text(value: str) -> str:
+    value = value.replace("’", "'").replace("“", '"').replace("”", '"')
     return re.sub(r"\s+", " ", value).strip().lower()
+
+
+def _scope_tokens(value: str) -> set[str]:
+    """Return meaningful tokens for conservative paraphrase matching."""
+    stop_words = {
+        "a",
+        "an",
+        "and",
+        "as",
+        "at",
+        "be",
+        "by",
+        "do",
+        "for",
+        "from",
+        "in",
+        "is",
+        "it",
+        "of",
+        "on",
+        "or",
+        "the",
+        "to",
+        "with",
+    }
+    return {
+        token
+        for token in re.findall(r"[a-z0-9]+", _normalized_text(value))
+        if token not in stop_words
+    }
+
+
+def _scope_item_is_covered(item: str, subsection: str) -> bool:
+    """Accept exact copies or conservative wording-only paraphrases."""
+    normalized_item = _normalized_text(item)
+    normalized_subsection = _normalized_text(subsection)
+    if normalized_item in normalized_subsection:
+        return True
+
+    item_tokens = _scope_tokens(item)
+    if len(item_tokens) < 3:
+        return False
+    for line in subsection.splitlines():
+        candidate_tokens = _scope_tokens(re.sub(r"^\s*[-*+]\s+", "", line))
+        overlap = item_tokens & candidate_tokens
+        if len(overlap) >= 2 and len(overlap) / len(item_tokens) >= 2 / 3:
+            return True
+    return False
 
 
 def _subsection_content(content: str, subsection: str) -> str:
@@ -178,7 +227,7 @@ class SpecDocumentValidator:
                 continue
             if expected_items:
                 for item in expected_items:
-                    if _normalized_text(str(item)) not in _normalized_text(subsection):
+                    if not _scope_item_is_covered(str(item), subsection):
                         errors.append(
                             f"MVP Boundary '{label}' does not include scope item: "
                             f"'{item}'"
