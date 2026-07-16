@@ -390,6 +390,13 @@
       "integrationDescription": "Connect to GitLab for issue tracking",
       "syncDescription": "Sync with GitLab Issues"
     },
+    "azureDevOps": {
+      "title": "Azure DevOps",
+      "description": "Azure DevOps work items sync",
+      "integrationTitle": "Azure DevOps Integration",
+      "integrationDescription": "Connect to Azure DevOps for work item tracking",
+      "syncDescription": "Sync with Azure DevOps Work Items"
+    },
     "memory": {
       "title": "Memory",
       "description": "Graphiti memory backend",

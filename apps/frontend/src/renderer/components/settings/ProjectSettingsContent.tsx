@@ -10,7 +10,7 @@ import { SectionRouter } from './sections/SectionRouter';
 import { createHookProxy } from './utils/hookProxyFactory';
 import type { Project } from '../../../shared/types';
 
-export type ProjectSettingsSection = 'general' | 'linear' | 'github' | 'gitlab' | 'memory';
+export type ProjectSettingsSection = 'general' | 'linear' | 'github' | 'gitlab' | 'azure-devops' | 'memory';
 
 interface ProjectSettingsContentProps {
   project: Project | undefined;
@@ -103,8 +103,12 @@ function ProjectSettingsContentInner({
     linearConnectionStatus,
     isCheckingLinear,
     handleInitialize,
-    error
-  } = hook;
+    error,
+    showAzureDevOpsToken = false,
+    setShowAzureDevOpsToken = () => {},
+    azureDevOpsConnectionStatus = null,
+    isCheckingAzureDevOps = false
+  } = hook as any;
 
   // Expose hook to parent for save coordination - only once when dialog opens
   // We use hookRef to avoid infinite loops (hook object is recreated each render)
@@ -144,6 +148,10 @@ function ProjectSettingsContentInner({
         setShowGitLabToken={setShowGitLabToken}
         gitLabConnectionStatus={gitLabConnectionStatus}
         isCheckingGitLab={isCheckingGitLab}
+        showAzureDevOpsToken={showAzureDevOpsToken}
+        setShowAzureDevOpsToken={setShowAzureDevOpsToken}
+        azureDevOpsConnectionStatus={azureDevOpsConnectionStatus}
+        isCheckingAzureDevOps={isCheckingAzureDevOps}
         linearConnectionStatus={linearConnectionStatus}
         isCheckingLinear={isCheckingLinear}
         handleInitialize={handleInitialize}

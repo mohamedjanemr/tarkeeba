@@ -1,0 +1,36 @@
+# Subtask 8-1: Frontend i18n - COMPLETED
+
+## Summary
+Successfully created Azure DevOps i18n translation files and registered the new namespace in the i18n configuration.
+
+## Deliverables
+✓ apps/frontend/src/shared/i18n/locales/en/azure-devops.json (166 translation keys)
+✓ apps/frontend/src/shared/i18n/locales/fr/azure-devops.json (166 translation keys)
+✓ Updated apps/frontend/src/shared/i18n/index.ts with:
+  - Import statements for both language files
+  - Resource registration for both 'en' and 'fr' with 'azure-devops' namespace
+  - Namespace entry in i18n.init() config
+
+## Verification
+✓ All keys match between English and French versions (166 keys)
+✓ Verification command passed: 'OK'
+✓ No TypeScript errors introduced
+✓ Follows gitlab.json structure and terminology conventions
+✓ Azure DevOps-specific terminology used throughout:
+  - "Work Items" instead of "Issues"
+  - "Pull Requests" (PRs) instead of "Merge Requests" (MRs)
+  - "Active", "Abandoned", "Completed", "Draft" states
+  - Organization/Project Azure DevOps terminology
+
+## Files Modified
+- apps/frontend/src/shared/i18n/index.ts (3 changes: 2 imports + 2 resource entries + 1 namespace registration)
+
+## Files Created
+- apps/frontend/src/shared/i18n/locales/en/azure-devops.json
+- apps/frontend/src/shared/i18n/locales/fr/azure-devops.json
+
+## Git Commits
+- 12d30ac3: auto-claude: subtask-8-1 - Create Azure DevOps i18n translation files
+
+## Status
+✓ COMPLETED - All acceptance criteria met
