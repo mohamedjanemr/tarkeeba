@@ -3,7 +3,9 @@ import {
   Download,
   CheckCircle2,
   AlertCircle,
-  Loader2
+  Loader2,
+  Copy,
+  FolderOpen
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../ui/button';
@@ -18,6 +20,7 @@ import {
 } from '../ui/select';
 import { Separator } from '../ui/separator';
 import { AVAILABLE_MODELS } from '../../../shared/constants';
+import { useToast } from '../../hooks/use-toast';
 import type {
   Project,
   ProjectSettings as ProjectSettingsType,
@@ -44,6 +47,47 @@ export function GeneralSettings({
   handleInitialize
 }: GeneralSettingsProps) {
   const { t } = useTranslation(['settings']);
+  const { toast } = useToast();
+
+  const handleCopyPath = async () => {
+    try {
+      await navigator.clipboard.writeText(project.path);
+      toast({
+        title: t('projectSections.general.projectLocation.copySuccess')
+      });
+    } catch (error) {
+      console.error('Failed to copy project path:', error);
+      toast({
+        variant: 'destructive',
+        title: t('projectSections.general.projectLocation.copyFailed')
+      });
+    }
+  };
+
+  const handleOpenFolder = async () => {
+    try {
+      const result = await window.electronAPI.openProjectLocation(project.path);
+      if (result.success) {
+        toast({
+          title: t('projectSections.general.projectLocation.openSuccess')
+        });
+      } else {
+        toast({
+          variant: 'destructive',
+          title: t('projectSections.general.projectLocation.openFailed'),
+          description:
+            result.error ?? t('projectSections.general.projectLocation.invalidPath')
+        });
+      }
+    } catch (error) {
+      console.error('Failed to open project location:', error);
+      toast({
+        variant: 'destructive',
+        title: t('projectSections.general.projectLocation.openFailed'),
+        description: t('projectSections.general.projectLocation.invalidPath')
+      });
+    }
+  };
 
   return (
     <>
@@ -103,6 +147,35 @@ export function GeneralSettings({
             )}
           </div>
         )}
+      </section>
+
+      <Separator />
+
+      {/* Project Location */}
+      <section className="space-y-4">
+        <h3 className="text-sm font-semibold text-foreground">
+          {t('projectSections.general.projectLocation.title')}
+        </h3>
+        <div className="rounded-lg border border-border bg-muted/50 p-4 space-y-3">
+          <div className="space-y-1">
+            <Label className="text-xs font-medium text-muted-foreground">
+              {t('projectSections.general.projectLocation.pathLabel')}
+            </Label>
+            <code className="block text-xs bg-background px-2 py-1 rounded break-all">
+              {project.path}
+            </code>
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={handleCopyPath}>
+              <Copy className="mr-2 h-4 w-4" />
+              {t('projectSections.general.projectLocation.copyButton')}
+            </Button>
+            <Button size="sm" variant="outline" onClick={handleOpenFolder}>
+              <FolderOpen className="mr-2 h-4 w-4" />
+              {t('projectSections.general.projectLocation.openButton')}
+            </Button>
+          </div>
+        </div>
       </section>
 
       {project.autoBuildPath && (
