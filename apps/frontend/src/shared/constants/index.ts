@@ -24,6 +24,9 @@ export * from './changelog';
 // Model and agent profile constants
 export * from './models';
 
+// Provider-agnostic agent settings registry (Claude, Codex, ...)
+export * from '../agent-providers/registry';
+
 // Theme constants
 export * from './themes';
 
