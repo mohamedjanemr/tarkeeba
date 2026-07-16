@@ -1,4 +1,4 @@
-import type { TaskLogPhase, TaskLogs } from '@shared/types/task';
+import type { TaskLogPhase, TaskLogs, TaskStatus } from '@shared/types/task';
 
 /**
  * Duration (in milliseconds) for each task log phase, keyed by phase name.
@@ -107,4 +107,36 @@ export function formatDuration(ms: number): string {
 
   const remainingHours = totalHours % 24;
   return remainingHours > 0 ? `${totalDays}d ${remainingHours}h` : `${totalDays}d`;
+}
+
+/**
+ * Approximate total duration for a task at the card level, for use where the
+ * full phase logs (TaskLogs) aren't loaded (e.g. TaskCard, which only has
+ * task-level timestamps available — TaskLogs is loaded lazily via
+ * useTaskDetail for the detail view).
+ *
+ * - Returns null for tasks that haven't started execution yet ('backlog' or
+ *   'queue' status).
+ * - For finished tasks ('done'), the span is createdAt -> updatedAt.
+ * - For all other (in-progress) statuses, the span is createdAt -> now.
+ *
+ * @param createdAt Task creation timestamp
+ * @param updatedAt Task last-updated timestamp
+ * @param status Current task status
+ * @returns Approximate duration in milliseconds, or null if the task hasn't started
+ */
+export function calculateApproxDurationFromTimestamps(
+  createdAt: Date | string,
+  updatedAt: Date | string,
+  status: TaskStatus
+): number | null {
+  if (status === 'backlog' || status === 'queue') return null;
+
+  const start = new Date(createdAt).getTime();
+  if (Number.isNaN(start)) return null;
+
+  const end = status === 'done' ? new Date(updatedAt).getTime() : Date.now();
+  if (Number.isNaN(end)) return null;
+
+  return Math.max(0, end - start);
 }
