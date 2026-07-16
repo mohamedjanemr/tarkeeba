@@ -33,6 +33,8 @@
     "recovering": "Recovering...",
     "needsRecovery": "Needs Recovery",
     "needsResume": "Needs Resume",
+    "readyForReview": "Ready for Review",
+    "validating": "Validating",
     "totalDuration": "Total Duration",
     "phaseDuration": "Phase Duration",
     "inProgress": "In progress"

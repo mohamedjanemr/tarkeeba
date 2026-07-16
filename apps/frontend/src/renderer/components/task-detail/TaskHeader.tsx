@@ -5,8 +5,9 @@ import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { cn } from '../../lib/utils';
-import { TASK_STATUS_LABELS, JSON_ERROR_TITLE_SUFFIX } from '../../../shared/constants';
+import { JSON_ERROR_TITLE_SUFFIX } from '../../../shared/constants';
 import type { Task } from '../../../shared/types';
+import { getTaskStatusPresentation } from './task-presentation';
 
 interface TaskHeaderProps {
   task: Task;
@@ -28,6 +29,7 @@ export function TaskHeader({
   onEdit
 }: TaskHeaderProps) {
   const { t } = useTranslation(['tasks', 'errors']);
+  const statusPresentation = getTaskStatusPresentation(task);
 
   // Handle JSON error suffix with i18n
   const displayTitle = useMemo(() => {
@@ -73,25 +75,12 @@ export function TaskHeader({
               </Badge>
             </>
           ) : (
-            <>
-              <Badge
-                variant={task.status === 'done' ? 'success' : task.status === 'human_review' ? 'purple' : task.status === 'in_progress' ? 'info' : 'secondary'}
-                className={cn('text-xs', (task.status === 'in_progress' && !isStuck) && 'status-running')}
-              >
-                {t(TASK_STATUS_LABELS[task.status])}
-              </Badge>
-              {task.status === 'human_review' && task.reviewReason && (
-                <Badge
-                  variant={task.reviewReason === 'completed' ? 'success' : task.reviewReason === 'errors' ? 'destructive' : 'warning'}
-                  className="text-xs"
-                >
-                  {task.reviewReason === 'completed' ? 'Completed' :
-                   task.reviewReason === 'errors' ? 'Has Errors' :
-                   task.reviewReason === 'plan_review' ? 'Approve Plan' :
-                   task.reviewReason === 'stopped' ? 'Stopped' : 'QA Issues'}
-                </Badge>
-              )}
-            </>
+            <Badge
+              variant={statusPresentation.variant}
+              className={cn('text-xs', statusPresentation.isActive && 'status-running')}
+            >
+              {t(statusPresentation.labelKey)}
+            </Badge>
           )}
         </div>
       </div>
