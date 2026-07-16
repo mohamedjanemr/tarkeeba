@@ -31,7 +31,6 @@ import {
   GitPullRequest
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { calculateProgress } from '../../lib/utils';
 import { stopTask, submitReview, recoverStuckTask, deleteTask, useTaskStore, startTaskOrQueue } from '../../stores/task-store';
 import { useProjectStore } from '../../stores/project-store';
 import { TASK_STATUS_LABELS } from '../../../shared/constants';
@@ -43,6 +42,7 @@ import { TaskSubtasks } from './TaskSubtasks';
 import { TaskLogs } from './TaskLogs';
 import { TaskFiles } from './TaskFiles';
 import { TaskReview } from './TaskReview';
+import { getTaskLifecycleProgress, getTaskStatusPresentation } from './task-presentation';
 import type { Task, WorktreeCreatePROptions } from '../../../shared/types';
 
 interface TaskDetailModalProps {
@@ -83,7 +83,8 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
   const state = useTaskDetail({ task });
   const activeProject = useProjectStore(s => s.getActiveProject());
   const showFilesTab = isFilesTabEnabled();
-  const progressPercent = calculateProgress(task.subtasks);
+  const progressPercent = getTaskLifecycleProgress(task);
+  const statusPresentation = getTaskStatusPresentation(task);
   const completedSubtasks = task.subtasks.filter(s => s.status === 'completed').length;
   const totalSubtasks = task.subtasks.length;
 
@@ -224,21 +225,6 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
       });
     }
     onOpenChange(false);
-  };
-
-  // Helper function to get status badge variant
-  const getStatusBadgeVariant = (status: string, isStuck: boolean) => {
-    if (isStuck) return 'warning';
-    switch (status) {
-      case 'done':
-        return 'success';
-      case 'human_review':
-        return 'purple';
-      case 'in_progress':
-        return 'info';
-      default:
-        return 'secondary';
-    }
   };
 
   // Render primary action button based on state
@@ -392,30 +378,17 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
                             Incomplete
                           </Badge>
                       ) : (
-                        <>
-                           <Badge
-                             variant={getStatusBadgeVariant(task.status, state.isStuck)}
-                             className={cn('text-xs', (task.status === 'in_progress' && !state.isStuck) && 'status-running')}
-                           >
-                             {t(TASK_STATUS_LABELS[task.status])}
-                           </Badge>
-                          {task.status === 'human_review' && task.reviewReason && (
-                            <Badge
-                              variant={task.reviewReason === 'completed' ? 'success' : task.reviewReason === 'errors' ? 'destructive' : 'warning'}
-                              className="text-xs"
-                            >
-                              {task.reviewReason === 'completed' ? 'Completed' :
-                               task.reviewReason === 'errors' ? 'Has Errors' :
-                               task.reviewReason === 'plan_review' ? 'Approve Plan' :
-                               task.reviewReason === 'stopped' ? 'Stopped' : 'QA Issues'}
-                            </Badge>
-                          )}
-                        </>
+                        <Badge
+                          variant={statusPresentation.variant}
+                          className={cn('text-xs', statusPresentation.isActive && 'status-running')}
+                        >
+                          {t(statusPresentation.labelKey)}
+                        </Badge>
                       )}
                       {/* Compact progress indicator */}
                       {totalSubtasks > 0 && (
                         <span className="text-xs text-muted-foreground ml-1">
-                          {completedSubtasks}/{totalSubtasks} subtasks
+                          {completedSubtasks}/{totalSubtasks} coding subtasks
                         </span>
                       )}
                     </div>
