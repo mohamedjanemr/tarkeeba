@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Terminal,
@@ -70,8 +70,30 @@ export function TaskLogs({
 }: TaskLogsProps) {
   const { t } = useTranslation(['tasks']);
 
-  const phaseDurations = useMemo(() => calculatePhaseDurations(phaseLogs), [phaseLogs]);
-  const totalDuration = useMemo(() => calculateTotalDuration(phaseLogs), [phaseLogs]);
+  const hasRunningPhase = useMemo(
+    () => Object.values(phaseLogs?.phases ?? {}).some(
+      (phase) => Boolean(phase?.started_at && !phase.completed_at)
+    ),
+    [phaseLogs]
+  );
+  const [durationNow, setDurationNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (!hasRunningPhase) return;
+
+    setDurationNow(Date.now());
+    const interval = setInterval(() => setDurationNow(Date.now()), 60_000);
+    return () => clearInterval(interval);
+  }, [hasRunningPhase]);
+
+  const phaseDurations = useMemo(
+    () => calculatePhaseDurations(phaseLogs, durationNow),
+    [phaseLogs, durationNow]
+  );
+  const totalDuration = useMemo(
+    () => calculateTotalDuration(phaseLogs, durationNow),
+    [phaseLogs, durationNow]
+  );
 
   return (
     <div

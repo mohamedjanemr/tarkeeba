@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import { createRef } from 'react';
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Task, TaskLogs as TaskLogsType, TaskPhaseLog } from '../../../../shared/types';
@@ -127,5 +127,11 @@ describe('TaskLogs per-phase duration breakdown', () => {
     expect(validationSection).not.toBeNull();
     expect(within(validationSection as HTMLElement).queryByText(/^· /)).not.toBeInTheDocument();
     expect(within(validationSection as HTMLElement).getByText('Pending')).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(60_000);
+    });
+    expect(within(totalRow as HTMLElement).getByText('26m')).toBeInTheDocument();
+    expect(within(codingSection as HTMLElement).getByText('· 16m')).toBeInTheDocument();
   });
 });

@@ -19,11 +19,12 @@ const PHASE_ORDER: TaskLogPhase[] = ['planning', 'coding', 'validation'];
  * @param logs Task logs, or null if not yet available
  * @returns Map of phase name to duration in milliseconds
  */
-export function calculatePhaseDurations(logs: TaskLogs | null): PhaseDurations {
+export function calculatePhaseDurations(
+  logs: TaskLogs | null,
+  now: number = Date.now()
+): PhaseDurations {
   const durations: PhaseDurations = {};
   if (!logs) return durations;
-
-  const now = Date.now();
 
   for (const phase of PHASE_ORDER) {
     const phaseLog = logs.phases[phase];
@@ -48,10 +49,12 @@ export function calculatePhaseDurations(logs: TaskLogs | null): PhaseDurations {
  * @param logs Task logs, or null if not yet available
  * @returns Total duration in milliseconds, or null if no phase has started
  */
-export function calculateTotalDuration(logs: TaskLogs | null): number | null {
+export function calculateTotalDuration(
+  logs: TaskLogs | null,
+  now: number = Date.now()
+): number | null {
   if (!logs) return null;
 
-  const now = Date.now();
   let earliestStart: number | null = null;
   let latestEnd: number | null = null;
   let anyInProgress = false;
@@ -117,8 +120,8 @@ export function formatDuration(ms: number): string {
  *
  * - Returns null for tasks that haven't started execution yet ('backlog' or
  *   'queue' status).
- * - For finished tasks ('done'), the span is createdAt -> updatedAt.
- * - For all other (in-progress) statuses, the span is createdAt -> now.
+ * - Active execution statuses count up to the supplied current time.
+ * - Review, error, PR-created, and done statuses stop at updatedAt.
  *
  * @param createdAt Task creation timestamp
  * @param updatedAt Task last-updated timestamp
@@ -128,15 +131,20 @@ export function formatDuration(ms: number): string {
 export function calculateApproxDurationFromTimestamps(
   createdAt: Date | string,
   updatedAt: Date | string,
-  status: TaskStatus
+  status: TaskStatus,
+  now: number = Date.now()
 ): number | null {
   if (status === 'backlog' || status === 'queue') return null;
 
   const start = new Date(createdAt).getTime();
   if (Number.isNaN(start)) return null;
 
-  const end = status === 'done' ? new Date(updatedAt).getTime() : Date.now();
+  const end = isTaskDurationRunning(status) ? now : new Date(updatedAt).getTime();
   if (Number.isNaN(end)) return null;
 
   return Math.max(0, end - start);
+}
+
+export function isTaskDurationRunning(status: TaskStatus): boolean {
+  return status === 'in_progress' || status === 'ai_review';
 }

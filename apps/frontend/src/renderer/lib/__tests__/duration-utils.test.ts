@@ -6,9 +6,14 @@
  * Unit tests for duration-utils
  * Tests phase/total duration calculation and compact duration formatting
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import type { TaskLogs, TaskPhaseLog } from '@shared/types/task';
-import { calculatePhaseDurations, calculateTotalDuration, formatDuration } from '../duration-utils';
+import {
+  calculateApproxDurationFromTimestamps,
+  calculatePhaseDurations,
+  calculateTotalDuration,
+  formatDuration
+} from '../duration-utils';
 
 function makePhase(overrides: Partial<TaskPhaseLog>): TaskPhaseLog {
   return {
@@ -212,5 +217,26 @@ describe('duration-utils', () => {
       expect(formatDuration(24 * 60 * 60 * 1000 + 3 * 60 * 60 * 1000)).toBe('1d 3h');
       expect(formatDuration(2 * 24 * 60 * 60 * 1000 + 5 * 60 * 60 * 1000)).toBe('2d 5h');
     });
+  });
+
+  describe('calculateApproxDurationFromTimestamps', () => {
+    const createdAt = '2026-07-16T00:00:00.000Z';
+    const updatedAt = '2026-07-16T01:00:00.000Z';
+    const now = new Date('2026-07-16T03:00:00.000Z').getTime();
+
+    it('uses current time only while task execution is active', () => {
+      expect(calculateApproxDurationFromTimestamps(createdAt, updatedAt, 'in_progress', now))
+        .toBe(3 * 60 * 60 * 1000);
+      expect(calculateApproxDurationFromTimestamps(createdAt, updatedAt, 'ai_review', now))
+        .toBe(3 * 60 * 60 * 1000);
+    });
+
+    it.each(['human_review', 'error', 'pr_created', 'done'] as const)(
+      'freezes %s duration at updatedAt',
+      (status) => {
+        expect(calculateApproxDurationFromTimestamps(createdAt, updatedAt, status, now))
+          .toBe(60 * 60 * 1000);
+      }
+    );
   });
 });

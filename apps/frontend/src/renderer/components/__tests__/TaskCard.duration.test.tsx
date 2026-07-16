@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { describe, expect, it, vi } from 'vitest';
 import type { Task } from '../../../shared/types';
@@ -29,7 +29,7 @@ vi.mock('react-i18next', () => ({
 
 vi.mock('../../stores/task-store', () => ({
   archiveTasks: vi.fn(),
-  checkTaskRunning: vi.fn(),
+  checkTaskRunning: vi.fn().mockResolvedValue(true),
   hasRecentActivity: vi.fn(),
   isIncompleteHumanReview: vi.fn(() => false),
   recoverStuckTask: vi.fn(),
@@ -68,20 +68,31 @@ describe('TaskCard duration badge', () => {
   });
 
   it('shows a non-empty duration badge for an in_progress task with valid timestamps', () => {
-    render(
-      <TaskCard
-        task={createTask({
-          status: 'in_progress',
-          createdAt: new Date('2026-07-14T00:00:00.000Z'),
-          updatedAt: new Date('2026-07-14T01:00:00.000Z'),
-        })}
-        onClick={vi.fn()}
-      />
-    );
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-07-14T01:00:00.000Z'));
 
-    const badge = screen.getByTitle('labels.totalDuration');
-    expect(badge).toBeInTheDocument();
-    expect(badge.textContent?.trim().length).toBeGreaterThan(0);
+    try {
+      render(
+        <TaskCard
+          task={createTask({
+            status: 'in_progress',
+            createdAt: new Date('2026-07-14T00:00:00.000Z'),
+            updatedAt: new Date('2026-07-14T01:00:00.000Z'),
+          })}
+          onClick={vi.fn()}
+        />
+      );
+
+      const badge = screen.getByTitle('labels.totalDuration');
+      expect(badge).toHaveTextContent('1h');
+
+      act(() => {
+        vi.advanceTimersByTime(60_000);
+      });
+      expect(badge).toHaveTextContent('1h 1m');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('shows a non-empty duration badge for a done task with valid timestamps', () => {

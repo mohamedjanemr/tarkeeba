@@ -14,7 +14,11 @@ import {
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
 import { cn, formatRelativeTime, sanitizeMarkdownForDisplay } from '../lib/utils';
-import { calculateApproxDurationFromTimestamps, formatDuration } from '../lib/duration-utils';
+import {
+  calculateApproxDurationFromTimestamps,
+  formatDuration,
+  isTaskDurationRunning
+} from '../lib/duration-utils';
 import { PhaseProgressIndicator } from './PhaseProgressIndicator';
 import {
   TASK_CATEGORY_LABELS,
@@ -177,11 +181,27 @@ export const TaskCard = memo(function TaskCard({
     [task.updatedAt]
   );
 
+  const durationIsRunning = isTaskDurationRunning(task.status);
+  const [durationNow, setDurationNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (!durationIsRunning) return;
+
+    setDurationNow(Date.now());
+    const interval = setInterval(() => setDurationNow(Date.now()), 60_000);
+    return () => clearInterval(interval);
+  }, [durationIsRunning]);
+
   // Approximate total duration, derived from task-level timestamps since
   // TaskLogs (phase-level timing) isn't loaded at the card level.
   const approxDurationMs = useMemo(
-    () => calculateApproxDurationFromTimestamps(task.createdAt, task.updatedAt, task.status),
-    [task.createdAt, task.updatedAt, task.status]
+    () => calculateApproxDurationFromTimestamps(
+      task.createdAt,
+      task.updatedAt,
+      task.status,
+      durationNow
+    ),
+    [task.createdAt, task.updatedAt, task.status, durationNow]
   );
 
   // Memoize status menu items to avoid recreating on every render
