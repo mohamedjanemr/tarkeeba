@@ -48,6 +48,13 @@ def _merge_subtasks(subtasks: list[Subtask], group_number: int) -> Subtask:
         patterns_from=_unique(
             [path for subtask in subtasks for path in subtask.patterns_from]
         ),
+        acceptance_criteria_refs=_unique(
+            [
+                criterion
+                for subtask in subtasks
+                for criterion in subtask.acceptance_criteria_refs
+            ]
+        ),
         verification=Verification(
             type=VerificationType.MANUAL,
             scenario=(

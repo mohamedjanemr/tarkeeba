@@ -371,6 +371,99 @@ class TestPhaseRequirements:
         with open(spec_dir / "requirements.json") as f:
             req = json.load(f)
         assert req["task_description"] == "Add user authentication"
+        assert req["must_have"] == ["Add user authentication"]
+        assert req["required_parity"] == []
+
+    @pytest.mark.asyncio
+    async def test_existing_requirements_are_normalized_with_metadata_criteria(
+        self,
+        spec_dir: Path,
+        temp_dir: Path,
+        mock_run_agent_fn,
+        mock_task_logger,
+        mock_ui_module,
+        mock_spec_validator,
+    ):
+        """Desktop-created requirements are upgraded before the phase returns."""
+        (spec_dir / "requirements.json").write_text(
+            json.dumps({"task_description": "Add provider"}),
+            encoding="utf-8",
+        )
+        (spec_dir / "task_metadata.json").write_text(
+            json.dumps({"acceptanceCriteria": ["Provider connects"]}),
+            encoding="utf-8",
+        )
+        validator = mock_spec_validator()
+        validator.validate_requirements.return_value.valid = True
+
+        executor = PhaseExecutor(
+            project_dir=temp_dir,
+            spec_dir=spec_dir,
+            task_description="Add provider",
+            spec_validator=validator,
+            run_agent_fn=mock_run_agent_fn(),
+            task_logger=mock_task_logger,
+            ui_module=mock_ui_module,
+        )
+
+        result = await executor.phase_requirements(interactive=False)
+
+        assert result.success is True
+        normalized = json.loads(
+            (spec_dir / "requirements.json").read_text(encoding="utf-8")
+        )
+        assert normalized["must_have"] == ["Add provider"]
+        assert normalized["acceptance_criteria"] == ["Provider connects"]
+        assert normalized["scope_contract_version"] == 1
+
+    @pytest.mark.asyncio
+    async def test_existing_planned_task_uses_legacy_scope_enforcement(
+        self,
+        spec_dir: Path,
+        temp_dir: Path,
+        mock_run_agent_fn,
+        mock_task_logger,
+        mock_ui_module,
+        mock_spec_validator,
+    ):
+        """Active legacy plans are normalized without invalidating their old spec."""
+        (spec_dir / "requirements.json").write_text(
+            json.dumps({"task_description": "Legacy active task"}),
+            encoding="utf-8",
+        )
+        (spec_dir / "implementation_plan.json").write_text(
+            json.dumps(
+                {
+                    "phases": [
+                        {
+                            "phase": 1,
+                            "name": "Existing",
+                            "subtasks": [{"id": "old", "status": "completed"}],
+                        }
+                    ]
+                }
+            ),
+            encoding="utf-8",
+        )
+        validator = mock_spec_validator()
+        validator.validate_requirements.return_value.valid = True
+        executor = PhaseExecutor(
+            project_dir=temp_dir,
+            spec_dir=spec_dir,
+            task_description="Legacy active task",
+            spec_validator=validator,
+            run_agent_fn=mock_run_agent_fn(),
+            task_logger=mock_task_logger,
+            ui_module=mock_ui_module,
+        )
+
+        result = await executor.phase_requirements(interactive=False)
+
+        assert result.success is True
+        normalized = json.loads(
+            (spec_dir / "requirements.json").read_text(encoding="utf-8")
+        )
+        assert normalized["scope_contract_version"] == 0
 
 
 class TestPhaseContext:
@@ -527,6 +620,13 @@ class TestPhaseQuickSpec:
 
         assert result.success is True
         assert agent_fn.called
+        plan = json.loads(
+            (spec_dir / "implementation_plan.json").read_text(encoding="utf-8")
+        )
+        assert plan["feature"] == "Test task"
+        assert plan["phases"][0]["subtasks"][0]["acceptance_criteria_refs"] == [
+            "AC-1"
+        ]
 
 
 class TestPhaseResearch:

@@ -6,12 +6,13 @@ Validates implementation_plan.json structure, phases, subtasks, and dependencies
 """
 
 import json
+import re
 from pathlib import Path
 
 from execution_budget import get_max_subtasks
 
 from ..models import ValidationResult
-from ..schemas import IMPLEMENTATION_PLAN_SCHEMA
+from ..schemas import IMPLEMENTATION_PLAN_SCHEMA, REQUIREMENTS_SCOPE_FIELDS
 
 
 class ImplementationPlanValidator:
@@ -84,6 +85,10 @@ class ImplementationPlanValidator:
             errors.append("No subtasks defined in any phase")
             fixes.append("Add subtasks to phases")
 
+        scope_errors, scope_fixes = self._validate_scope_traceability(phases)
+        errors.extend(scope_errors)
+        fixes.extend(scope_fixes)
+
         summary = plan.get("summary")
         if isinstance(summary, dict):
             if "total_phases" in summary and summary.get("total_phases") != len(phases):
@@ -121,6 +126,120 @@ class ImplementationPlanValidator:
             warnings=warnings,
             fixes=fixes,
         )
+
+    def _validate_scope_traceability(
+        self, phases: list[dict]
+    ) -> tuple[list[str], list[str]]:
+        """Require structured plans to trace implementation slices to AC-N criteria."""
+        requirements_file = self.spec_dir / "requirements.json"
+        spec_file = self.spec_dir / "spec.md"
+        try:
+            requirements = json.loads(requirements_file.read_text(encoding="utf-8"))
+            spec_content = spec_file.read_text(encoding="utf-8")
+        except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+            return [], []
+
+        if (
+            not isinstance(requirements, dict)
+            or requirements.get("scope_contract_version") != 1
+            or not all(field in requirements for field in REQUIREMENTS_SCOPE_FIELDS)
+        ):
+            return [], []
+
+        success_match = re.search(
+            r"^##?\s+Success Criteria\s*$"
+            r"(?P<body>.*?)(?=^##?\s+|\Z)",
+            spec_content,
+            re.MULTILINE | re.IGNORECASE | re.DOTALL,
+        )
+        success_content = success_match.group("body") if success_match else ""
+        valid_refs = {
+            match.upper()
+            for match in re.findall(r"\bAC-\d+\b", success_content, re.IGNORECASE)
+        }
+        if not valid_refs:
+            return (
+                ["Structured scope requires AC-N identifiers in spec.md"],
+                ["Label Success Criteria as AC-1, AC-2, and so on"],
+            )
+
+        errors = []
+        fixes = []
+        cited_refs = set()
+        excluded_scope = [
+            (field, str(item))
+            for field in ("deferred", "non_goals")
+            for item in requirements.get(field, [])
+            if str(item).strip()
+        ]
+        for phase_index, phase in enumerate(phases, start=1):
+            for subtask_index, subtask in enumerate(phase.get("subtasks", []), start=1):
+                refs = subtask.get("acceptance_criteria_refs", [])
+                location = f"Phase {phase_index}, Subtask {subtask_index}"
+                subtask_scope_text = " ".join(
+                    [
+                        str(subtask.get("description", "")),
+                        *[str(path) for path in subtask.get("files_to_modify", [])],
+                        *[str(path) for path in subtask.get("files_to_create", [])],
+                    ]
+                ).lower()
+                for field, excluded_item in excluded_scope:
+                    if excluded_item.lower() in subtask_scope_text:
+                        errors.append(
+                            f"{location}: implements {field} scope item "
+                            f"'{excluded_item}'"
+                        )
+                        fixes.append(
+                            f"{location}: remove '{excluded_item}' from implementation "
+                            "scope or move it into must_have"
+                        )
+                if not isinstance(refs, list) or not refs:
+                    errors.append(f"{location}: missing acceptance_criteria_refs")
+                    fixes.append(
+                        f"{location}: cite at least one AC-N success criterion"
+                    )
+                    continue
+                normalized_refs = {
+                    str(ref).strip().upper() for ref in refs if str(ref).strip()
+                }
+                unknown_refs = normalized_refs - valid_refs
+                if unknown_refs:
+                    errors.append(
+                        f"{location}: unknown acceptance criteria references: "
+                        f"{sorted(unknown_refs)}"
+                    )
+                    fixes.append(
+                        f"{location}: use only AC-N identifiers defined in spec.md"
+                    )
+                cited_refs.update(normalized_refs & valid_refs)
+
+        required_parity_refs = set()
+        parity_section = re.split(
+            r"^##?\s+Parity Matrix\s*$",
+            spec_content,
+            maxsplit=1,
+            flags=re.MULTILINE | re.IGNORECASE,
+        )
+        if len(parity_section) == 2:
+            for row in parity_section[1].splitlines():
+                if re.search(r"\|\s*required\s*\|", row, re.IGNORECASE):
+                    required_parity_refs.update(
+                        match.upper()
+                        for match in re.findall(r"\bAC-\d+\b", row, re.IGNORECASE)
+                    )
+
+        uncited_parity = required_parity_refs - cited_refs
+        if uncited_parity:
+            errors.append(
+                "Required parity criteria are not cited by any subtask: "
+                f"{sorted(uncited_parity)}"
+            )
+            fixes.append(
+                "Add the missing AC-N references to the capability slice that "
+                "implements the required parity"
+            )
+
+        return errors, fixes
 
     def _validate_phase(self, phase: dict, index: int) -> list[str]:
         """Validate a single phase.

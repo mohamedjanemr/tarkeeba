@@ -2,6 +2,7 @@
 Plan generation logic for different workflow types.
 """
 
+import re
 from pathlib import Path
 
 from implementation_plan import (
@@ -38,6 +39,86 @@ class PlanGenerator:
         """Generate implementation plan. Override in subclasses."""
         raise NotImplementedError
 
+    def _acceptance_context(self) -> tuple[list[str], list[tuple[str, str]]]:
+        criteria = extract_acceptance_criteria(self.context)
+        acceptance_items = []
+        for index, criterion in enumerate(criteria, start=1):
+            explicit_ref = re.search(r"\bAC-\d+\b", criterion, re.IGNORECASE)
+            ref = explicit_ref.group(0).upper() if explicit_ref else f"AC-{index}"
+            acceptance_items.append((ref, criterion))
+        return criteria, acceptance_items
+
+    @staticmethod
+    def _apply_acceptance_refs(
+        phases: list[Phase], acceptance_items: list[tuple[str, str]]
+    ) -> None:
+        all_refs = [ref for ref, _ in acceptance_items]
+        criterion_tokens = {
+            ref: PlanGenerator._scope_tokens(criterion)
+            for ref, criterion in acceptance_items
+        }
+        common_tokens = (
+            set.intersection(*criterion_tokens.values())
+            if len(criterion_tokens) > 1 and all(criterion_tokens.values())
+            else set()
+        )
+        for phase in phases:
+            for subtask in phase.subtasks:
+                if subtask.acceptance_criteria_refs:
+                    continue
+                if subtask.all_services or phase.type == PhaseType.INTEGRATION:
+                    subtask.acceptance_criteria_refs = list(all_refs)
+                    continue
+
+                subtask_text = " ".join(
+                    [
+                        subtask.description,
+                        subtask.expected_output or "",
+                        *subtask.files_to_modify,
+                        *subtask.files_to_create,
+                    ]
+                )
+                subtask_tokens = PlanGenerator._scope_tokens(subtask_text)
+                subtask.acceptance_criteria_refs = [
+                    ref
+                    for ref, _ in acceptance_items
+                    if (
+                        len(acceptance_items) == 1
+                        or subtask_tokens & (criterion_tokens[ref] - common_tokens)
+                    )
+                ]
+
+    @staticmethod
+    def _scope_tokens(value: str) -> set[str]:
+        stop_words = {
+            "acceptance",
+            "add",
+            "build",
+            "change",
+            "criteria",
+            "existing",
+            "feature",
+            "implementation",
+            "implement",
+            "provider",
+            "task",
+            "update",
+            "user",
+            "verify",
+            "works",
+        }
+        tokens = set()
+        for token in re.findall(r"[a-z0-9]+", value.lower()):
+            if token.startswith("ac") and token[2:].isdigit():
+                continue
+            for suffix in ("ing", "ed", "es", "s"):
+                if token.endswith(suffix) and len(token) > len(suffix) + 3:
+                    token = token[: -len(suffix)]
+                    break
+            if len(token) > 2 and token not in stop_words:
+                tokens.add(token)
+        return tokens
+
 
 class FeaturePlanGenerator(PlanGenerator):
     """Generates feature implementation plans."""
@@ -46,6 +127,7 @@ class FeaturePlanGenerator(PlanGenerator):
         """Generate a feature implementation plan."""
         feature_name = extract_feature_name(self.context)
         files_by_service = group_files_by_service(self.context)
+        final_acceptance, acceptance_items = self._acceptance_context()
 
         phases = []
         phase_num = 0
@@ -152,8 +234,7 @@ class FeaturePlanGenerator(PlanGenerator):
                 )
             )
 
-        # Extract final acceptance from spec
-        final_acceptance = extract_acceptance_criteria(self.context)
+        self._apply_acceptance_refs(phases, acceptance_items)
 
         return ImplementationPlan(
             feature=feature_name,
@@ -171,6 +252,7 @@ class InvestigationPlanGenerator(PlanGenerator):
     def generate(self) -> ImplementationPlan:
         """Generate an investigation plan for debugging."""
         feature_name = extract_feature_name(self.context)
+        _, acceptance_items = self._acceptance_context()
 
         phases = [
             Phase(
@@ -251,6 +333,8 @@ class InvestigationPlanGenerator(PlanGenerator):
             ),
         ]
 
+        self._apply_acceptance_refs(phases, acceptance_items)
+
         return ImplementationPlan(
             feature=feature_name,
             workflow_type=WorkflowType.INVESTIGATION,
@@ -271,6 +355,7 @@ class RefactorPlanGenerator(PlanGenerator):
     def generate(self) -> ImplementationPlan:
         """Generate a refactor plan with stage-based phases."""
         feature_name = extract_feature_name(self.context)
+        _, acceptance_items = self._acceptance_context()
 
         # For refactors, stages are: Add new, Migrate, Remove old, Cleanup
         phases = [
@@ -349,6 +434,8 @@ class RefactorPlanGenerator(PlanGenerator):
                 ],
             ),
         ]
+
+        self._apply_acceptance_refs(phases, acceptance_items)
 
         return ImplementationPlan(
             feature=feature_name,

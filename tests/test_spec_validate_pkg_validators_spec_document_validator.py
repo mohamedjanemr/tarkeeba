@@ -11,6 +11,7 @@ Tests for SpecDocumentValidator class covering:
 - ValidationResult return values
 """
 
+import json
 from pathlib import Path
 
 
@@ -484,3 +485,150 @@ class TestSectionMatching:
 
         # Should still match
         assert result.valid is True
+
+
+class TestScopeContractValidation:
+    """Tests for MVP boundary and parity enforcement."""
+
+    @staticmethod
+    def _write_requirements(spec_dir: Path, required_parity=None):
+        requirements = {
+            "scope_contract_version": 1,
+            "task_description": "Add provider",
+            "must_have": ["Connect provider"],
+            "required_parity": required_parity or [],
+            "deferred": [],
+            "reuse_existing": [],
+            "non_goals": ["Unrequested capabilities"],
+        }
+        (spec_dir / "requirements.json").write_text(
+            json.dumps(requirements),
+            encoding="utf-8",
+        )
+
+    @staticmethod
+    def _base_spec(parity_row: str) -> str:
+        return f"""## Overview
+
+Add a provider integration.
+
+## Workflow Type
+
+Feature
+
+## Task Scope
+
+Connect the provider.
+
+## MVP Boundary
+
+### Must Have
+- Connect provider
+
+### Required Parity
+- N/A
+
+### Reuse Existing
+- N/A
+
+### Deferred
+- N/A
+
+### Non-Goals
+- Unrequested capabilities
+
+## Parity Matrix
+
+| Capability | Disposition | Driving Acceptance Criterion |
+|------------|-------------|------------------------------|
+{parity_row}
+
+## Success Criteria
+
+- [ ] **AC-1**: Provider connects
+"""
+
+    def test_missing_scope_sections_fail_for_structured_requirements(
+        self, spec_dir: Path
+    ):
+        from spec.validate_pkg.validators.spec_document_validator import (
+            SpecDocumentValidator,
+        )
+
+        self._write_requirements(spec_dir)
+        (spec_dir / "spec.md").write_text(
+            "## Overview\n\nX\n## Workflow Type\n\nFeature\n"
+            "## Task Scope\n\nX\n## Success Criteria\n\n- AC-1\n",
+            encoding="utf-8",
+        )
+
+        result = SpecDocumentValidator(spec_dir).validate()
+
+        assert result.valid is False
+        assert any("MVP Boundary" in error for error in result.errors)
+        assert any("Parity Matrix" in error for error in result.errors)
+
+    def test_required_parity_without_acceptance_reference_fails(
+        self, spec_dir: Path
+    ):
+        from spec.validate_pkg.validators.spec_document_validator import (
+            SpecDocumentValidator,
+        )
+
+        self._write_requirements(spec_dir, ["Pull request listing"])
+        content = self._base_spec("| Pull request listing | required | missing |")
+        (spec_dir / "spec.md").write_text(content, encoding="utf-8")
+
+        result = SpecDocumentValidator(spec_dir).validate()
+
+        assert result.valid is False
+        assert any(
+            "driving acceptance criterion" in error.lower()
+            for error in result.errors
+        )
+
+    def test_unapproved_required_parity_capability_fails(self, spec_dir: Path):
+        from spec.validate_pkg.validators.spec_document_validator import (
+            SpecDocumentValidator,
+        )
+
+        self._write_requirements(spec_dir)
+        content = self._base_spec("| Pull request listing | required | AC-1 |")
+        (spec_dir / "spec.md").write_text(content, encoding="utf-8")
+
+        result = SpecDocumentValidator(spec_dir).validate()
+
+        assert result.valid is False
+        assert any("unapproved capability" in error for error in result.errors)
+
+    def test_explicit_na_parity_is_valid_when_no_parity_required(
+        self, spec_dir: Path
+    ):
+        from spec.validate_pkg.validators.spec_document_validator import (
+            SpecDocumentValidator,
+        )
+
+        self._write_requirements(spec_dir)
+        content = self._base_spec("| N/A | N/A | N/A |") + ("Details. " * 80)
+        (spec_dir / "spec.md").write_text(content, encoding="utf-8")
+
+        result = SpecDocumentValidator(spec_dir).validate()
+
+        assert result.valid is True
+
+    def test_scope_item_must_be_copied_into_mvp_boundary(self, spec_dir: Path):
+        from spec.validate_pkg.validators.spec_document_validator import (
+            SpecDocumentValidator,
+        )
+
+        self._write_requirements(spec_dir)
+        content = self._base_spec("| N/A | N/A | N/A |").replace(
+            "- Connect provider",
+            "- Different capability",
+        )
+        (spec_dir / "spec.md").write_text(content, encoding="utf-8")
+
+        result = SpecDocumentValidator(spec_dir).validate()
+
+        assert result.valid is False
+        assert any("does not include scope item" in error for error in result.errors)

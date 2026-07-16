@@ -12,6 +12,7 @@ from .validators import (
     ContextValidator,
     ImplementationPlanValidator,
     PrereqsValidator,
+    RequirementsValidator,
     SpecDocumentValidator,
 )
 
@@ -29,6 +30,7 @@ class SpecValidator:
 
         # Initialize individual validators
         self._prereqs_validator = PrereqsValidator(self.spec_dir)
+        self._requirements_validator = RequirementsValidator(self.spec_dir)
         self._context_validator = ContextValidator(self.spec_dir)
         self._spec_document_validator = SpecDocumentValidator(self.spec_dir)
         self._implementation_plan_validator = ImplementationPlanValidator(self.spec_dir)
@@ -41,6 +43,7 @@ class SpecValidator:
         """
         results = [
             self.validate_prereqs(),
+            self.validate_requirements(),
             self.validate_context(),
             self.validate_spec_document(),
             self.validate_implementation_plan(),
@@ -62,6 +65,10 @@ class SpecValidator:
             ValidationResult for context checkpoint
         """
         return self._context_validator.validate()
+
+    def validate_requirements(self) -> ValidationResult:
+        """Validate the structured requirements and MVP scope contract."""
+        return self._requirements_validator.validate()
 
     def validate_spec_document(self) -> ValidationResult:
         """Validate spec.md exists and has required sections.

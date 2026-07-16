@@ -35,6 +35,8 @@ def _plan_with_subtasks(counts: list[int]) -> ImplementationPlan:
 def test_compacts_large_plan_to_requested_limit():
     source = _plan_with_subtasks([5, 4, 3])
     source.phases[0].parallel_safe = False
+    source.phases[0].subtasks[0].acceptance_criteria_refs = ["AC-1"]
+    source.phases[0].subtasks[1].acceptance_criteria_refs = ["AC-2"]
     source.phases[0].subtasks[0].verification = Verification(
         type=VerificationType.COMMAND,
         run="pytest tests/test_feature.py",
@@ -52,6 +54,7 @@ def test_compacts_large_plan_to_requested_limit():
     }
     assert len(merged_files) == 12
     assert plan.phases[0].parallel_safe is False
+    assert plan.phases[0].subtasks[0].acceptance_criteria_refs == ["AC-1", "AC-2"]
     assert "run=pytest tests/test_feature.py" in (
         plan.phases[0].subtasks[0].verification.scenario or ""
     )

@@ -33,7 +33,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--checkpoint",
-        choices=["prereqs", "context", "spec", "plan", "all"],
+        choices=["prereqs", "requirements", "context", "spec", "plan", "all"],
         default="all",
         help="Which checkpoint to validate",
     )
@@ -60,6 +60,8 @@ def main() -> None:
         results = validator.validate_all()
     elif args.checkpoint == "prereqs":
         results = [validator.validate_prereqs()]
+    elif args.checkpoint == "requirements":
+        results = [validator.validate_requirements()]
     elif args.checkpoint == "context":
         results = [validator.validate_context()]
     elif args.checkpoint == "spec":

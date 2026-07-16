@@ -30,6 +30,7 @@ class Subtask:
     files_to_modify: list[str] = field(default_factory=list)
     files_to_create: list[str] = field(default_factory=list)
     patterns_from: list[str] = field(default_factory=list)
+    acceptance_criteria_refs: list[str] = field(default_factory=list)
 
     # Verification
     verification: Verification | None = None
@@ -63,6 +64,8 @@ class Subtask:
             result["files_to_create"] = self.files_to_create
         if self.patterns_from:
             result["patterns_from"] = self.patterns_from
+        if self.acceptance_criteria_refs:
+            result["acceptance_criteria_refs"] = self.acceptance_criteria_refs
         if self.verification:
             result["verification"] = self.verification.to_dict()
         if self.expected_output:
@@ -95,6 +98,7 @@ class Subtask:
             files_to_modify=data.get("files_to_modify", []),
             files_to_create=data.get("files_to_create", []),
             patterns_from=data.get("patterns_from", []),
+            acceptance_criteria_refs=data.get("acceptance_criteria_refs", []),
             verification=verification,
             expected_output=data.get("expected_output"),
             actual_output=data.get("actual_output"),

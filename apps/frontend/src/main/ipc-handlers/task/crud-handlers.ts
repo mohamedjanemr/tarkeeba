@@ -16,6 +16,7 @@ import { getToolPath } from '../../cli-tool-manager';
 import { getIsolatedGitEnv } from '../../utils/git-isolation';
 import { taskStateManager } from '../../task-state-manager';
 import { safeBreadcrumb } from '../../sentry';
+import { buildRequirementsScopeContract } from '../../utils/requirements-scope';
 
 /**
  * Sanitize thinking levels in task metadata in-place.
@@ -295,8 +296,20 @@ export function registerTaskCRUDHandlers(agentManager: AgentManager): void {
 
       // Create requirements.json with attached images
       const requirements: Record<string, unknown> = {
-        task_description: description,
-        workflow_type: taskMetadata.category || 'feature'
+        ...buildRequirementsScopeContract(
+          description,
+          taskMetadata.category || 'feature',
+          [],
+          new Date(),
+          {
+            mustHave: taskMetadata.mustHave,
+            requiredParity: taskMetadata.requiredParity,
+            deferred: taskMetadata.deferred,
+            reuseExisting: taskMetadata.reuseExisting,
+            nonGoals: taskMetadata.nonGoals,
+            acceptanceCriteria: taskMetadata.acceptanceCriteria
+          }
+        )
       };
 
       // Add attached images to requirements if present
@@ -601,9 +614,28 @@ export function registerTaskCRUDHandlers(agentManager: AgentManager): void {
 
             if (updates.description !== undefined) {
               requirements.task_description = updates.description;
+              requirements.must_have = [updates.description];
             }
             if (updates.metadata.category) {
               requirements.workflow_type = updates.metadata.category;
+            }
+            if (updates.metadata.acceptanceCriteria !== undefined) {
+              requirements.acceptance_criteria = updates.metadata.acceptanceCriteria;
+            }
+            if (updates.metadata.mustHave !== undefined) {
+              requirements.must_have = updates.metadata.mustHave;
+            }
+            if (updates.metadata.requiredParity !== undefined) {
+              requirements.required_parity = updates.metadata.requiredParity;
+            }
+            if (updates.metadata.deferred !== undefined) {
+              requirements.deferred = updates.metadata.deferred;
+            }
+            if (updates.metadata.reuseExisting !== undefined) {
+              requirements.reuse_existing = updates.metadata.reuseExisting;
+            }
+            if (updates.metadata.nonGoals !== undefined) {
+              requirements.non_goals = updates.metadata.nonGoals;
             }
 
             writeFileSync(requirementsPath, JSON.stringify(requirements, null, 2), 'utf-8');

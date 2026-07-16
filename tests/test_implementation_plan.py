@@ -127,6 +127,18 @@ class TestSubtask:
         assert chunk.status == SubtaskStatus.COMPLETED
         assert chunk.service == "frontend"
 
+    def test_acceptance_criteria_refs_survive_round_trip(self):
+        """Subtask scope traceability is preserved during plan saves."""
+        chunk = Subtask(
+            id="chunk-1",
+            description="Implement provider",
+            acceptance_criteria_refs=["AC-1", "AC-2"],
+        )
+
+        restored = Subtask.from_dict(chunk.to_dict())
+
+        assert restored.acceptance_criteria_refs == ["AC-1", "AC-2"]
+
 
 class TestVerification:
     """Tests for Verification data structure."""

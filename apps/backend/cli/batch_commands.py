@@ -11,6 +11,7 @@ import subprocess
 from pathlib import Path
 
 from qa.criteria import is_fixes_applied, is_qa_approved, is_qa_rejected
+from spec.requirements import normalize_requirements
 from ui import highlight, print_status
 
 
@@ -66,20 +67,22 @@ def handle_batch_create_command(batch_file: str, project_dir: str) -> bool:
         spec_dir.mkdir(exist_ok=True)
 
         # Create requirements.json
-        requirements = {
-            "task_description": task.get("description", task_title),
-            "description": task.get("description", task_title),
-            "workflow_type": task.get("workflow_type", "feature"),
-            "services_involved": task.get("services", ["frontend"]),
-            "priority": task.get("priority", 5),
-            "complexity_inferred": task.get("complexity", "standard"),
-            "inferred_from": {},
-            "created_at": Path(spec_dir).stat().st_mtime,
-            "estimate": {
-                "estimated_hours": task.get("estimated_hours", 4.0),
-                "estimated_days": task.get("estimated_days", 0.5),
-            },
-        }
+        requirements = normalize_requirements(
+            {
+                "task_description": task.get("description", task_title),
+                "description": task.get("description", task_title),
+                "workflow_type": task.get("workflow_type", "feature"),
+                "services_involved": task.get("services", ["frontend"]),
+                "priority": task.get("priority", 5),
+                "complexity_inferred": task.get("complexity", "standard"),
+                "inferred_from": {},
+                "created_at": Path(spec_dir).stat().st_mtime,
+                "estimate": {
+                    "estimated_hours": task.get("estimated_hours", 4.0),
+                    "estimated_days": task.get("estimated_days", 0.5),
+                },
+            }
+        )
 
         req_file = spec_dir / "requirements.json"
         with open(req_file, "w", encoding="utf-8") as f:

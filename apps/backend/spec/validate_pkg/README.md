@@ -16,6 +16,7 @@ validate_spec/
 └── validators/                 # Individual checkpoint validators
     ├── __init__.py
     ├── prereqs_validator.py
+    ├── requirements_validator.py
     ├── context_validator.py
     ├── spec_document_validator.py
     └── implementation_plan_validator.py
@@ -48,10 +49,17 @@ Validates context.json structure:
 - Contains required fields (task_description)
 - Warns about missing recommended fields
 
+#### RequirementsValidator
+Validates requirements.json structure:
+- Task description exists
+- MVP scope fields are present
+- Scope fields contain string arrays
+
 #### SpecDocumentValidator
 Validates spec.md document:
 - File exists
 - Contains required sections (Overview, Workflow Type, Task Scope, Success Criteria)
+- Enforces MVP Boundary and Parity Matrix for structured requirements
 - Warns about missing recommended sections
 - Checks minimum content length
 

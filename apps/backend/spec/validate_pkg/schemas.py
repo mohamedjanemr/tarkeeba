@@ -6,6 +6,14 @@ JSON schemas and constants used for validating spec outputs.
 """
 
 # JSON Schemas for validation
+REQUIREMENTS_SCOPE_FIELDS = [
+    "must_have",
+    "required_parity",
+    "deferred",
+    "reuse_existing",
+    "non_goals",
+]
+
 IMPLEMENTATION_PLAN_SCHEMA = {
     "required_fields": ["feature", "workflow_type", "phases"],
     "optional_fields": [
@@ -48,6 +56,7 @@ IMPLEMENTATION_PLAN_SCHEMA = {
             "investigation",
             "integration",
             "cleanup",
+            "followup",
         ],
     },
     "subtask_schema": {
@@ -58,6 +67,7 @@ IMPLEMENTATION_PLAN_SCHEMA = {
             "files_to_modify",
             "files_to_create",
             "patterns_from",
+            "acceptance_criteria_refs",
             "verification",
             "expected_output",
             "actual_output",

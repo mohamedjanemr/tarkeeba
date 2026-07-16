@@ -13,6 +13,82 @@ import tempfile
 from datetime import datetime
 from pathlib import Path
 
+SCOPE_FIELDS = (
+    "must_have",
+    "required_parity",
+    "deferred",
+    "reuse_existing",
+    "non_goals",
+)
+DEFAULT_NON_GOAL = "Capabilities not explicitly required by the task description"
+SCOPE_CONTRACT_VERSION = 1
+
+
+def _string_list(value) -> list[str]:
+    """Normalize a user-provided value into a clean list of strings."""
+    if isinstance(value, str):
+        value = [value]
+    if not isinstance(value, list):
+        return []
+    return [item.strip() for item in value if isinstance(item, str) and item.strip()]
+
+
+def normalize_requirements(
+    requirements: dict,
+    *,
+    fallback_task_description: str | None = None,
+    acceptance_criteria: list[str] | None = None,
+    enforce_scope_contract: bool = True,
+) -> dict:
+    """Return a backward-compatible requirements document with scope controls."""
+    normalized = dict(requirements) if isinstance(requirements, dict) else {}
+    task_description = str(
+        normalized.get("task_description")
+        or fallback_task_description
+        or "Unknown task"
+    ).strip()
+
+    normalized["task_description"] = task_description
+    normalized["workflow_type"] = str(
+        normalized.get("workflow_type") or "feature"
+    ).strip()
+    normalized["services_involved"] = _string_list(
+        normalized.get("services_involved", [])
+    )
+
+    if "must_have" not in normalized:
+        normalized["must_have"] = [task_description] if task_description else []
+    else:
+        normalized["must_have"] = _string_list(normalized["must_have"])
+
+    for field in ("required_parity", "deferred", "reuse_existing"):
+        normalized[field] = _string_list(normalized.get(field, []))
+
+    if "non_goals" not in normalized:
+        normalized["non_goals"] = [DEFAULT_NON_GOAL]
+    else:
+        normalized["non_goals"] = _string_list(normalized["non_goals"])
+
+    existing_criteria = _string_list(normalized.get("acceptance_criteria", []))
+    normalized["acceptance_criteria"] = existing_criteria or _string_list(
+        acceptance_criteria or []
+    )
+    normalized["constraints"] = _string_list(normalized.get("constraints", []))
+    normalized.setdefault(
+        "scope_contract_version",
+        SCOPE_CONTRACT_VERSION if enforce_scope_contract else 0,
+    )
+    normalized.setdefault("created_at", datetime.now().isoformat())
+    return normalized
+
+
+def _prompt_scope_list(ui_module, label: str, hint: str) -> list[str]:
+    """Collect a comma-separated optional scope list from the interactive CLI."""
+    print(f"     {ui_module.bold(label)}")
+    print(f"     {ui_module.muted(hint)}")
+    value = input("     > ").strip()
+    return [item.strip() for item in value.split(",") if item.strip()]
+
 
 def open_editor_for_input(field_name: str) -> str:
     """Open the user's editor for long-form text input."""
@@ -147,28 +223,69 @@ def gather_requirements_interactively(ui_module) -> dict:
     additional_context = " ".join(context_lines).strip()
     print()
 
-    return {
-        "task_description": task,
-        "workflow_type": workflow_type,
-        "services_involved": [],  # AI will discover this during planning and context fetching
-        "additional_context": additional_context if additional_context else None,
-        "created_at": datetime.now().isoformat(),
-    }
+    print(f"  {ui_module.bold('4. Define the MVP boundary')}")
+    print(
+        f"     {ui_module.muted('Use comma-separated items. Press Enter to leave an optional list empty.')}"
+    )
+    must_have = _prompt_scope_list(
+        ui_module,
+        "Must have",
+        "Explicit outcomes required in this task (defaults to the task description)",
+    )
+    required_parity = _prompt_scope_list(
+        ui_module,
+        "Required parity",
+        "Only named capabilities that must match an existing provider or feature",
+    )
+    reuse_existing = _prompt_scope_list(
+        ui_module,
+        "Reuse existing",
+        "Existing components, services, or patterns that must be reused",
+    )
+    deferred = _prompt_scope_list(
+        ui_module,
+        "Deferred",
+        "Useful work to preserve as a follow-up instead of implementing now",
+    )
+    non_goals = _prompt_scope_list(
+        ui_module,
+        "Non-goals",
+        "Capabilities explicitly excluded from this task",
+    )
+    print()
+
+    return normalize_requirements(
+        {
+            "task_description": task,
+            "workflow_type": workflow_type,
+            "services_involved": [],  # AI will discover this during planning and context fetching
+            "additional_context": additional_context if additional_context else None,
+            "must_have": must_have or [task],
+            "required_parity": required_parity,
+            "deferred": deferred,
+            "reuse_existing": reuse_existing,
+            "non_goals": non_goals or [DEFAULT_NON_GOAL],
+            "created_at": datetime.now().isoformat(),
+        }
+    )
 
 
 def create_requirements_from_task(task_description: str) -> dict:
     """Create minimal requirements dictionary from task description."""
-    return {
-        "task_description": task_description,
-        "workflow_type": "feature",  # Default, agent will refine
-        "services_involved": [],  # AI will discover during planning and context fetching
-        "created_at": datetime.now().isoformat(),
-    }
+    return normalize_requirements(
+        {
+            "task_description": task_description,
+            "workflow_type": "feature",  # Default, agent will refine
+            "services_involved": [],  # AI will discover during planning and context fetching
+            "created_at": datetime.now().isoformat(),
+        }
+    )
 
 
 def save_requirements(spec_dir: Path, requirements: dict) -> Path:
     """Save requirements to file."""
     requirements_file = spec_dir / "requirements.json"
+    requirements = normalize_requirements(requirements)
     with open(requirements_file, "w", encoding="utf-8") as f:
         json.dump(requirements, f, indent=2)
     return requirements_file

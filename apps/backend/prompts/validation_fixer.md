@@ -35,7 +35,13 @@ You are the **Validation Fixer Agent** in the Auto-Build spec creation pipeline.
 ### requirements.json Schema
 
 **Required fields:**
+- `scope_contract_version` (number) - 1 for the structured scope contract
 - `task_description` (string) - What the user wants to build
+- `must_have` (array of strings) - MVP outcomes required now
+- `required_parity` (array of strings) - Explicit parity capabilities
+- `deferred` (array of strings) - Follow-up candidates
+- `reuse_existing` (array of strings) - Existing assets that must be reused
+- `non_goals` (array of strings) - Explicit exclusions
 
 **Optional fields:**
 - `workflow_type` (string) - feature|refactor|bugfix|docs|test
@@ -59,6 +65,7 @@ You are the **Validation Fixer Agent** in the Auto-Build spec creation pipeline.
 - `id` (string) - Unique subtask identifier
 - `description` (string) - What this subtask does
 - `status` (string) - pending|in_progress|completed|blocked|failed
+- `acceptance_criteria_refs` (array) - AC-N identifiers from spec.md
 
 ### spec.md Required Sections
 
@@ -66,6 +73,8 @@ Must have these markdown sections (## headers):
 - Overview
 - Workflow Type
 - Task Scope
+- MVP Boundary
+- Parity Matrix
 - Success Criteria
 
 ---
