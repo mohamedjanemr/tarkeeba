@@ -185,6 +185,82 @@ class AzureDevOpsClient:
             f"Azure DevOps API error after {max_retries} retries"
         ) from last_error
 
+    def build_json_patch(self, fields: dict) -> list[dict]:
+        """
+        Build JSON Patch operations (RFC 6902) for work item create/update.
+
+        Converts a fields dict into an array of add/replace operations.
+        Used for PATCH requests to work item endpoints.
+
+        Args:
+            fields: Dictionary mapping field names to values
+                   (e.g., {'System.Title': 'My Title'})
+
+        Returns:
+            List of JSON Patch operation dicts
+            (e.g., [{'op': 'add', 'path': '/fields/System.Title', 'value': 'x'}])
+        """
+        patches = []
+        for field_name, value in fields.items():
+            patches.append(
+                {
+                    "op": "add",
+                    "path": f"/fields/{field_name}",
+                    "value": value,
+                }
+            )
+        return patches
+
+    def run_wiql_query(self, wiql: str) -> list[int]:
+        """
+        Run a WIQL (Work Item Query Language) query and return work item IDs.
+
+        Posts to /_apis/wit/wiql and extracts the list of work item IDs
+        from the results.
+
+        Args:
+            wiql: WIQL query string
+
+        Returns:
+            List of work item IDs matching the query
+        """
+        data = {"query": wiql}
+        result = self._fetch("/_apis/wit/wiql", method="POST", data=data)
+
+        if not result or "workItems" not in result:
+            return []
+
+        # Extract IDs from workItems list
+        return [item["id"] for item in result.get("workItems", [])]
+
+    def get_work_items_by_ids(self, ids: list[int]) -> list[dict]:
+        """
+        Get work item details by IDs.
+
+        GET /_apis/wit/workitems with ids parameter.
+        Returns [] immediately if ids is empty without calling the API.
+
+        Args:
+            ids: List of work item IDs
+
+        Returns:
+            List of work item details dicts
+        """
+        # Handle empty IDs edge case
+        if not ids:
+            return []
+
+        # Build comma-separated ID list for query parameter
+        ids_str = ",".join(str(id_) for id_ in ids)
+        endpoint = f"/_apis/wit/workitems?ids={ids_str}"
+
+        result = self._fetch(endpoint)
+
+        if not result or "value" not in result:
+            return []
+
+        return result.get("value", [])
+
 
 def load_azure_devops_config(project_dir: Path) -> AzureDevOpsConfig | None:
     """Load Azure DevOps config from project's .auto-claude/azure-devops/config.json or env vars."""
