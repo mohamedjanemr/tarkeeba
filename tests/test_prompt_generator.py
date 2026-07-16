@@ -13,6 +13,7 @@ import pytest
 from prompts_pkg.prompt_generator import (
     detect_worktree_isolation,
     generate_environment_context,
+    generate_subtask_prompt,
 )
 
 # Skip Windows-specific tests on non-Windows platforms
@@ -262,3 +263,44 @@ class TestGenerateEnvironmentContext:
 
         # Verify Isolation Mode is not present
         assert "**Isolation Mode:**" not in context
+
+
+class TestGenerateSubtaskPrompt:
+    def test_includes_nonempty_human_input(self, tmp_path):
+        spec_dir = tmp_path / ".auto-claude" / "specs" / "001-feature"
+        spec_dir.mkdir(parents=True)
+        (spec_dir / "HUMAN_INPUT.md").write_text(
+            "Keep the existing API backward compatible.", encoding="utf-8"
+        )
+
+        prompt = generate_subtask_prompt(
+            spec_dir=spec_dir,
+            project_dir=tmp_path,
+            subtask={
+                "id": "subtask-1",
+                "description": "Update the API",
+                "verification": {"type": "manual"},
+            },
+            phase={"name": "API"},
+        )
+
+        assert "HUMAN INPUT — FOLLOW THIS FIRST" in prompt
+        assert "Keep the existing API backward compatible." in prompt
+
+    def test_ignores_empty_human_input(self, tmp_path):
+        spec_dir = tmp_path / ".auto-claude" / "specs" / "001-feature"
+        spec_dir.mkdir(parents=True)
+        (spec_dir / "HUMAN_INPUT.md").write_text("  \n", encoding="utf-8")
+
+        prompt = generate_subtask_prompt(
+            spec_dir=spec_dir,
+            project_dir=tmp_path,
+            subtask={
+                "id": "subtask-1",
+                "description": "Update the API",
+                "verification": {"type": "manual"},
+            },
+            phase={"name": "API"},
+        )
+
+        assert "HUMAN INPUT — FOLLOW THIS FIRST" not in prompt

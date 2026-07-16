@@ -180,6 +180,14 @@ async def run_qa_validation_loop(
             spec_dir, "qa", qa_model
         )
 
+        if task_logger:
+            task_logger.set_session(0)
+            task_logger.set_subtask("qa_fixer_human_feedback")
+            task_logger.start_session_timing(
+                LogPhase.VALIDATION, label="qa_fixer_human_feedback"
+            )
+
+        client_configuration_started = time_module.perf_counter()
         fix_client = create_client(
             project_dir,
             spec_dir,
@@ -189,14 +197,33 @@ async def run_qa_validation_loop(
             fast_mode=fast_mode,
             **fixer_thinking_kwargs,
         )
+        if task_logger:
+            task_logger.record_timing(
+                "client_configuration",
+                time_module.perf_counter() - client_configuration_started,
+            )
 
+        client_startup_started = time_module.perf_counter()
         async with fix_client:
+            if task_logger:
+                task_logger.record_timing(
+                    "client_startup",
+                    time_module.perf_counter() - client_startup_started,
+                )
+            fixer_session_started = time_module.perf_counter()
             fix_status, fix_response, fix_error_info = await run_qa_fixer_session(
                 fix_client,
                 spec_dir,
                 0,
                 False,  # iteration 0 for human feedback
             )
+            if task_logger:
+                task_logger.record_timing(
+                    "qa_session_total",
+                    time_module.perf_counter() - fixer_session_started,
+                )
+        if task_logger:
+            task_logger.end_session_timing(fix_status)
 
         if fix_status == "error":
             debug_error("qa_loop", f"Fixer error: {fix_response[:200]}")
@@ -297,6 +324,12 @@ async def run_qa_validation_loop(
             model=qa_model,
             thinking_budget=qa_thinking_kwargs.get("max_thinking_tokens"),
         )
+        if task_logger:
+            task_logger.set_session(qa_iteration)
+            task_logger.set_subtask(f"qa_reviewer_{qa_iteration}")
+            task_logger.start_session_timing(LogPhase.VALIDATION, label="qa_reviewer")
+
+        client_configuration_started = time_module.perf_counter()
         client = create_client(
             project_dir,
             spec_dir,
@@ -306,9 +339,21 @@ async def run_qa_validation_loop(
             fast_mode=fast_mode,
             **qa_thinking_kwargs,
         )
+        if task_logger:
+            task_logger.record_timing(
+                "client_configuration",
+                time_module.perf_counter() - client_configuration_started,
+            )
 
+        client_startup_started = time_module.perf_counter()
         async with client:
+            if task_logger:
+                task_logger.record_timing(
+                    "client_startup",
+                    time_module.perf_counter() - client_startup_started,
+                )
             debug("qa_loop", "Running QA reviewer agent session...")
+            reviewer_session_started = time_module.perf_counter()
             status, response, _error_info = await run_qa_agent_session(
                 client,
                 project_dir,  # Pass project_dir for capability-based tool injection
@@ -318,6 +363,13 @@ async def run_qa_validation_loop(
                 verbose,
                 previous_error=last_error_context,  # Pass error context for self-correction
             )
+            if task_logger:
+                task_logger.record_timing(
+                    "qa_session_total",
+                    time_module.perf_counter() - reviewer_session_started,
+                )
+        if task_logger:
+            task_logger.end_session_timing(status)
 
         iteration_duration = time_module.time() - iteration_start
         debug(
@@ -497,6 +549,12 @@ async def run_qa_validation_loop(
             )
             print("\nRunning QA Fixer Agent...")
 
+            if task_logger:
+                task_logger.set_session(qa_iteration)
+                task_logger.set_subtask(f"qa_fixer_{qa_iteration}")
+                task_logger.start_session_timing(LogPhase.VALIDATION, label="qa_fixer")
+
+            client_configuration_started = time_module.perf_counter()
             fix_client = create_client(
                 project_dir,
                 spec_dir,
@@ -506,11 +564,30 @@ async def run_qa_validation_loop(
                 fast_mode=fast_mode,
                 **fixer_thinking_kwargs,
             )
+            if task_logger:
+                task_logger.record_timing(
+                    "client_configuration",
+                    time_module.perf_counter() - client_configuration_started,
+                )
 
+            client_startup_started = time_module.perf_counter()
             async with fix_client:
+                if task_logger:
+                    task_logger.record_timing(
+                        "client_startup",
+                        time_module.perf_counter() - client_startup_started,
+                    )
+                fixer_session_started = time_module.perf_counter()
                 fix_status, fix_response, _fix_error_info = await run_qa_fixer_session(
                     fix_client, spec_dir, qa_iteration, verbose
                 )
+                if task_logger:
+                    task_logger.record_timing(
+                        "qa_session_total",
+                        time_module.perf_counter() - fixer_session_started,
+                    )
+            if task_logger:
+                task_logger.end_session_timing(fix_status)
 
             debug(
                 "qa_loop",

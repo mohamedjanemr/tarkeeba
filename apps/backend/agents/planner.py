@@ -6,6 +6,7 @@ Handles follow-up planner sessions for adding new subtasks to completed specs.
 """
 
 import logging
+import time
 from pathlib import Path
 
 from core.client import create_client
@@ -95,6 +96,8 @@ async def run_followup_planner(
     if task_logger:
         task_logger.start_phase(LogPhase.PLANNING, "Starting follow-up planning...")
         task_logger.set_session(1)
+        task_logger.set_subtask(None)
+        task_logger.start_session_timing(LogPhase.PLANNING, label="followup_planner")
 
     # Create client with phase-specific model and thinking budget
     # Respects task_metadata.json configuration when no CLI override
@@ -107,6 +110,7 @@ async def run_followup_planner(
     logger.info(
         f"[Planner] [Fast Mode] {'ENABLED' if fast_mode else 'disabled'} for follow-up planning"
     )
+    client_configuration_started = time.perf_counter()
     client = create_client(
         project_dir,
         spec_dir,
@@ -116,16 +120,32 @@ async def run_followup_planner(
         fast_mode=fast_mode,
         **thinking_kwargs,
     )
+    if task_logger:
+        task_logger.record_timing(
+            "client_configuration",
+            time.perf_counter() - client_configuration_started,
+        )
 
     # Generate follow-up planner prompt
+    context_started = time.perf_counter()
     prompt = get_followup_planner_prompt(spec_dir)
+    if task_logger:
+        task_logger.record_timing(
+            "context_build", time.perf_counter() - context_started
+        )
 
     print_status("Running follow-up planner...", "progress")
     print()
 
     try:
         # Run single planning session
+        client_startup_started = time.perf_counter()
         async with client:
+            if task_logger:
+                task_logger.record_timing(
+                    "client_startup", time.perf_counter() - client_startup_started
+                )
+            agent_started = time.perf_counter()
             status, response, error_info = await run_agent_session(
                 client,
                 prompt,
@@ -134,6 +154,13 @@ async def run_followup_planner(
                 phase=LogPhase.PLANNING,
                 model=planning_model,
             )
+            if task_logger:
+                task_logger.record_timing(
+                    "agent_execution_total", time.perf_counter() - agent_started
+                )
+
+        if task_logger:
+            task_logger.end_session_timing(status)
 
         # End planning phase in task logger
         if task_logger:
@@ -199,5 +226,6 @@ async def run_followup_planner(
         print_status(f"Follow-up planning error: {e}", "error")
         if task_logger:
             task_logger.log_error(f"Follow-up planning error: {e}", LogPhase.PLANNING)
+            task_logger.end_session_timing("error")
         status_manager.update(state=BuildState.ERROR)
         return False

@@ -285,7 +285,7 @@ def main():
         print("\nSelf-Critique System is ready for use.")
         print("\nKey components:")
         print("  - critique.py: Core critique logic")
-        print("  - prompts/coder.md: Updated with STEP 6.5 (mandatory critique)")
+        print("  - prompts_pkg/prompt_generator.py: Live subtask prompt generation")
         print("  - implementation_plan.py: Subtask.critique_result field added")
 
     except AssertionError as e:

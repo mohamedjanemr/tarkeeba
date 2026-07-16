@@ -2,6 +2,7 @@
 Main TaskLogger class for logging task execution.
 """
 
+import logging
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -12,7 +13,10 @@ from .ansi import strip_ansi_codes
 from .models import LogEntry, LogEntryType, LogPhase, UsageEntry
 from .storage import LogStorage
 from .streaming import emit_marker
+from .timing_storage import SessionTimingStorage
 from .usage_storage import UsageStorage
+
+logger = logging.getLogger(__name__)
 
 
 class TaskLogger:
@@ -48,7 +52,10 @@ class TaskLogger:
         self.current_phase: LogPhase | None = None
         self.current_session: int | None = None
         self.current_subtask: str | None = None
+        self.current_timing_id: str | None = None
+        self._timing_totals: dict[str, float] = {}
         self.storage = LogStorage(spec_dir)
+        self.timing_storage = SessionTimingStorage(spec_dir)
 
     @property
     def _data(self) -> dict:
@@ -121,6 +128,50 @@ class TaskLogger:
     def set_subtask(self, subtask_id: str | None) -> None:
         """Set the current subtask being processed."""
         self.current_subtask = subtask_id
+
+    def start_session_timing(self, phase: LogPhase, label: str | None = None) -> None:
+        """Start structured timing for the current session."""
+        if self.current_session is None:
+            return
+        try:
+            self.current_timing_id = self.timing_storage.start_session(
+                phase=phase.value,
+                session=self.current_session,
+                subtask_id=self.current_subtask,
+                label=label,
+            )
+            self._timing_totals = {}
+        except Exception as exc:
+            logger.warning("Session timing start failed: %s", exc)
+            self.current_timing_id = None
+
+    def record_timing(self, name: str, duration_seconds: float) -> None:
+        """Accumulate a named timing span for the current session."""
+        if self.current_timing_id is None:
+            return
+        duration_ms = max(0.0, duration_seconds * 1000)
+        try:
+            self.timing_storage.add_span(self.current_timing_id, name, duration_ms)
+            self._timing_totals[name] = self._timing_totals.get(name, 0.0) + duration_ms
+        except Exception as exc:
+            logger.warning("Session timing span failed for %s: %s", name, exc)
+
+    def get_timing_total(self, name: str) -> float:
+        """Return the current session's accumulated span duration in seconds."""
+        return self._timing_totals.get(name, 0.0) / 1000
+
+    def end_session_timing(self, outcome: str) -> None:
+        """Finish structured timing for the current session."""
+        try:
+            if self.current_timing_id is not None:
+                self.timing_storage.end_session(self.current_timing_id, outcome=outcome)
+        except Exception as exc:
+            logger.warning("Session timing end failed: %s", exc)
+        finally:
+            self.current_timing_id = None
+            self._timing_totals = {}
+            self.current_subtask = None
+            self.current_session = None
 
     def record_usage(
         self,

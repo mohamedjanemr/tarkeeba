@@ -211,8 +211,6 @@ When writing the updated plan:
     // Add new criteria for follow-up work
   ],
   "summary": {
-    "total_phases": [UPDATED_COUNT],
-    "total_subtasks": [UPDATED_COUNT],
     "services_involved": ["..."],
     "parallelism": {
       // Update if needed
@@ -228,6 +226,10 @@ When writing the updated plan:
   "planStatus": "in_progress"
 }
 ```
+
+Do not estimate or write `summary.total_phases` or
+`summary.total_subtasks`. Tarkeeba derives both from the executable phase
+arrays at runtime.
 
 ---
 

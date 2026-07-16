@@ -13,6 +13,7 @@ from ui.capabilities import configure_safe_encoding
 configure_safe_encoding()
 
 import os
+import time
 
 from core.error_utils import (
     RateLimitError,
@@ -56,6 +57,7 @@ class AgentRunner:
         self.spec_dir = spec_dir
         self.model = model
         self.task_logger = task_logger
+        self._session_counter = 0
 
     async def run_agent(
         self,
@@ -95,6 +97,14 @@ class AgentRunner:
             debug_error("agent_runner", f"Prompt file not found: {prompt_path}")
             return False, f"Prompt not found: {prompt_path}"
 
+        if self.task_logger:
+            self._session_counter += 1
+            self.task_logger.set_session(self._session_counter)
+            self.task_logger.set_subtask(None)
+            self.task_logger.start_session_timing(LogPhase.PLANNING, label=prompt_file)
+
+        context_started = time.perf_counter()
+
         # Load prompt
         prompt = prompt_path.read_text(encoding="utf-8")
         debug_detailed(
@@ -123,6 +133,10 @@ class AgentRunner:
                 "Added additional context",
                 context_length=len(additional_context),
             )
+        if self.task_logger:
+            self.task_logger.record_timing(
+                "context_build", time.perf_counter() - context_started
+            )
 
         # Create client with thinking budget
         debug(
@@ -150,6 +164,7 @@ class AgentRunner:
             resolved_model, thinking_level or "medium"
         )
 
+        client_configuration_started = time.perf_counter()
         client = create_client(
             self.project_dir,
             self.spec_dir,
@@ -158,13 +173,26 @@ class AgentRunner:
             fast_mode=fast_mode,
             **thinking_kwargs,
         )
+        if self.task_logger:
+            self.task_logger.record_timing(
+                "client_configuration",
+                time.perf_counter() - client_configuration_started,
+            )
 
         current_tool = None
         message_count = 0
         tool_count = 0
+        agent_started: float | None = None
 
         try:
+            client_startup_started = time.perf_counter()
             async with client:
+                if self.task_logger:
+                    self.task_logger.record_timing(
+                        "client_startup",
+                        time.perf_counter() - client_startup_started,
+                    )
+                agent_started = time.perf_counter()
                 debug("agent_runner", "Sending query to Claude SDK...")
                 await client.query(prompt)
                 debug_success("agent_runner", "Query sent successfully")
@@ -276,6 +304,12 @@ class AgentRunner:
                     tool_count=tool_count,
                     response_length=len(response_text),
                 )
+                if self.task_logger:
+                    self.task_logger.record_timing(
+                        "agent_execution_total",
+                        time.perf_counter() - agent_started,
+                    )
+                    self.task_logger.end_session_timing("success")
                 return True, response_text
 
         except RateLimitError as e:
@@ -285,9 +319,15 @@ class AgentRunner:
                 exception_type=type(e).__name__,
             )
             if self.task_logger:
+                if agent_started is not None:
+                    self.task_logger.record_timing(
+                        "agent_execution_total",
+                        time.perf_counter() - agent_started,
+                    )
                 self.task_logger.log_error(
                     f"Spec creation paused: {e}", LogPhase.PLANNING
                 )
+                self.task_logger.end_session_timing("rate_limited")
             raise
         except Exception as e:
             debug_error(
@@ -296,7 +336,13 @@ class AgentRunner:
                 exception_type=type(e).__name__,
             )
             if self.task_logger:
+                if agent_started is not None:
+                    self.task_logger.record_timing(
+                        "agent_execution_total",
+                        time.perf_counter() - agent_started,
+                    )
                 self.task_logger.log_error(f"Agent error: {e}", LogPhase.PLANNING)
+                self.task_logger.end_session_timing("error")
             if is_rate_limit_error(e):
                 raise RateLimitError(str(e)) from e
             return False, str(e)

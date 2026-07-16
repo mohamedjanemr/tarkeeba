@@ -251,6 +251,20 @@ You MUST use a DIFFERENT approach than previous attempts.
                 sections.append(f"- {hint}")
             sections.append("")
 
+    human_input_file = spec_dir / "HUMAN_INPUT.md"
+    if human_input_file.exists():
+        human_input = human_input_file.read_text(encoding="utf-8").strip()
+        if human_input:
+            sections.append(f"""## HUMAN INPUT — FOLLOW THIS FIRST
+
+The user paused the task and left these instructions:
+
+{human_input}
+
+Apply these instructions to the current subtask. After addressing them, you may
+delete or clear `HUMAN_INPUT.md`.
+""")
+
     # Files section
     sections.append("## Files\n")
 

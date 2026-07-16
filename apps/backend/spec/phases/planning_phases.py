@@ -45,6 +45,7 @@ class PlanningPhaseMixin:
         )
 
         if success and plan_file.exists():
+            auto_fix_plan(self.spec_dir)
             result = self.spec_validator.validate_implementation_plan()
             if result.valid:
                 self.ui.print_status(
@@ -89,6 +90,7 @@ class PlanningPhaseMixin:
             )
 
             if success and plan_file.exists():
+                auto_fix_plan(self.spec_dir)
                 result = self.spec_validator.validate_implementation_plan()
                 if result.valid:
                     self.ui.print_status(

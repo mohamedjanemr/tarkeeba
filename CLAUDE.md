@@ -177,7 +177,8 @@ Model and thinking level are user-configurable (via the Electron UI settings or 
 | Prompt | Purpose |
 |--------|---------|
 | planner.md | Implementation plan with subtasks |
-| coder.md / coder_recovery.md | Subtask implementation / recovery |
+| `prompts_pkg/prompt_generator.py` | Live focused subtask implementation prompts |
+| coder_recovery.md | Recovery reference and diagnostics |
 | qa_reviewer.md / qa_fixer.md | Acceptance validation / issue fixes |
 | spec_gatherer/researcher/writer/critic.md | Spec creation pipeline |
 | complexity_assessor.md | AI-based complexity assessment |

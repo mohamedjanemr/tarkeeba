@@ -266,6 +266,61 @@ def test_auto_fix_plan_sets_phase_from_numeric_phase_id_even_with_existing_id(
     assert SpecValidator(spec_dir).validate_implementation_plan().valid is True
 
 
+def test_auto_fix_plan_derives_summary_counts_from_phase_arrays(spec_dir: Path):
+    plan = {
+        "feature": "Test feature",
+        "workflow_type": "feature",
+        "phases": [
+            {
+                "phase": 1,
+                "name": "Phase 1",
+                "subtasks": [
+                    {"id": "1.1", "description": "One", "status": "pending"},
+                    {"id": "1.2", "description": "Two", "status": "pending"},
+                ],
+            },
+            {
+                "phase": 2,
+                "name": "Phase 2",
+                "subtasks": [
+                    {"id": "2.1", "description": "Three", "status": "pending"}
+                ],
+            },
+        ],
+        "summary": {"total_phases": 1, "total_subtasks": 24},
+    }
+    plan_path = spec_dir / "implementation_plan.json"
+    _write_plan(plan_path, plan)
+
+    assert auto_fix_plan(spec_dir) is True
+
+    loaded = json.loads(plan_path.read_text(encoding="utf-8"))
+    assert loaded["summary"]["total_phases"] == 2
+    assert loaded["summary"]["total_subtasks"] == 3
+
+
+def test_validator_warns_when_summary_counts_are_stale(spec_dir: Path):
+    plan = {
+        "feature": "Test feature",
+        "workflow_type": "feature",
+        "phases": [
+            {
+                "phase": 1,
+                "name": "Phase 1",
+                "subtasks": [{"id": "1.1", "description": "One", "status": "pending"}],
+            }
+        ],
+        "summary": {"total_phases": 11, "total_subtasks": 30},
+    }
+    _write_plan(spec_dir / "implementation_plan.json", plan)
+
+    result = SpecValidator(spec_dir).validate_implementation_plan()
+
+    assert result.valid is True
+    assert any("summary.total_phases" in warning for warning in result.warnings)
+    assert any("summary.total_subtasks" in warning for warning in result.warnings)
+
+
 @pytest.mark.asyncio
 async def test_planner_session_does_not_trigger_post_session_processing_on_retry(
     temp_git_repo: Path, monkeypatch: pytest.MonkeyPatch

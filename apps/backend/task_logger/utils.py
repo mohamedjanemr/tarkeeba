@@ -69,9 +69,13 @@ def update_task_logger_path(new_spec_dir: Path) -> None:
     # Update the logger's internal paths
     _current_logger.spec_dir = Path(new_spec_dir)
     _current_logger.log_file = _current_logger.spec_dir / TaskLogger.LOG_FILE
+    _current_logger.timing_storage = _current_logger.timing_storage.__class__(
+        new_spec_dir
+    )
 
     # Update spec_id in the storage
     _current_logger.storage.update_spec_id(new_spec_dir.name)
+    _current_logger.timing_storage.update_spec_id(new_spec_dir.name)
 
     # Save to the new location
     _current_logger.storage.save()

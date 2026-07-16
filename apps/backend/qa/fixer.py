@@ -10,6 +10,7 @@ Memory Integration:
 """
 
 import os
+import time
 from pathlib import Path
 
 # Memory integration for cross-session learning
@@ -118,10 +119,16 @@ async def run_qa_fixer_session(
         return "error", "QA_FIX_REQUEST.md not found", error_info
 
     # Load fixer prompt
+    context_started = time.perf_counter()
     prompt = load_qa_fixer_prompt()
+    if task_logger:
+        task_logger.record_timing(
+            "context_build", time.perf_counter() - context_started
+        )
     debug_detailed("qa_fixer", "Loaded QA fixer prompt", prompt_length=len(prompt))
 
     # Retrieve memory context for fixer (past fixes, patterns, gotchas)
+    graphiti_started = time.perf_counter()
     fixer_memory_context = await get_graphiti_context(
         spec_dir,
         project_dir,
@@ -130,17 +137,26 @@ async def run_qa_fixer_session(
             "id": f"qa_fixer_{fix_session}",
         },
     )
+    if task_logger:
+        task_logger.record_timing(
+            "graphiti_retrieval", time.perf_counter() - graphiti_started
+        )
     if fixer_memory_context:
         prompt += "\n\n" + fixer_memory_context
         print("✓ Memory context loaded for QA fixer")
         debug_success("qa_fixer", "Graphiti memory context loaded for fixer")
 
     # Add session context - use full path so agent can find files
+    context_started = time.perf_counter()
     prompt += f"\n\n---\n\n**Fix Session**: {fix_session}\n"
     prompt += f"**Spec Directory**: {spec_dir}\n"
     prompt += f"**Spec Name**: {spec_dir.name}\n"
     prompt += f"\n**IMPORTANT**: All spec files are located in: `{spec_dir}/`\n"
     prompt += f"The fix request file is at: `{spec_dir}/QA_FIX_REQUEST.md`\n"
+    if task_logger:
+        task_logger.record_timing(
+            "context_build", time.perf_counter() - context_started
+        )
 
     try:
         debug("qa_fixer", "Sending query to Claude SDK...")

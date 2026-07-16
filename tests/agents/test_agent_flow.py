@@ -76,6 +76,19 @@ def create_implementation_plan(spec_dir: Path, subtasks: list[dict]) -> Path:
     return plan_file
 
 
+def test_bash_timing_classification_uses_full_command():
+    from agents.session import _classify_bash_timings
+
+    assert _classify_bash_timings("cd apps/frontend && npm run typecheck") == (
+        "verification",
+    )
+    assert _classify_bash_timings("git add . && git commit -m 'test'") == ("commit",)
+    assert _classify_bash_timings("rg pytest apps/backend") == ()
+    assert _classify_bash_timings(
+        "npm run typecheck && git commit -m 'verified'"
+    ) == ("commit", "verification")
+
+
 def get_latest_commit(project_dir: Path) -> str:
     """Get the hash of the latest git commit."""
     result = subprocess.run(

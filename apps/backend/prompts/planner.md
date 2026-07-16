@@ -564,8 +564,6 @@ Include parallelism analysis, verification strategy, and QA configuration in the
 ```json
 {
   "summary": {
-    "total_phases": 6,
-    "total_subtasks": 10,
     "services_involved": ["database", "frontend", "worker"],
     "parallelism": {
       "max_parallel_phases": 2,
@@ -634,6 +632,10 @@ Include parallelism analysis, verification strategy, and QA configuration in the
   "qa_signoff": null
 }
 ```
+
+Do not estimate or write `summary.total_phases` or
+`summary.total_subtasks`. Tarkeeba derives both from the executable phase
+arrays at runtime.
 
 ### Determining Recommended Workers
 
