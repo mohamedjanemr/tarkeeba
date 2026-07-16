@@ -120,6 +120,19 @@ Cross-reference with research.json:
 
 Flag any divergences.
 
+### 1.6: Scope Creep and Parity Control
+
+Treat requirements.json as the authority:
+
+- Every `must_have` item is covered by an AC-N success criterion.
+- Only items in `required_parity` may appear as `required` in the Parity Matrix.
+- Every required parity row cites a driving AC-N criterion.
+- Items in `deferred` and `non_goals` do not appear in implementation scope.
+- Items in `reuse_existing` reuse the named component or explain why reuse is impossible.
+- Broad phrases such as "parallel to GitHub/GitLab" do not imply full feature parity.
+
+Remove or defer any spec capability that is not driven by the structured scope contract.
+
 ---
 
 ## PHASE 2: CATALOG ISSUES

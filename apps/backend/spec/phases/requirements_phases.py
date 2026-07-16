@@ -22,6 +22,55 @@ if TYPE_CHECKING:
 class RequirementsPhaseMixin:
     """Mixin for requirements and research phase methods."""
 
+    def _finalize_requirements(self) -> PhaseResult | None:
+        """Normalize and validate requirements created by any task source."""
+        try:
+            req = requirements.load_requirements(self.spec_dir) or {}
+            enforce_scope_contract = True
+            if "scope_contract_version" not in req:
+                plan_file = self.spec_dir / "implementation_plan.json"
+                try:
+                    plan = json.loads(plan_file.read_text(encoding="utf-8"))
+                    enforce_scope_contract = not bool(plan.get("phases", []))
+                except (
+                    OSError,
+                    json.JSONDecodeError,
+                    UnicodeDecodeError,
+                    AttributeError,
+                ):
+                    enforce_scope_contract = True
+
+            metadata_file = self.spec_dir / "task_metadata.json"
+            metadata_criteria = []
+            if metadata_file.exists():
+                try:
+                    metadata = json.loads(metadata_file.read_text(encoding="utf-8"))
+                    if isinstance(metadata, dict):
+                        metadata_criteria = metadata.get("acceptanceCriteria", [])
+                except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+                    metadata_criteria = []
+
+            req = requirements.normalize_requirements(
+                req,
+                fallback_task_description=self.task_description,
+                acceptance_criteria=metadata_criteria,
+                enforce_scope_contract=enforce_scope_contract,
+            )
+            requirements.save_requirements(self.spec_dir, req)
+        except (OSError, json.JSONDecodeError, UnicodeDecodeError) as exc:
+            return PhaseResult(
+                "requirements",
+                False,
+                [],
+                [f"Could not normalize requirements.json: {exc}"],
+                0,
+            )
+
+        result = self.spec_validator.validate_requirements()
+        if not result.valid:
+            return PhaseResult("requirements", False, [], result.errors, 0)
+        return None
+
     async def phase_historical_context(self) -> PhaseResult:
         """Retrieve historical context from Graphiti knowledge graph (if enabled)."""
         from graphiti_providers import get_graph_hints, is_graphiti_enabled
@@ -128,6 +177,9 @@ class RequirementsPhaseMixin:
         requirements_file = self.spec_dir / "requirements.json"
 
         if requirements_file.exists():
+            failure = self._finalize_requirements()
+            if failure:
+                return failure
             self.ui.print_status("requirements.json already exists", "success")
             return PhaseResult("requirements", True, [str(requirements_file)], [], 0)
 
@@ -135,6 +187,9 @@ class RequirementsPhaseMixin:
         if self.task_description and not interactive:
             req = requirements.create_requirements_from_task(self.task_description)
             requirements.save_requirements(self.spec_dir, req)
+            failure = self._finalize_requirements()
+            if failure:
+                return failure
             self.ui.print_status(
                 "Created requirements.json from task description", "success"
             )
@@ -164,6 +219,9 @@ class RequirementsPhaseMixin:
                 self.task_description = req["task_description"]
 
                 requirements.save_requirements(self.spec_dir, req)
+                failure = self._finalize_requirements()
+                if failure:
+                    return failure
                 self.ui.print_status("Created requirements.json", "success")
                 return PhaseResult(
                     "requirements", True, [str(requirements_file)], [], 0
@@ -178,6 +236,9 @@ class RequirementsPhaseMixin:
             self.task_description or "Unknown task"
         )
         requirements.save_requirements(self.spec_dir, req)
+        failure = self._finalize_requirements()
+        if failure:
+            return failure
         self.ui.print_status("Created minimal requirements.json", "success")
         return PhaseResult("requirements", True, [str(requirements_file)], [], 0)
 

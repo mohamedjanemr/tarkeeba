@@ -2,6 +2,8 @@
 Utility functions for implementation planner.
 """
 
+import re
+
 from implementation_plan import Verification, VerificationType
 
 from .models import PlannerContext
@@ -113,11 +115,14 @@ def extract_acceptance_criteria(context: PlannerContext) -> list[str]:
             if line.startswith("##"):
                 break
 
-            # Extract criteria (lines starting with -, *, or [])
+            # Extract bullet or numbered criteria, with optional checkboxes.
             line = line.strip()
-            if line.startswith(("- ", "* ", "- [ ]", "- [x]")):
-                # Clean up the line
-                criterion = line.lstrip("-*[] x").strip()
+            criterion_match = re.match(
+                r"^(?:[-*]|\d+[.)])\s*(?:\[[ xX]\]\s*)?(?P<criterion>.+)$",
+                line,
+            )
+            if criterion_match:
+                criterion = criterion_match.group("criterion").strip()
                 if criterion:
                     criteria.append(criterion)
 

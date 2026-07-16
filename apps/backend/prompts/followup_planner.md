@@ -33,9 +33,12 @@ This contains what the user wants to add. Parse it carefully.
 
 ```bash
 cat spec.md
+cat requirements.json
 ```
 
 Understand what was already built, the patterns used, and the scope.
+If the follow-up request matches an item in `requirements.json.deferred`, use that
+item as the scope source. Do not automatically add unrelated deferred items.
 
 ### 0.3: Read the Implementation Plan
 
@@ -131,6 +134,7 @@ If existing plan has phases 1-4:
       "files_to_modify": ["[existing-file-1.py]"],
       "files_to_create": ["[new-file.py]"],
       "patterns_from": ["[reference-file.py]"],
+      "acceptance_criteria_refs": ["AC-[N]"],
       "verification": {
         "type": "command|api|browser|manual",
         "command": "[verification command]",
@@ -150,6 +154,8 @@ If existing plan has phases 1-4:
 3. **Small scope** - Each subtask should take 1-3 files max
 4. **Clear verification** - Every subtask must have a way to verify it works
 5. **Preserve context** - Use patterns_from to point to relevant existing files
+6. **Cite acceptance criteria** - Add `acceptance_criteria_refs` with the AC-N
+   criteria that drive each new capability
 
 ---
 
@@ -288,7 +294,7 @@ To continue building:
 2. **NEVER change status of completed subtasks** - They stay completed
 3. **ALWAYS increment phase numbers** - Continue the sequence
 4. **ALWAYS set new subtasks to "pending"** - They haven't been worked on
-5. **ALWAYS update summary totals** - Reflect the true state
+5. **NEVER write summary totals** - Tarkeeba derives them from phase arrays
 6. **ALWAYS set status back to "in_progress"** - This triggers the coder agent
 
 ---

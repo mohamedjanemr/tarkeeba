@@ -13,9 +13,9 @@ from pathlib import Path
 def create_minimal_plan(spec_dir: Path, task_description: str) -> Path:
     """Create a minimal implementation plan for simple tasks."""
     plan = {
+        "feature": task_description or spec_dir.name,
         "spec_name": spec_dir.name,
         "workflow_type": "simple",
-        "total_phases": 1,
         "recommended_workers": 1,
         "phases": [
             {
@@ -32,6 +32,7 @@ def create_minimal_plan(spec_dir: Path, task_description: str) -> Path:
                         "files_to_create": [],
                         "files_to_modify": [],
                         "patterns_from": [],
+                        "acceptance_criteria_refs": ["AC-1"],
                         "verification": {
                             "type": "manual",
                             "run": "Verify the change works as expected",

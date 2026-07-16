@@ -33,6 +33,8 @@ cat context.json
 Extract from these files:
 - **From project_index.json**: Services, tech stacks, ports, run commands
 - **From requirements.json**: Task description, workflow type, services, acceptance criteria
+- **From requirements.json scope fields**: must-have MVP, explicit parity, deferred work,
+  required reuse, and non-goals
 - **From context.json**: Files to modify, files to reference, patterns
 
 **IMPORTANT**: If any input file is missing, empty, or shows 0 files, this is likely a **greenfield/new project**. Adapt accordingly:
@@ -95,6 +97,37 @@ cat > spec.md << 'SPEC_EOF'
 
 ### Out of Scope:
 - [What this task does NOT include]
+
+## MVP Boundary
+
+### Must Have
+- [Copy each `must_have` item. Do not add inferred capabilities.]
+
+### Required Parity
+- [Copy each `required_parity` item, or write `N/A`]
+
+### Reuse Existing
+- [Copy each `reuse_existing` item, or write `N/A`]
+
+### Deferred
+- [Copy each `deferred` item as a follow-up candidate, or write `N/A`]
+
+### Non-Goals
+- [Copy each `non_goals` item, or write `N/A`]
+
+## Parity Matrix
+
+| Capability | Disposition | Driving Acceptance Criterion |
+|------------|-------------|------------------------------|
+| [explicit parity capability] | required | AC-[N] |
+| [useful but excluded capability] | deferred | N/A |
+| [existing capability used without rebuilding it] | reused | AC-[N] or N/A |
+
+If `required_parity` is empty, include exactly one explicit row:
+
+| Capability | Disposition | Driving Acceptance Criterion |
+|------------|-------------|------------------------------|
+| N/A | N/A | N/A |
 
 ## Service Context
 
@@ -190,11 +223,11 @@ From `[reference file path]`:
 
 The task is complete when:
 
-1. [ ] [From requirements.json acceptance_criteria]
-2. [ ] [From requirements.json acceptance_criteria]
-3. [ ] No console errors
-4. [ ] Existing tests still pass
-5. [ ] New functionality verified via browser/API
+1. [ ] **AC-1**: [From requirements.json acceptance_criteria]
+2. [ ] **AC-2**: [From requirements.json acceptance_criteria]
+3. [ ] **AC-3**: No console errors
+4. [ ] **AC-4**: Existing tests still pass
+5. [ ] **AC-5**: New functionality verified via browser/API
 
 ## QA Acceptance Criteria
 
@@ -249,6 +282,8 @@ After creating, verify the spec has all required sections:
 grep -E "^##? Overview" spec.md && echo "✓ Overview"
 grep -E "^##? Workflow Type" spec.md && echo "✓ Workflow Type"
 grep -E "^##? Task Scope" spec.md && echo "✓ Task Scope"
+grep -E "^##? MVP Boundary" spec.md && echo "✓ MVP Boundary"
+grep -E "^##? Parity Matrix" spec.md && echo "✓ Parity Matrix"
 grep -E "^##? Success Criteria" spec.md && echo "✓ Success Criteria"
 
 # Check file length (should be substantial)
@@ -278,10 +313,16 @@ Next phase: Implementation Planning
 ## CRITICAL RULES
 
 1. **ALWAYS create spec.md** - The orchestrator checks for this file
-2. **Include ALL required sections** - Overview, Workflow Type, Task Scope, Success Criteria
+2. **Include ALL required sections** - Overview, Workflow Type, Task Scope, MVP Boundary, Parity Matrix, Success Criteria
 3. **Use information from input files** - Don't make up data
 4. **Be specific about files** - Use exact paths from context.json
 5. **Include QA criteria** - The QA agent needs this for validation
+6. **Do not expand broad parity language** - Words such as "parallel to", "equivalent",
+   or "like GitHub/GitLab" do not authorize mirroring every existing capability.
+   Only `required_parity` items may be marked required; preserve other useful ideas
+   under Deferred.
+7. **Every required parity row cites an AC-N criterion** - No acceptance criterion,
+   no implementation scope.
 
 ---
 

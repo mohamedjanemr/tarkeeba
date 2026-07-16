@@ -10,6 +10,7 @@ import { sanitizeText, sanitizeUrl } from './shared/sanitize';
 
 
 import { AgentManager } from '../agent';
+import { buildRequirementsScopeContract } from '../utils/requirements-scope';
 
 /**
  * Register all linear-related IPC handlers
@@ -511,10 +512,7 @@ ${safeDescription || 'No description provided.'}
             writeFileSync(path.join(specDir, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN), JSON.stringify(implementationPlan, null, 2), 'utf-8');
 
             // Create requirements.json
-            const requirements = {
-              task_description: description,
-              workflow_type: 'feature'
-            };
+            const requirements = buildRequirementsScopeContract(description, 'feature');
             // lgtm[js/http-to-file-access] - specDir is controlled, Linear data sanitized
             writeFileSync(path.join(specDir, AUTO_BUILD_PATHS.REQUIREMENTS), JSON.stringify(requirements, null, 2), 'utf-8');
 

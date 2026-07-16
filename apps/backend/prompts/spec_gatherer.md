@@ -15,6 +15,7 @@ You MUST create `requirements.json` with this EXACT structure:
 
 ```json
 {
+  "scope_contract_version": 1,
   "task_description": "Clear description of what to build",
   "workflow_type": "feature|refactor|investigation|migration|simple",
   "services_involved": ["service1", "service2"],
@@ -25,6 +26,21 @@ You MUST create `requirements.json` with this EXACT structure:
   "acceptance_criteria": [
     "Criterion 1",
     "Criterion 2"
+  ],
+  "must_have": [
+    "Observable outcome required in the MVP"
+  ],
+  "required_parity": [
+    "Only explicitly named behavior that must match an existing provider"
+  ],
+  "deferred": [
+    "Useful follow-up work excluded from this implementation"
+  ],
+  "reuse_existing": [
+    "Existing component, service, or pattern that must be reused"
+  ],
+  "non_goals": [
+    "Capability explicitly excluded from this task"
   ],
   "constraints": [
     "Any constraints or limitations"
@@ -105,6 +121,10 @@ Ask targeted questions:
 2. **"Are there any edge cases I should know about?"**
 3. **"What does success look like? How will you know it works?"**
 4. **"Any constraints?"** (performance, compatibility, etc.)
+5. **"What is the smallest useful MVP, and what is explicitly deferred?"**
+6. **"If this is parallel to an existing provider, which exact capabilities require parity?"**
+7. **"What existing components or patterns must be reused?"**
+8. **"What is explicitly out of scope?"**
 
 Collect answers.
 
@@ -141,6 +161,7 @@ Wait for confirmation.
 ```bash
 cat > requirements.json << 'EOF'
 {
+  "scope_contract_version": 1,
   "task_description": "[clear description from user]",
   "workflow_type": "[feature|refactor|investigation|migration|simple]",
   "services_involved": [
@@ -154,6 +175,21 @@ cat > requirements.json << 'EOF'
   "acceptance_criteria": [
     "[criterion 1]",
     "[criterion 2]"
+  ],
+  "must_have": [
+    "[smallest observable outcome required now]"
+  ],
+  "required_parity": [
+    "[explicit parity capability, or leave empty]"
+  ],
+  "deferred": [
+    "[follow-up candidate, or leave empty]"
+  ],
+  "reuse_existing": [
+    "[existing component or pattern, or leave empty]"
+  ],
+  "non_goals": [
+    "[explicit exclusion]"
   ],
   "constraints": [
     "[constraint 1 if any]"
@@ -179,6 +215,7 @@ After creating requirements.json, verify it:
 2. Does it have `task_description`? (required)
 3. Does it have `workflow_type`? (required)
 4. Does it have `services_involved`? (required, can be empty array)
+5. Are all five scope fields present as arrays?
 
 If any check fails, fix the file immediately.
 
@@ -206,7 +243,7 @@ Next phase: Context Discovery
 
 1. **ALWAYS create requirements.json** - The orchestrator checks for this file
 2. **Use valid JSON** - No trailing commas, proper quotes
-3. **Include all required fields** - task_description, workflow_type, services_involved
+3. **Include all required fields** - task description, workflow, services, and all five scope arrays
 4. **Ask before assuming** - Don't guess what the user wants
 5. **Confirm before outputting** - Show the user what you understood
 

@@ -28,6 +28,7 @@ import { debugLog, debugError } from "../../shared/utils/debug-logger";
 import { safeSendToRenderer } from "./utils";
 import { writeFileWithRetry, readFileWithRetry } from "../utils/atomic-file";
 import { withFileLock } from "../utils/file-lock";
+import { buildRequirementsScopeContract } from "../utils/requirements-scope";
 
 /**
  * Read feature settings from the settings file
@@ -594,10 +595,8 @@ ${(feature.acceptance_criteria || []).map((c: string) => `- [ ] ${c}`).join("\n"
         );
 
         // Create requirements.json
-        const requirements = {
-          task_description: taskDescription,
-          workflow_type: "feature",
-        };
+        const requirements = buildRequirementsScopeContract(taskDescription, "feature");
+        requirements.acceptance_criteria = feature.acceptance_criteria || [];
         await writeFileWithRetry(
           path.join(specDir, AUTO_BUILD_PATHS.REQUIREMENTS),
           JSON.stringify(requirements, null, 2),

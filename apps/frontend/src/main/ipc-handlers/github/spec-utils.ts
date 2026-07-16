@@ -10,6 +10,7 @@ import { withSpecNumberLock } from '../../utils/spec-number-lock';
 import { debugLog } from './utils/logger';
 import { labelMatchesWholeWord } from '../shared/label-utils';
 import { sanitizeText, sanitizeStringArray, sanitizeUrl } from '../shared/sanitize';
+import { buildRequirementsScopeContract } from '../../utils/requirements-scope';
 
 export interface SpecCreationData {
   specId: string;
@@ -145,10 +146,7 @@ export async function createSpecForIssue(
     );
 
     // requirements.json
-    const requirements = {
-      task_description: safeDescription,
-      workflow_type: 'feature'
-    };
+    const requirements = buildRequirementsScopeContract(safeDescription, 'feature');
     // lgtm[js/http-to-file-access] - specDir is controlled, slugifiedTitle sanitizes input
     writeFileSync(
       path.join(specDir, AUTO_BUILD_PATHS.REQUIREMENTS),

@@ -83,6 +83,7 @@ Find these critical sections:
 - **Files to Modify**: specific changes per service
 - **Files to Reference**: patterns to follow
 - **Success Criteria**: how to verify completion
+- **MVP Boundary and Parity Matrix**: what is required, deferred, reused, or excluded
 
 ### 1.2: Read OR CREATE the Project Index
 
@@ -237,6 +238,7 @@ Based on the workflow type and services involved, create the implementation plan
           "files_to_modify": ["src/models/user.py"],
           "files_to_create": ["src/models/analytics.py"],
           "patterns_from": ["src/models/existing_model.py"],
+          "acceptance_criteria_refs": ["AC-1"],
           "verification": {
             "type": "command",
             "command": "python -c \"from src.models.analytics import Analytics; print('OK')\"",
@@ -251,6 +253,7 @@ Based on the workflow type and services involved, create the implementation plan
           "files_to_modify": ["src/routes/api.py"],
           "files_to_create": ["src/routes/analytics.py"],
           "patterns_from": ["src/routes/users.py"],
+          "acceptance_criteria_refs": ["AC-1", "AC-2"],
           "verification": {
             "type": "api",
             "method": "POST",
@@ -277,6 +280,7 @@ Based on the workflow type and services involved, create the implementation plan
           "files_to_modify": ["worker/tasks.py"],
           "files_to_create": [],
           "patterns_from": ["worker/existing_task.py"],
+          "acceptance_criteria_refs": ["AC-2"],
           "verification": {
             "type": "command",
             "command": "celery -A worker inspect ping",
@@ -301,6 +305,7 @@ Based on the workflow type and services involved, create the implementation plan
           "files_to_modify": [],
           "files_to_create": ["src/components/Dashboard.tsx"],
           "patterns_from": ["src/components/ExistingPage.tsx"],
+          "acceptance_criteria_refs": ["AC-3"],
           "verification": {
             "type": "browser",
             "url": "http://localhost:3000/dashboard",
@@ -325,6 +330,7 @@ Based on the workflow type and services involved, create the implementation plan
           "files_to_modify": [],
           "files_to_create": [],
           "patterns_from": [],
+          "acceptance_criteria_refs": ["AC-1", "AC-2", "AC-3"],
           "verification": {
             "type": "e2e",
             "steps": [
@@ -362,6 +368,10 @@ Use ONLY these values for the `type` field in phases:
 2. **Small scope** - Each subtask should take 1-3 files max
 3. **Clear verification** - Every subtask must have a way to verify it works
 4. **Explicit dependencies** - Phases block until dependencies complete
+5. **Acceptance traceability** - Every subtask must include
+   `acceptance_criteria_refs` with one or more AC-N identifiers from spec.md
+6. **No scope invention** - Do not create subtasks for Deferred or Non-Goals.
+   Required parity work must cite the AC-N shown in the Parity Matrix.
 
 ### Verification Types
 

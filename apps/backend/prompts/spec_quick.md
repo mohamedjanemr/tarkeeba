@@ -37,8 +37,37 @@ Create a concise `spec.md`:
 cat > spec.md << 'EOF'
 # Quick Spec: [Task Name]
 
-## Task
+## Overview
 [One sentence description]
+
+## Workflow Type
+**Type**: simple
+
+## Task Scope
+- [Smallest explicit change]
+
+## MVP Boundary
+
+### Must Have
+- [Required result]
+
+### Required Parity
+- N/A
+
+### Reuse Existing
+- [Existing file or pattern, or N/A]
+
+### Deferred
+- N/A
+
+### Non-Goals
+- [Anything not explicitly requested]
+
+## Parity Matrix
+
+| Capability | Disposition | Driving Acceptance Criterion |
+|------------|-------------|------------------------------|
+| N/A | N/A | N/A |
 
 ## Files to Modify
 - `[path/to/file]` - [what to change]
@@ -46,8 +75,8 @@ cat > spec.md << 'EOF'
 ## Change Details
 [Brief description of the change - a few sentences max]
 
-## Verification
-- [ ] [How to verify the change works]
+## Success Criteria
+- [ ] **AC-1**: [How to verify the change works]
 
 ## Notes
 [Any gotchas or considerations - optional]
@@ -65,9 +94,9 @@ Create `implementation_plan.json`:
 ```bash
 cat > implementation_plan.json << 'EOF'
 {
+  "feature": "[task name]",
   "spec_name": "[spec-name]",
   "workflow_type": "simple",
-  "total_phases": 1,
   "recommended_workers": 1,
   "phases": [
     {
@@ -84,6 +113,7 @@ cat > implementation_plan.json << 'EOF'
           "files_to_create": [],
           "files_to_modify": ["[path/to/file]"],
           "patterns_from": [],
+          "acceptance_criteria_refs": ["AC-1"],
           "verification": {
             "type": "manual",
             "run": "[verification step]"
@@ -135,6 +165,8 @@ Ready for implementation.
 2. **BE CONCISE** - Short spec, simple plan, one subtask if possible
 3. **JUST THE ESSENTIALS** - Only include what's needed to do the task
 4. **DON'T OVER-ENGINEER** - This is a simple task, treat it simply
+5. **KEEP THE SCOPE CONTRACT** - Include the MVP Boundary and Parity Matrix even
+   when every optional entry is N/A
 
 ---
 
@@ -148,8 +180,31 @@ Ready for implementation.
 ```markdown
 # Quick Spec: Button Color Change
 
-## Task
+## Overview
 Update primary button color from blue (#3B82F6) to green (#22C55E).
+
+## Workflow Type
+**Type**: simple
+
+## Task Scope
+- Update the existing primary button color constant.
+
+## MVP Boundary
+### Must Have
+- Primary buttons use #22C55E.
+### Required Parity
+- N/A
+### Reuse Existing
+- Existing Button component and color token
+### Deferred
+- N/A
+### Non-Goals
+- Redesigning other button variants
+
+## Parity Matrix
+| Capability | Disposition | Driving Acceptance Criterion |
+|------------|-------------|------------------------------|
+| N/A | N/A | N/A |
 
 ## Files to Modify
 - `src/components/Button.tsx` - Update color constant
@@ -157,9 +212,9 @@ Update primary button color from blue (#3B82F6) to green (#22C55E).
 ## Change Details
 Change the `primaryColor` variable from `#3B82F6` to `#22C55E`.
 
-## Verification
-- [ ] Buttons appear green in the UI
-- [ ] No console errors
+## Success Criteria
+- [ ] **AC-1**: Buttons appear green in the UI
+- [ ] **AC-2**: No console errors
 ```
 
 ### Example 2: Text Update
@@ -170,8 +225,31 @@ Change the `primaryColor` variable from `#3B82F6` to `#22C55E`.
 ```markdown
 # Quick Spec: Fix Welcome Typo
 
-## Task
+## Overview
 Correct spelling of "recieve" to "receive" in welcome message.
+
+## Workflow Type
+**Type**: simple
+
+## Task Scope
+- Correct the existing welcome-message typo.
+
+## MVP Boundary
+### Must Have
+- Welcome text uses "receive".
+### Required Parity
+- N/A
+### Reuse Existing
+- Existing Home page copy
+### Deferred
+- N/A
+### Non-Goals
+- Rewriting other page content
+
+## Parity Matrix
+| Capability | Disposition | Driving Acceptance Criterion |
+|------------|-------------|------------------------------|
+| N/A | N/A | N/A |
 
 ## Files to Modify
 - `src/pages/Home.tsx` - Fix typo on line 42
@@ -179,8 +257,8 @@ Correct spelling of "recieve" to "receive" in welcome message.
 ## Change Details
 Find "You will recieve" and change to "You will receive".
 
-## Verification
-- [ ] Welcome message displays correctly
+## Success Criteria
+- [ ] **AC-1**: Welcome message displays correctly
 ```
 
 ---

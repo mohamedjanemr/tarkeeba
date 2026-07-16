@@ -279,6 +279,11 @@ export interface TaskMetadata {
   affectedFiles?: string[];  // Files likely to be modified
   dependencies?: string[];  // Other features/tasks this depends on
   acceptanceCriteria?: string[];  // What defines "done"
+  mustHave?: string[];  // Explicit MVP outcomes
+  requiredParity?: string[];  // Named capabilities requiring parity
+  deferred?: string[];  // Follow-up candidates excluded from this task
+  reuseExisting?: string[];  // Existing components or patterns to reuse
+  nonGoals?: string[];  // Explicit scope exclusions
 
   // Effort estimation
   estimatedEffort?: TaskComplexity;
