@@ -519,6 +519,35 @@ export interface AzureDevOpsInvestigationStatus {
 }
 
 // ============================================
+// Azure DevOps Pull Request Types
+// ============================================
+
+export interface AzureDevOpsPullRequest {
+  pullRequestId: number;
+  title: string;
+  description?: string;
+  status: 'active' | 'abandoned' | 'completed';
+  sourceBranch: string;
+  targetBranch: string;
+  author: {
+    displayName: string;
+    imageUrl?: string;
+  };
+  reviewers: Array<{
+    displayName: string;
+    imageUrl?: string;
+    vote: number; // -10: rejected, 0: pending, 5: waiting, 10: approved
+  }>;
+  labels?: Array<{ id: string; name: string }>;
+  webUrl: string;
+  createdAt: string;
+  updatedAt: string;
+  closedAt?: string;
+  repositoryId?: string;
+  projectName?: string;
+}
+
+// ============================================
 // Roadmap Integration Types (Canny, etc.)
 // ============================================
 
