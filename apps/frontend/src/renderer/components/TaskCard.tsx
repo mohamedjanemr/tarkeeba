@@ -14,6 +14,11 @@ import {
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
 import { cn, formatRelativeTime, sanitizeMarkdownForDisplay } from '../lib/utils';
+import {
+  calculateApproxDurationFromTimestamps,
+  formatDuration,
+  isTaskDurationRunning
+} from '../lib/duration-utils';
 import { PhaseProgressIndicator } from './PhaseProgressIndicator';
 import {
   TASK_CATEGORY_LABELS,
@@ -95,6 +100,7 @@ function taskCardPropsAreEqual(prevProps: TaskCardProps, nextProps: TaskCardProp
     prevTask.status === nextTask.status &&
     prevTask.title === nextTask.title &&
     prevTask.description === nextTask.description &&
+    prevTask.createdAt === nextTask.createdAt &&
     prevTask.updatedAt === nextTask.updatedAt &&
     prevTask.reviewReason === nextTask.reviewReason &&
     prevTask.executionProgress?.phase === nextTask.executionProgress?.phase &&
@@ -173,6 +179,29 @@ export const TaskCard = memo(function TaskCard({
   const relativeTime = useMemo(
     () => formatRelativeTime(task.updatedAt),
     [task.updatedAt]
+  );
+
+  const durationIsRunning = isTaskDurationRunning(task.status);
+  const [durationNow, setDurationNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (!durationIsRunning) return;
+
+    setDurationNow(Date.now());
+    const interval = setInterval(() => setDurationNow(Date.now()), 60_000);
+    return () => clearInterval(interval);
+  }, [durationIsRunning]);
+
+  // Approximate total duration, derived from task-level timestamps since
+  // TaskLogs (phase-level timing) isn't loaded at the card level.
+  const approxDurationMs = useMemo(
+    () => calculateApproxDurationFromTimestamps(
+      task.createdAt,
+      task.updatedAt,
+      task.status,
+      durationNow
+    ),
+    [task.createdAt, task.updatedAt, task.status, durationNow]
   );
 
   // Memoize status menu items to avoid recreating on every render
@@ -370,7 +399,7 @@ export const TaskCard = memo(function TaskCard({
         )}
 
         {/* Metadata badges */}
-        {(task.metadata || isStuck || isIncomplete || hasActiveExecution || reviewReasonInfo) && (
+        {(task.metadata || isStuck || isIncomplete || hasActiveExecution || reviewReasonInfo || approxDurationMs !== null) && (
           <div className="mt-2.5 flex flex-wrap gap-1.5">
             {/* Stuck indicator - highest priority */}
             {isStuck && (
@@ -450,6 +479,17 @@ export const TaskCard = memo(function TaskCard({
               >
                 <Zap className="h-2.5 w-2.5" />
                 {t('metadata.fastMode')}
+              </Badge>
+            )}
+            {/* Duration badge - approximate total duration, shown once execution has started */}
+            {approxDurationMs !== null && (
+              <Badge
+                variant="outline"
+                className="text-[10px] px-1.5 py-0.5 flex items-center gap-1"
+                title={t('labels.totalDuration')}
+              >
+                <Clock className="h-2.5 w-2.5" />
+                {formatDuration(approxDurationMs)}
               </Badge>
             )}
             {/* Category badge with icon */}

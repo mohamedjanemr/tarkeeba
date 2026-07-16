@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Terminal,
   Loader2,
@@ -24,6 +25,7 @@ import { cn } from '../../lib/utils';
 import { useSettingsStore } from '../../stores/settings-store';
 import type { Task, TaskLogs, TaskLogPhase, TaskPhaseLog, TaskLogEntry } from '../../../shared/types';
 import { getPhaseConfigDisplays, type PhaseConfigDisplay } from './phase-config-display';
+import { calculatePhaseDurations, calculateTotalDuration, formatDuration } from '../../lib/duration-utils';
 
 interface TaskLogsProps {
   task: Task;
@@ -66,6 +68,33 @@ export function TaskLogs({
   onLogsScroll,
   onTogglePhase
 }: TaskLogsProps) {
+  const { t } = useTranslation(['tasks']);
+
+  const hasRunningPhase = useMemo(
+    () => Object.values(phaseLogs?.phases ?? {}).some(
+      (phase) => Boolean(phase?.started_at && !phase.completed_at)
+    ),
+    [phaseLogs]
+  );
+  const [durationNow, setDurationNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (!hasRunningPhase) return;
+
+    setDurationNow(Date.now());
+    const interval = setInterval(() => setDurationNow(Date.now()), 60_000);
+    return () => clearInterval(interval);
+  }, [hasRunningPhase]);
+
+  const phaseDurations = useMemo(
+    () => calculatePhaseDurations(phaseLogs, durationNow),
+    [phaseLogs, durationNow]
+  );
+  const totalDuration = useMemo(
+    () => calculateTotalDuration(phaseLogs, durationNow),
+    [phaseLogs, durationNow]
+  );
+
   return (
     <div
       ref={logsContainerRef}
@@ -79,6 +108,12 @@ export function TaskLogs({
           </div>
         ) : phaseLogs ? (
           <>
+            {totalDuration !== null && (
+              <div className="flex items-center justify-between px-3 py-2 mb-1 text-xs text-muted-foreground border border-border rounded-lg bg-secondary/30">
+                <span className="font-medium">{t('tasks:labels.totalDuration')}</span>
+                <span className="tabular-nums">{formatDuration(totalDuration)}</span>
+              </div>
+            )}
             {/* Phase-based collapsible logs */}
             {(['planning', 'coding', 'validation'] as TaskLogPhase[]).map((phase) => (
               <PhaseLogSection
@@ -89,6 +124,7 @@ export function TaskLogs({
                 onToggle={() => onTogglePhase(phase)}
                 isTaskStuck={isStuck}
                 phaseConfigs={getPhaseConfigDisplays(task.metadata, phase)}
+                duration={phaseDurations[phase] ?? null}
               />
             ))}
             <div ref={logsEndRef} />
@@ -119,9 +155,11 @@ interface PhaseLogSectionProps {
   onToggle: () => void;
   isTaskStuck?: boolean;
   phaseConfigs?: PhaseConfigDisplay[];
+  duration?: number | null;
 }
 
-function PhaseLogSection({ phase, phaseLog, isExpanded, onToggle, isTaskStuck, phaseConfigs = [] }: PhaseLogSectionProps) {
+function PhaseLogSection({ phase, phaseLog, isExpanded, onToggle, isTaskStuck, phaseConfigs = [], duration = null }: PhaseLogSectionProps) {
+  const { t } = useTranslation(['tasks']);
   const Icon = PHASE_ICONS[phase];
   const logOrder = useSettingsStore(s => s.settings.logOrder);
   const status = phaseLog?.status || 'pending';
@@ -201,6 +239,14 @@ function PhaseLogSection({ phase, phaseLog, isExpanded, onToggle, isTaskStuck, p
             {hasEntries && (
               <span className="text-xs text-muted-foreground">
                 ({phaseLog?.entries.length} entries)
+              </span>
+            )}
+            {duration !== null && (
+              <span
+                className="text-xs text-muted-foreground tabular-nums"
+                title={t('tasks:labels.phaseDuration')}
+              >
+                · {formatDuration(duration)}
               </span>
             )}
           </div>

@@ -32,7 +32,10 @@
     "incomplete": "Incomplet",
     "recovering": "Récupération...",
     "needsRecovery": "Récupération requise",
-    "needsResume": "Reprise requise"
+    "needsResume": "Reprise requise",
+    "totalDuration": "Durée totale",
+    "phaseDuration": "Durée de la phase",
+    "inProgress": "En cours"
   },
   "reviewReason": {
     "completed": "Terminé",
@@ -179,7 +182,8 @@
     "severity": "sévérité",
     "pullRequest": "Pull Request",
     "showMore": "Afficher plus",
-    "showLess": "Afficher moins"
+    "showLess": "Afficher moins",
+    "duration": "Durée"
   },
   "images": {
     "removeImageAriaLabel": "Supprimer l'image {{filename}}",

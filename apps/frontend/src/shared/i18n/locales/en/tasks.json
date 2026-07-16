@@ -32,7 +32,10 @@
     "incomplete": "Incomplete",
     "recovering": "Recovering...",
     "needsRecovery": "Needs Recovery",
-    "needsResume": "Needs Resume"
+    "needsResume": "Needs Resume",
+    "totalDuration": "Total Duration",
+    "phaseDuration": "Phase Duration",
+    "inProgress": "In progress"
   },
   "reviewReason": {
     "completed": "Completed",
@@ -179,7 +182,8 @@
     "severity": "severity",
     "pullRequest": "Pull Request",
     "showMore": "Show more",
-    "showLess": "Show less"
+    "showLess": "Show less",
+    "duration": "Duration"
   },
   "images": {
     "removeImageAriaLabel": "Remove image {{filename}}",
