@@ -105,7 +105,7 @@ describe('memory-store', () => {
       expect(state.searchResults).toEqual([]);
       expect(state.searchQuery).toBe('');
       expect(state.selectedEntry).toBeNull();
-      expect(state.activeTab).toBe('entities');
+      expect(state.activeTab).toBe('timeline');
       expect(state.isLoading).toBe(false);
       expect(state.error).toBeNull();
       expect(state.memoryEnabled).toBe(true);
@@ -133,7 +133,7 @@ describe('memory-store', () => {
 
       const state = useMemoryStore.getState();
       expect(state.entities).toEqual([]);
-      expect(state.activeTab).toBe('entities');
+      expect(state.activeTab).toBe('timeline');
       expect(state.error).toBeNull();
     });
   });

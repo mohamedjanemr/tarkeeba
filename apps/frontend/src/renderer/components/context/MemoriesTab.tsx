@@ -131,7 +131,7 @@ export function MemoriesTab({
               {memoryStatus?.available ? (
                 <Badge variant="outline" className="bg-success/10 text-success border-success/30">
                   <CheckCircle className="h-3 w-3 mr-1" />
-                  Connected
+                  Database Ready
                 </Badge>
               ) : (
                 <Badge variant="outline" className="bg-muted text-muted-foreground">

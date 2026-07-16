@@ -15,7 +15,7 @@ import { getOllamaExecutablePaths, getOllamaInstallCommand as getPlatformOllamaI
 // ESM-compatible __dirname
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-import { IPC_CHANNELS } from '../../shared/constants';
+import { IPC_CHANNELS, getSpecsDir } from '../../shared/constants';
 import type {
   IPCResult,
   InfrastructureStatus,
@@ -40,6 +40,10 @@ import { getConfiguredPythonPath, pythonEnvManager } from '../python-env-manager
 import { openTerminalWithCommand } from './claude-code-handlers';
 import { managedMemoryMcpBridge } from '../managed-memory-mcp-bridge';
 import { projectStore } from '../project-store';
+import { buildMemoryEnvVars } from '../memory-env-builder';
+import { readSettingsFile } from '../settings-utils';
+import type { AppSettings } from '../../shared/types/settings';
+import { loadFileBasedMemories } from './context/memory-data-handlers';
 import {
   loadProjectEnvVars,
   isGraphitiEnabled,
@@ -906,24 +910,90 @@ export function registerMemoryHandlers(): void {
  */
 function resolveProjectMemory(
   projectId: string
-): { service: MemoryService; projectDir: string } | null {
+): {
+  service: MemoryService | null;
+  projectDir: string;
+  autoBuildPath?: string;
+} | null {
   const project = projectStore.getProject(projectId);
   if (!project) {
     return null;
   }
 
+  const appSettings = (readSettingsFile() || {}) as Partial<AppSettings>;
+  const appEnvVars = buildMemoryEnvVars(appSettings as AppSettings);
   const projectEnvVars = loadProjectEnvVars(project.path, project.autoBuildPath);
-  if (!isGraphitiEnabled(projectEnvVars) || !isKuzuAvailable()) {
+  const effectiveEnvVars = { ...appEnvVars, ...projectEnvVars };
+  if (!isGraphitiEnabled(effectiveEnvVars)) {
     return null;
   }
 
-  const dbDetails = getGraphitiDatabaseDetails(projectEnvVars);
-  const service = getMemoryService({
-    dbPath: dbDetails.dbPath || getDefaultDbPath(),
-    database: dbDetails.database,
-  });
+  let service: MemoryService | null = null;
+  if (isKuzuAvailable()) {
+    const dbDetails = getGraphitiDatabaseDetails(effectiveEnvVars);
+    service = getMemoryService({
+      dbPath: dbDetails.dbPath || getDefaultDbPath(),
+      database: dbDetails.database,
+    });
+  }
 
-  return { service, projectDir: project.path };
+  return {
+    service,
+    projectDir: project.path,
+    autoBuildPath: project.autoBuildPath,
+  };
+}
+
+/**
+ * Load legacy per-spec session memories for projects that have not yet been
+ * migrated into LadybugDB. This keeps the new browser useful while the graph
+ * database is empty and provides a single visible memory history to users.
+ */
+function loadProjectFileMemories(
+  projectDir: string,
+  autoBuildPath: string | undefined,
+  limit: number
+): MemoryTimelineEntry[] {
+  if (!autoBuildPath) {
+    return [];
+  }
+
+  const specsDir = path.join(projectDir, getSpecsDir(autoBuildPath));
+  return loadFileBasedMemories(specsDir, limit, {
+    maxSpecs: Number.POSITIVE_INFINITY,
+    maxSessionsPerSpec: Number.POSITIVE_INFINITY,
+  }).map((memory) => ({
+    ...memory,
+    storage: 'file',
+  }));
+}
+
+/**
+ * Combine graph-backed and legacy file memories without allowing the first
+ * graph write to hide older session history. Graph records win exact duplicate
+ * signatures because they support edit/prune operations.
+ */
+function mergeProjectMemories(
+  graphMemories: MemoryTimelineEntry[],
+  fileMemories: MemoryTimelineEntry[],
+  limit: number
+): MemoryTimelineEntry[] {
+  const merged = new Map<string, MemoryTimelineEntry>();
+
+  for (const memory of [...graphMemories, ...fileMemories]) {
+    const signature = [
+      memory.type,
+      memory.timestamp,
+      memory.content,
+    ].join('\u0000');
+    if (!merged.has(signature)) {
+      merged.set(signature, memory);
+    }
+  }
+
+  return Array.from(merged.values())
+    .sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp))
+    .slice(0, limit);
 }
 
 /**
@@ -959,6 +1029,9 @@ function registerMemoryBrowserHandlers(): void {
         if (!resolved) {
           return { success: true, data: [] };
         }
+        if (!resolved.service?.databaseExists()) {
+          return { success: true, data: [] };
+        }
         const data = await resolved.service.browseEntities(resolved.projectDir, limit);
         return { success: true, data };
       } catch (error) {
@@ -979,7 +1052,15 @@ function registerMemoryBrowserHandlers(): void {
         if (!resolved) {
           return { success: true, data: [] };
         }
-        const data = await resolved.service.browseEpisodes(resolved.projectDir, limit);
+        const graphData = resolved.service?.databaseExists()
+          ? await resolved.service.browseEpisodes(resolved.projectDir, limit)
+          : [];
+        const fileData = loadProjectFileMemories(
+          resolved.projectDir,
+          resolved.autoBuildPath,
+          limit
+        );
+        const data = mergeProjectMemories(graphData, fileData, limit);
         return { success: true, data };
       } catch (error) {
         return {
@@ -997,6 +1078,9 @@ function registerMemoryBrowserHandlers(): void {
       try {
         const resolved = resolveProjectMemory(projectId);
         if (!resolved) {
+          return { success: true, data: [] };
+        }
+        if (!resolved.service?.databaseExists()) {
           return { success: true, data: [] };
         }
         const data = await resolved.service.getRelationships(resolved.projectDir, limit);
@@ -1024,7 +1108,16 @@ function registerMemoryBrowserHandlers(): void {
         if (!resolved || !query || !query.trim()) {
           return { success: true, data: [] };
         }
-        const data = await resolved.service.searchScoped(resolved.projectDir, query, limit);
+        const graphData = resolved.service?.databaseExists()
+          ? await resolved.service.searchScoped(resolved.projectDir, query, limit)
+          : [];
+        const normalizedQuery = query.trim().toLowerCase();
+        const fileData = loadProjectFileMemories(
+          resolved.projectDir,
+          resolved.autoBuildPath,
+          Number.POSITIVE_INFINITY
+        ).filter((memory) => memory.content.toLowerCase().includes(normalizedQuery));
+        const data = mergeProjectMemories(graphData, fileData, limit);
         return { success: true, data };
       } catch (error) {
         return {
@@ -1044,7 +1137,15 @@ function registerMemoryBrowserHandlers(): void {
         if (!resolved) {
           return { success: true, data: [] };
         }
-        const data = await resolved.service.getTimeline(resolved.projectDir, limit);
+        const graphData = resolved.service?.databaseExists()
+          ? await resolved.service.getTimeline(resolved.projectDir, limit)
+          : [];
+        const fileData = loadProjectFileMemories(
+          resolved.projectDir,
+          resolved.autoBuildPath,
+          limit
+        );
+        const data = mergeProjectMemories(graphData, fileData, limit);
         return { success: true, data };
       } catch (error) {
         return {
@@ -1066,7 +1167,7 @@ function registerMemoryBrowserHandlers(): void {
     ): Promise<IPCResult<{ deleted?: boolean; id?: string }>> => {
       try {
         const resolved = resolveProjectMemory(projectId);
-        if (!resolved) {
+        if (!resolved?.service?.databaseExists()) {
           return { success: false, error: 'Memory is not enabled for this project' };
         }
         const result = await resolved.service.deleteEntry(resolved.projectDir, uuid, kind);
@@ -1095,7 +1196,7 @@ function registerMemoryBrowserHandlers(): void {
     ): Promise<IPCResult<{ record?: MemoryEpisode }>> => {
       try {
         const resolved = resolveProjectMemory(projectId);
-        if (!resolved) {
+        if (!resolved?.service?.databaseExists()) {
           return { success: false, error: 'Memory is not enabled for this project' };
         }
         const result = await resolved.service.updateEntry(

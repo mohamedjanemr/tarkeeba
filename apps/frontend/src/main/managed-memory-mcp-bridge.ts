@@ -1,4 +1,7 @@
 import type { Server } from 'node:http';
+import { createHash } from 'node:crypto';
+import { realpathSync } from 'node:fs';
+import path from 'node:path';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { createMcpExpressApp } from '@modelcontextprotocol/sdk/server/express.js';
@@ -49,6 +52,23 @@ function jsonContent(value: unknown) {
   return { content: [{ type: 'text' as const, text: JSON.stringify(value, null, 2) }] };
 }
 
+/**
+ * Match the canonical project namespace used by GraphitiMemory and
+ * query_memory.py so managed MCP writes are visible in the project browser.
+ */
+export function computeProjectMemoryGroupId(projectDir: string): string {
+  let resolvedPath: string;
+  try {
+    resolvedPath = realpathSync.native(projectDir);
+  } catch {
+    resolvedPath = path.resolve(projectDir);
+  }
+
+  const projectName = path.basename(resolvedPath);
+  const pathHash = createHash('md5').update(resolvedPath).digest('hex').slice(0, 8);
+  return `project_${projectName}_${pathHash}`;
+}
+
 function createProjectMemoryServer(projectId: string): McpServer {
   const project = projectStore.getProject(projectId);
   if (!project) {
@@ -62,6 +82,7 @@ function createProjectMemoryServer(projectId: string): McpServer {
   const database = getGraphitiDatabaseDetails(effectiveEnv);
   const memory = getMemoryService(database);
   const embedder = buildEmbedderConfig(effectiveEnv);
+  const projectGroupId = computeProjectMemoryGroupId(project.path);
 
   const server = new McpServer({
     name: 'tarkeeba-memory',
@@ -79,7 +100,12 @@ function createProjectMemoryServer(projectId: string): McpServer {
       }
     },
     async ({ query, max_nodes }) => {
-      const result = await memory.searchMemoriesSemantic(query, embedder, max_nodes ?? 20);
+      const result = await memory.searchMemoriesSemantic(
+        query,
+        embedder,
+        max_nodes ?? 20,
+        project.path
+      );
       return jsonContent({ nodes: result.memories, search_type: result.searchType });
     }
   );
@@ -95,7 +121,12 @@ function createProjectMemoryServer(projectId: string): McpServer {
       }
     },
     async ({ query, max_facts }) => {
-      const result = await memory.searchMemoriesSemantic(query, embedder, max_facts ?? 20);
+      const result = await memory.searchMemoriesSemantic(
+        query,
+        embedder,
+        max_facts ?? 20,
+        project.path
+      );
       return jsonContent({ facts: result.memories, search_type: result.searchType });
     }
   );
@@ -112,12 +143,12 @@ function createProjectMemoryServer(projectId: string): McpServer {
         group_id: z.string().optional()
       }
     },
-    async ({ name, episode_body, group_id }) => {
+    async ({ name, episode_body }) => {
       const result = await memory.addEpisode(
         name,
         episode_body,
         'session_insight',
-        group_id || projectId
+        projectGroupId
       );
       return jsonContent(result);
     }
@@ -132,7 +163,9 @@ function createProjectMemoryServer(projectId: string): McpServer {
         group_ids: z.array(z.string()).optional()
       }
     },
-    async ({ last_n }) => jsonContent({ episodes: await memory.getEpisodicMemories(last_n ?? 20) })
+    async ({ last_n }) => jsonContent({
+      episodes: await memory.browseEpisodes(project.path, last_n ?? 20)
+    })
   );
 
   server.registerTool(
@@ -142,8 +175,16 @@ function createProjectMemoryServer(projectId: string): McpServer {
       inputSchema: { uuid: z.string().min(1) }
     },
     async ({ uuid }) => {
-      const memories = await memory.getAllMemories(100);
-      return jsonContent({ entity_edge: memories.find((item) => item.id === uuid) ?? null });
+      const [episodes, entities] = await Promise.all([
+        memory.browseEpisodes(project.path, 100),
+        memory.browseEntities(project.path, 100)
+      ]);
+      return jsonContent({
+        entity_edge:
+          episodes.find((item) => item.id === uuid) ??
+          entities.find((item) => item.id === uuid) ??
+          null
+      });
     }
   );
 

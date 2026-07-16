@@ -36,6 +36,7 @@
     "summary": "Summary",
     "content": "Content",
     "empty": "No content available.",
+    "fileBackedReadOnly": "This legacy file-based memory is read-only until it is imported into graph memory.",
     "confirmDelete": "Are you sure you want to prune this memory entry? This action cannot be undone."
   },
   "timeline": {

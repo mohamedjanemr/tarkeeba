@@ -60,6 +60,7 @@ export function MemoryEntryDetail({ projectId, entry, onClose }: MemoryEntryDeta
   if (!entry) return null;
 
   const entity = isEntity(entry);
+  const isFileBacked = !entity && entry.storage === 'file';
   const kind: MemoryKind = entity ? 'entity' : 'episodic';
   const typeLabel = entity ? entry.type : entry.type;
 
@@ -149,7 +150,11 @@ export function MemoryEntryDetail({ projectId, entry, onClose }: MemoryEntryDeta
         </ScrollArea>
 
         <DialogFooter className="items-center">
-          {confirmingDelete ? (
+          {isFileBacked ? (
+            <p className="w-full text-sm text-muted-foreground">
+              {t('detail.fileBackedReadOnly')}
+            </p>
+          ) : confirmingDelete ? (
             <div className="flex w-full items-center justify-between gap-3">
               <span className="flex items-center gap-2 text-sm text-destructive">
                 <AlertTriangle className="h-4 w-4" />

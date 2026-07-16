@@ -55,7 +55,7 @@ export const useMemoryStore = create<MemoryState>((set) => ({
   searchResults: [],
   searchQuery: '',
   selectedEntry: null,
-  activeTab: 'entities',
+  activeTab: 'timeline',
   isLoading: false,
   error: null,
   memoryEnabled: true,
@@ -81,7 +81,7 @@ export const useMemoryStore = create<MemoryState>((set) => ({
       searchResults: [],
       searchQuery: '',
       selectedEntry: null,
-      activeTab: 'entities',
+      activeTab: 'timeline',
       isLoading: false,
       error: null,
       memoryEnabled: true
