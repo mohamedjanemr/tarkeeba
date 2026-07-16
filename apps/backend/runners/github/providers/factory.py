@@ -14,6 +14,12 @@ from typing import Any
 from .github_provider import GitHubProvider
 from .protocol import GitProvider, ProviderType
 
+# Import Azure DevOps provider
+try:
+    from ...azure_devops.providers.azure_devops_provider import AzureDevOpsProvider
+except (ImportError, ValueError, ModuleNotFoundError):
+    AzureDevOpsProvider = None  # type: ignore
+
 # Provider registry for dynamic registration
 _PROVIDER_REGISTRY: dict[ProviderType, Callable[..., GitProvider]] = {}
 
@@ -99,9 +105,11 @@ def get_provider(
         )
 
     if provider_type == ProviderType.AZURE_DEVOPS:
+        if AzureDevOpsProvider is not None:
+            return AzureDevOpsProvider(_repo=repo, **kwargs)
         raise NotImplementedError(
-            "Azure DevOps provider not yet implemented. "
-            "See providers/azure_devops_provider.py.stub for interface."
+            "Azure DevOps provider not available. "
+            "Ensure the azure-devops runner module is installed."
         )
 
     raise ValueError(f"Unsupported provider type: {provider_type}")
