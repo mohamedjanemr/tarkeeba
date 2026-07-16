@@ -2,7 +2,9 @@
 
 You are the **first agent** in an autonomous development process. Your job is to create a subtask-based implementation plan that defines what to build, in what order, and how to verify each step.
 
-**Key Principle**: Subtasks, not tests. Implementation order matters. Each subtask is a unit of work scoped to one service.
+**Key Principle**: Plan observable capability slices, not files or services. A
+slice may span backend, frontend, tests, and configuration when those files
+together deliver one user-visible outcome.
 
 ---
 
@@ -164,13 +166,19 @@ This contains:
 
 The spec defines a workflow type. Each type has a different phase structure:
 
-### FEATURE Workflow (Multi-Service Features)
+### FEATURE Workflow (Capability Slices)
 
-Phases follow service dependency order:
-1. **Backend/API Phase** - Can be tested with curl
-2. **Worker Phase** - Background jobs (depend on backend)
-3. **Frontend Phase** - UI components (depend on backend APIs)
-4. **Integration Phase** - Wire everything together
+Create 6-12 capability slices scaled to complexity, or fewer when the execution
+budget is lower. Examples:
+1. **Configuration/Auth Slice** - credentials through validated connection
+2. **Core Capability Slice** - domain behavior through API/client boundary
+3. **User Experience Slice** - settings/UI through persisted behavior
+4. **Verification Slice** - focused tests for the delivered capability
+5. **Integration Registry Slice** - shared IPC, preload, barrels, navigation,
+   i18n, or route registries; always serialized last
+
+Do not create backend, worker, and frontend phases merely because those services
+exist. Group their files when they jointly deliver the same outcome.
 
 ### REFACTOR Workflow (Stage-Based Changes)
 
@@ -224,121 +232,60 @@ Based on the workflow type and services involved, create the implementation plan
   "workflow_rationale": "Why this workflow type was chosen",
   "phases": [
     {
-      "id": "phase-1-backend",
-      "name": "Backend API",
+      "id": "phase-1-connection",
+      "name": "Connection & Settings",
       "type": "implementation",
-      "description": "Build the REST API endpoints for [feature]",
+      "description": "Deliver a validated connection from credentials through settings UI",
       "depends_on": [],
-      "parallel_safe": true,
-      "subtasks": [
-        {
-          "id": "subtask-1-1",
-          "description": "Create data models for [feature]",
-          "service": "backend",
-          "files_to_modify": ["src/models/user.py"],
-          "files_to_create": ["src/models/analytics.py"],
-          "patterns_from": ["src/models/existing_model.py"],
-          "acceptance_criteria_refs": ["AC-1"],
-          "verification": {
-            "type": "command",
-            "command": "python -c \"from src.models.analytics import Analytics; print('OK')\"",
-            "expected": "OK"
-          },
-          "status": "pending"
-        },
-        {
-          "id": "subtask-1-2",
-          "description": "Create API endpoints for [feature]",
-          "service": "backend",
-          "files_to_modify": ["src/routes/api.py"],
-          "files_to_create": ["src/routes/analytics.py"],
-          "patterns_from": ["src/routes/users.py"],
-          "acceptance_criteria_refs": ["AC-1", "AC-2"],
-          "verification": {
-            "type": "api",
-            "method": "POST",
-            "url": "http://localhost:5000/api/analytics/events",
-            "body": {"event": "test"},
-            "expected_status": 201
-          },
-          "status": "pending"
-        }
-      ]
-    },
-    {
-      "id": "phase-2-worker",
-      "name": "Background Worker",
-      "type": "implementation",
-      "description": "Build Celery tasks for data aggregation",
-      "depends_on": ["phase-1-backend"],
       "parallel_safe": false,
       "subtasks": [
         {
-          "id": "subtask-2-1",
-          "description": "Create aggregation Celery task",
-          "service": "worker",
-          "files_to_modify": ["worker/tasks.py"],
-          "files_to_create": [],
-          "patterns_from": ["worker/existing_task.py"],
-          "acceptance_criteria_refs": ["AC-2"],
-          "verification": {
-            "type": "command",
-            "command": "celery -A worker inspect ping",
-            "expected": "pong"
-          },
-          "status": "pending"
-        }
-      ]
-    },
-    {
-      "id": "phase-3-frontend",
-      "name": "Frontend Dashboard",
-      "type": "implementation",
-      "description": "Build the real-time dashboard UI",
-      "depends_on": ["phase-1-backend"],
-      "parallel_safe": true,
-      "subtasks": [
-        {
-          "id": "subtask-3-1",
-          "description": "Create dashboard component",
-          "service": "frontend",
-          "files_to_modify": [],
-          "files_to_create": ["src/components/Dashboard.tsx"],
-          "patterns_from": ["src/components/ExistingPage.tsx"],
-          "acceptance_criteria_refs": ["AC-3"],
-          "verification": {
-            "type": "browser",
-            "url": "http://localhost:3000/dashboard",
-            "checks": ["Dashboard component renders", "No console errors"]
-          },
-          "status": "pending"
-        }
-      ]
-    },
-    {
-      "id": "phase-4-integration",
-      "name": "Integration",
-      "type": "integration",
-      "description": "Wire all services together and verify end-to-end",
-      "depends_on": ["phase-2-worker", "phase-3-frontend"],
-      "parallel_safe": false,
-      "subtasks": [
-        {
-          "id": "subtask-4-1",
-          "description": "End-to-end verification of analytics flow",
+          "id": "capability-connection-settings",
+          "description": "Users can configure credentials and validate the provider connection",
+          "services": ["backend", "frontend"],
           "all_services": true,
-          "files_to_modify": [],
+          "files_to_modify": [
+            "src/providers/client.py",
+            "src/settings/provider-handler.ts",
+            "src/components/ProviderSettings.tsx"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "src/providers/existing-client.py",
+            "src/components/ExistingProviderSettings.tsx"
+          ],
+          "acceptance_criteria_refs": ["AC-1"],
+          "verification_steps": [
+            {"type": "command", "command": "pytest tests/provider_connection"},
+            {"type": "browser", "url": "http://localhost:3000/settings", "scenario": "Connection settings work"}
+          ],
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "id": "phase-2-integration",
+      "name": "Shared Integration Registries",
+      "type": "integration",
+      "description": "Register the completed capability in shared entry points",
+      "depends_on": ["phase-1-connection"],
+      "parallel_safe": false,
+      "subtasks": [
+        {
+          "id": "capability-integration",
+          "description": "Wire IPC, preload, navigation, i18n, and route registries once",
+          "all_services": true,
+          "files_to_modify": [
+            "src/ipc/index.ts",
+            "src/preload.ts",
+            "src/navigation.ts"
+          ],
           "files_to_create": [],
           "patterns_from": [],
-          "acceptance_criteria_refs": ["AC-1", "AC-2", "AC-3"],
+          "acceptance_criteria_refs": ["AC-1"],
           "verification": {
             "type": "e2e",
-            "steps": [
-              "Trigger event via frontend",
-              "Verify backend receives it",
-              "Verify worker processes it",
-              "Verify dashboard updates"
-            ]
+            "steps": ["Start the app", "Open provider settings", "Validate the connection"]
           },
           "status": "pending"
         }
@@ -364,13 +311,15 @@ Use ONLY these values for the `type` field in phases:
 
 ### Subtask Guidelines
 
-1. **One service per subtask** - Never mix backend and frontend in one subtask
-2. **Small scope** - Each subtask should take 1-3 files max
-3. **Clear verification** - Every subtask must have a way to verify it works
-4. **Explicit dependencies** - Phases block until dependencies complete
-5. **Acceptance traceability** - Every subtask must include
+1. **Observable outcome** - Each subtask delivers a testable capability, not a file edit
+2. **Exact ownership** - List every file the slice owns; multiple services are allowed
+3. **Slice target** - Prefer 6-12 total slices, bounded by the execution budget
+4. **Shared registries last** - Put IPC/preload/barrel/i18n/navigation/route registries in one integration slice
+5. **Clear verification** - Preserve every executable verification needed for the slice
+6. **Explicit dependencies** - Phases block until dependencies complete
+7. **Acceptance traceability** - Every subtask must include
    `acceptance_criteria_refs` with one or more AC-N identifiers from spec.md
-6. **No scope invention** - Do not create subtasks for Deferred or Non-Goals.
+8. **No scope invention** - Do not create subtasks for Deferred or Non-Goals.
    Required parity work must cite the AC-N shown in the Parity Matrix.
 
 ### Verification Types
@@ -550,22 +499,17 @@ If complexity_assessment indicates `skip_validation: true` (documentation-only c
 
 ---
 
-## PHASE 4: ANALYZE PARALLELISM OPPORTUNITIES
+## PHASE 4: ANALYZE FILE OWNERSHIP AND DEPENDENCIES
 
-After creating the phases, analyze which can run in parallel:
+After creating the slices, make file ownership explicit and keep execution
+sequential unless the runtime explicitly supports validated parallel execution.
 
-### Parallelism Rules
+### Ownership Rules
 
-Two phases can run in parallel if:
-1. They have **the same dependencies** (or compatible dependency sets)
-2. They **don't modify the same files**
-3. They are in **different services** (e.g., frontend vs worker)
-
-### Analysis Steps
-
-1. **Find parallel groups**: Phases with identical `depends_on` arrays
-2. **Check file conflicts**: Ensure no overlapping `files_to_modify` or `files_to_create`
-3. **Count max parallel workers**: Maximum parallelizable phases at any point
+1. No file may be owned by two capability slices.
+2. Shared registries belong only to the final integration slice.
+3. Dependencies follow delivered capabilities, not service names.
+4. Set `parallel_safe` to false; the current executor is sequential.
 
 ### Add to Summary
 
@@ -576,17 +520,11 @@ Include parallelism analysis, verification strategy, and QA configuration in the
   "summary": {
     "services_involved": ["database", "frontend", "worker"],
     "parallelism": {
-      "max_parallel_phases": 2,
-      "parallel_groups": [
-        {
-          "phases": ["phase-4-display", "phase-5-save"],
-          "reason": "Both depend only on phase-3, different file sets"
-        }
-      ],
-      "recommended_workers": 2,
-      "speedup_estimate": "1.5x faster than sequential"
-    },
-    "startup_command": "source auto-claude/.venv/bin/activate && python auto-claude/run.py --spec 001 --parallel 2"
+      "max_parallel_phases": 1,
+      "parallel_groups": [],
+      "recommended_workers": 1,
+      "reason": "Sequential execution with explicit file ownership"
+    }
   },
   "verification_strategy": {
     "risk_level": "medium",
@@ -649,11 +587,7 @@ arrays at runtime.
 
 ### Determining Recommended Workers
 
-- **1 worker**: Sequential phases, file conflicts, or investigation workflows
-- **2 workers**: 2 independent phases at some point (common case)
-- **3+ workers**: Large projects with 3+ services working independently
-
-**Conservative default**: If unsure, recommend 1 worker. Parallel execution adds complexity.
+Use **1 worker**. Parallel execution is not active in the current runtime.
 
 ---
 
@@ -800,19 +734,16 @@ Services Involved:
 [From spec.md]
 - [service]: [role]
 
-Parallelism Analysis:
-- Max parallel phases: [N]
-- Recommended workers: [N]
-- Parallel groups: [List phases that can run together]
+Execution:
+- Capability slices: [N]
+- Recommended workers: 1
+- Shared integration slice: [name or N/A]
 
 === STARTUP COMMAND ===
 
 To continue building this spec, run:
 
-  source auto-claude/.venv/bin/activate && python auto-claude/run.py --spec [SPEC_NUMBER] --parallel [RECOMMENDED_WORKERS]
-
-Example:
-  source auto-claude/.venv/bin/activate && python auto-claude/run.py --spec 001 --parallel 2
+  source auto-claude/.venv/bin/activate && python auto-claude/run.py --spec [SPEC_NUMBER]
 
 === END SESSION 1 ===
 ```
@@ -855,9 +786,9 @@ A SEPARATE coder agent will:
 - Phase 2 can't start until Phase 1 is done
 - Integration phase is always last
 
-### One Subtask at a Time
-- Complete one subtask fully before starting another
-- Each subtask = one git commit
+### One Capability Slice at a Time
+- Complete one observable slice fully before starting another
+- Checkpoint after each slice; a slice is not defined by commit count
 - Verification must pass before marking complete
 
 ### For Investigation Workflows

@@ -31,6 +31,29 @@ _WORKFLOW_TYPE_MAPPING: dict[str, WorkflowType] = {
 }
 
 
+def normalize_file_entries(value) -> list[dict]:
+    """Normalize list- or service-keyed planner file context."""
+    normalized = []
+    if isinstance(value, dict):
+        for service, entries in value.items():
+            entries = entries if isinstance(entries, list) else [entries]
+            for entry in entries:
+                if isinstance(entry, str):
+                    normalized.append({"path": entry, "service": str(service)})
+                elif isinstance(entry, dict):
+                    normalized.append({"service": str(service), **entry})
+        return normalized
+
+    if not isinstance(value, list):
+        return normalized
+    for entry in value:
+        if isinstance(entry, str):
+            normalized.append({"path": entry})
+        elif isinstance(entry, dict):
+            normalized.append(dict(entry))
+    return normalized
+
+
 class ContextLoader:
     """Loads context files and determines workflow type."""
 
@@ -65,8 +88,26 @@ class ContextLoader:
             except (OSError, json.JSONDecodeError, UnicodeDecodeError):
                 pass  # Use empty dict on error
 
+        files_to_modify = normalize_file_entries(
+            task_context.get("files_to_modify", [])
+        )
+        files_to_create = normalize_file_entries(
+            task_context.get("files_to_create", [])
+        )
+        files_to_reference = normalize_file_entries(
+            task_context.get("files_to_reference", [])
+        )
+
         # Determine services involved
         services = task_context.get("scoped_services", [])
+        if not services:
+            services = list(
+                dict.fromkeys(
+                    str(file_info.get("service"))
+                    for file_info in files_to_modify + files_to_create
+                    if file_info.get("service")
+                )
+            )
         if not services:
             services = list(project_index.get("services", {}).keys())
 
@@ -79,8 +120,9 @@ class ContextLoader:
             task_context=task_context,
             services_involved=services,
             workflow_type=workflow_type,
-            files_to_modify=task_context.get("files_to_modify", []),
-            files_to_reference=task_context.get("files_to_reference", []),
+            files_to_modify=files_to_modify,
+            files_to_reference=files_to_reference,
+            files_to_create=files_to_create,
         )
 
     def _determine_workflow_type(self, spec_content: str) -> WorkflowType:

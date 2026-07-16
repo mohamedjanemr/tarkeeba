@@ -877,6 +877,57 @@ class TestPhasePlanning:
         assert result.phase == "planning"
         assert result.retries == 0
 
+    @pytest.mark.asyncio
+    async def test_planning_runs_deterministic_module_before_agent(
+        self,
+        temp_dir: Path,
+        spec_dir: Path,
+        mock_task_logger,
+        mock_ui_module,
+        mock_spec_validator,
+    ):
+        """Planning invokes the live deterministic module entry point."""
+
+        def generate_plan(target_dir):
+            (target_dir / "implementation_plan.json").write_text(
+                json.dumps(
+                    {
+                        "feature": "Provider",
+                        "workflow_type": "feature",
+                        "phases": [
+                            {
+                                "phase": 1,
+                                "name": "Capability",
+                                "subtasks": [],
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+        async def fail_if_called(*args, **kwargs):
+            raise AssertionError("planner agent should not run")
+
+        executor = PhaseExecutor(
+            project_dir=temp_dir,
+            spec_dir=spec_dir,
+            task_description="Test task",
+            spec_validator=mock_spec_validator(plan_valid=True),
+            run_agent_fn=fail_if_called,
+            task_logger=mock_task_logger,
+            ui_module=mock_ui_module,
+        )
+
+        with patch(
+            "planner_lib.main.generate_implementation_plan",
+            side_effect=generate_plan,
+        ) as deterministic_planner:
+            result = await executor.phase_planning()
+
+        assert result.success is True
+        deterministic_planner.assert_called_once_with(spec_dir)
+
 
 class TestPhaseValidation:
     """Tests for phase_validation method."""

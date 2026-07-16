@@ -211,10 +211,12 @@ def generate_subtask_prompt(
     subtask_id = subtask.get("id", "unknown")
     description = subtask.get("description", "No description")
     service = subtask.get("service", "all")
+    services = subtask.get("services", [])
     files_to_modify = subtask.get("files_to_modify", [])
     files_to_create = subtask.get("files_to_create", [])
     patterns_from = subtask.get("patterns_from", [])
     verification = subtask.get("verification", {})
+    verification_steps = subtask.get("verification_steps", [])
 
     # Get relative spec path
     relative_spec = get_relative_spec_path(spec_dir, project_dir)
@@ -230,7 +232,7 @@ def generate_subtask_prompt(
 
 **Subtask ID:** `{subtask_id}`
 **Phase:** {phase.get("name", phase.get("id", "Unknown"))}
-**Service:** {service}
+**Service:** {", ".join(services) if services else service}
 
 ## Description
 
@@ -288,44 +290,64 @@ delete or clear `HUMAN_INPUT.md`.
 
     # Verification
     sections.append("## Verification\n")
-    v_type = verification.get("type", "manual")
+    checks = ([verification] if verification else []) + list(verification_steps)
+    if not checks:
+        checks = [{"type": "manual", "instructions": "Manual verification required"}]
 
-    if v_type == "command":
-        sections.append(f"""Run this command to verify:
+    for check_index, check in enumerate(checks, start=1):
+        if len(checks) > 1:
+            sections.append(f"### Check {check_index}\n")
+        v_type = check.get("type", "manual")
+
+        if v_type == "command":
+            command = (
+                check.get("command")
+                or check.get("run")
+                or 'echo "No command specified"'
+            )
+            sections.append(f"""Run this command to verify:
 ```bash
-{verification.get("command", 'echo "No command specified"')}
+{command}
 ```
-Expected: {verification.get("expected", "Success")}
+Expected: {check.get("expected", "Success")}
 """)
-    elif v_type == "api":
-        method = verification.get("method", "GET")
-        url = verification.get("url", "http://localhost")
-        body = verification.get("body", {})
-        expected_status = verification.get("expected_status", 200)
-        sections.append(f"""Test the API endpoint:
+        elif v_type == "api":
+            method = check.get("method", "GET")
+            url = check.get("url", "http://localhost")
+            body = check.get("body", {})
+            expected_status = check.get(
+                "expected_status", check.get("expect_status", 200)
+            )
+            sections.append(f"""Test the API endpoint:
 ```bash
 curl -X {method} {url} -H "Content-Type: application/json" {f"-d '{json.dumps(body)}'" if body else ""}
 ```
 Expected status: {expected_status}
 """)
-    elif v_type == "browser":
-        url = verification.get("url", "http://localhost:3000")
-        checks = verification.get("checks", [])
-        sections.append(f"""Open in browser: {url}
+        elif v_type == "browser":
+            url = check.get("url", "http://localhost:3000")
+            browser_checks = check.get("checks", [])
+            sections.append(f"""Open in browser: {url}
 
 Verify:""")
-        for check in checks:
-            sections.append(f"- [ ] {check}")
-        sections.append("")
-    elif v_type == "e2e":
-        steps = verification.get("steps", [])
-        sections.append("End-to-end verification steps:")
-        for i, step in enumerate(steps, 1):
-            sections.append(f"{i}. {step}")
-        sections.append("")
-    else:
-        instructions = verification.get("instructions", "Manual verification required")
-        sections.append(f"**Manual Verification:**\n{instructions}\n")
+            if browser_checks:
+                for browser_check in browser_checks:
+                    sections.append(f"- [ ] {browser_check}")
+            else:
+                sections.append(f"- [ ] {check.get('scenario', 'Check functionality')}")
+            sections.append("")
+        elif v_type == "e2e":
+            steps = check.get("steps", [])
+            sections.append("End-to-end verification steps:")
+            for i, step in enumerate(steps, 1):
+                sections.append(f"{i}. {step}")
+            sections.append("")
+        elif v_type != "none":
+            instructions = check.get(
+                "instructions",
+                check.get("scenario", "Manual verification required"),
+            )
+            sections.append(f"**Manual Verification:**\n{instructions}\n")
 
     # Instructions
     sections.append(f"""## Instructions

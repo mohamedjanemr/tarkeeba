@@ -38,11 +38,15 @@ class PlanningPhaseMixin:
         errors = []
         budget = get_execution_budget(self.spec_dir)
 
-        # Try Python script first (deterministic)
-        self.ui.print_status("Trying planner.py (deterministic)...", "progress")
-        success, output = self._run_script(
-            "planner.py", ["--spec-dir", str(self.spec_dir)]
-        )
+        # Try the in-process Python planner first (deterministic).
+        self.ui.print_status("Trying deterministic planner...", "progress")
+        try:
+            from planner_lib.main import generate_implementation_plan
+
+            generate_implementation_plan(self.spec_dir)
+            success, output = True, "Deterministic plan generated"
+        except Exception as exc:
+            success, output = False, str(exc)
 
         if success and plan_file.exists():
             auto_fix_plan(self.spec_dir)

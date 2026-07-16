@@ -10,6 +10,7 @@ import re
 from pathlib import Path
 
 from execution_budget import get_max_subtasks
+from planner_lib.capabilities import is_shared_registry_path
 
 from ..models import ValidationResult
 from ..schemas import IMPLEMENTATION_PLAN_SCHEMA, REQUIREMENTS_SCOPE_FIELDS
@@ -40,9 +41,7 @@ class ImplementationPlanValidator:
 
         if not plan_file.exists():
             errors.append("implementation_plan.json not found")
-            fixes.append(
-                f"Run: python auto-claude/planner.py --spec-dir {self.spec_dir}"
-            )
+            fixes.append(f"Run: python -m planner_lib.main --spec-dir {self.spec_dir}")
             return ValidationResult(False, "plan", errors, warnings, fixes)
 
         try:
@@ -51,7 +50,7 @@ class ImplementationPlanValidator:
         except json.JSONDecodeError as e:
             errors.append(f"implementation_plan.json is invalid JSON: {e}")
             fixes.append(
-                "Regenerate with: python auto-claude/planner.py --spec-dir "
+                "Regenerate with: python -m planner_lib.main --spec-dir "
                 + str(self.spec_dir)
             )
             return ValidationResult(False, "plan", errors, warnings, fixes)
@@ -105,11 +104,17 @@ class ImplementationPlanValidator:
                     "the phase arrays are authoritative"
                 )
 
+        remaining_subtasks = sum(
+            1
+            for phase in phases
+            for subtask in phase.get("subtasks", [])
+            if subtask.get("status", "pending") == "pending"
+        )
         max_subtasks = get_max_subtasks(self.spec_dir)
-        if max_subtasks is not None and total_subtasks > max_subtasks:
+        if max_subtasks is not None and remaining_subtasks > max_subtasks:
             errors.append(
-                f"Plan has {total_subtasks} subtasks; efficient execution allows "
-                f"at most {max_subtasks}"
+                f"Plan has {remaining_subtasks} remaining subtasks; efficient "
+                f"execution allows at most {max_subtasks}"
             )
             fixes.append(
                 "Combine related file-level steps into vertical implementation slices"
@@ -118,6 +123,9 @@ class ImplementationPlanValidator:
         # Validate dependencies don't create cycles
         dep_errors = self._validate_dependencies(phases)
         errors.extend(dep_errors)
+        ownership_errors, ownership_fixes = self._validate_file_ownership(phases)
+        errors.extend(ownership_errors)
+        fixes.extend(ownership_fixes)
 
         return ValidationResult(
             valid=len(errors) == 0,
@@ -279,6 +287,71 @@ class ImplementationPlanValidator:
 
         return errors
 
+    def _validate_file_ownership(
+        self, phases: list[dict]
+    ) -> tuple[list[str], list[str]]:
+        """Ensure capability slices have unique files and serialized registries."""
+        errors = []
+        fixes = []
+        owners = {}
+        last_phase_index = len(phases)
+        enforce_capability_ownership = False
+        try:
+            requirements = json.loads(
+                (self.spec_dir / "requirements.json").read_text(encoding="utf-8")
+            )
+            enforce_capability_ownership = (
+                isinstance(requirements, dict)
+                and requirements.get("scope_contract_version") == 1
+            )
+        except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+            pass
+
+        for phase_index, phase in enumerate(phases, start=1):
+            phase_type = phase.get("type", "implementation")
+            for subtask_index, subtask in enumerate(phase.get("subtasks", []), start=1):
+                location = f"Phase {phase_index}, Subtask {subtask_index}"
+                modify = [str(path) for path in subtask.get("files_to_modify", [])]
+                create = [str(path) for path in subtask.get("files_to_create", [])]
+                overlap = set(modify) & set(create)
+                if overlap:
+                    errors.append(
+                        f"{location}: files listed as both modify and create: "
+                        f"{sorted(overlap)}"
+                    )
+                    fixes.append(f"{location}: give each file one operation")
+
+                for path in modify + create:
+                    if (
+                        enforce_capability_ownership
+                        and path in owners
+                        and owners[path] != location
+                    ):
+                        errors.append(
+                            f"File owned by multiple capability slices: '{path}' "
+                            f"({owners[path]} and {location})"
+                        )
+                        fixes.append(f"Assign '{path}' to exactly one capability slice")
+                    owners[path] = location
+
+                    if (
+                        enforce_capability_ownership
+                        and is_shared_registry_path(path)
+                        and (
+                            phase_index != last_phase_index
+                            or phase_type != "integration"
+                        )
+                    ):
+                        errors.append(
+                            f"Shared registry must be owned by the final integration "
+                            f"slice: '{path}'"
+                        )
+                        fixes.append(
+                            f"Move '{path}' to the final phase with type 'integration'"
+                        )
+
+        return errors, fixes
+
     def _validate_subtask(
         self, subtask: dict, phase_idx: int, subtask_idx: int
     ) -> list[str]:
@@ -294,6 +367,7 @@ class ImplementationPlanValidator:
         """
         errors = []
         schema = IMPLEMENTATION_PLAN_SCHEMA["subtask_schema"]
+        ver_schema = IMPLEMENTATION_PLAN_SCHEMA["verification_schema"]
 
         for field in schema["required_fields"]:
             if field not in subtask:
@@ -309,9 +383,8 @@ class ImplementationPlanValidator:
         # Validate verification if present
         if "verification" in subtask:
             ver = subtask["verification"]
-            ver_schema = IMPLEMENTATION_PLAN_SCHEMA["verification_schema"]
 
-            if "type" not in ver:
+            if not isinstance(ver, dict) or "type" not in ver:
                 errors.append(
                     f"Phase {phase_idx + 1}, Subtask {subtask_idx + 1}: verification missing 'type'"
                 )
@@ -319,6 +392,25 @@ class ImplementationPlanValidator:
                 errors.append(
                     f"Phase {phase_idx + 1}, Subtask {subtask_idx + 1}: invalid verification type '{ver['type']}'"
                 )
+
+        verification_steps = subtask.get("verification_steps", [])
+        if verification_steps and not isinstance(verification_steps, list):
+            errors.append(
+                f"Phase {phase_idx + 1}, Subtask {subtask_idx + 1}: "
+                "verification_steps must be a list"
+            )
+        elif isinstance(verification_steps, list):
+            for step_idx, step in enumerate(verification_steps, start=1):
+                if not isinstance(step, dict) or "type" not in step:
+                    errors.append(
+                        f"Phase {phase_idx + 1}, Subtask {subtask_idx + 1}, "
+                        f"Verification {step_idx}: missing 'type'"
+                    )
+                elif step["type"] not in ver_schema["verification_types"]:
+                    errors.append(
+                        f"Phase {phase_idx + 1}, Subtask {subtask_idx + 1}, "
+                        f"Verification {step_idx}: invalid type '{step['type']}'"
+                    )
 
         return errors
 
