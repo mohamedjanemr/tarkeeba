@@ -301,18 +301,84 @@ class AzureDevOpsProvider:
             return False
 
     # -------------------------------------------------------------------------
-    # Issue Operations (Stubs - to be implemented in subtask-2-2)
+    # Issue Operations
     # -------------------------------------------------------------------------
 
     async def fetch_issue(self, number: int) -> IssueData:
-        """Fetch an issue by number."""
-        raise NotImplementedError("Issue operations implemented in subtask-2-2")
+        """Fetch a work item (issue) by number."""
+        try:
+            endpoint = f"/_apis/wit/workitems/{number}?$expand=all"
+            work_item = self._client._fetch(endpoint)
+
+            if not work_item:
+                raise ValueError(f"Work item {number} not found")
+
+            return self._parse_issue_data(work_item)
+        except Exception as e:
+            raise ValueError(f"Failed to fetch work item {number}: {e}") from e
 
     async def fetch_issues(
         self, filters: IssueFilters | None = None
     ) -> list[IssueData]:
-        """Fetch issues with optional filters."""
-        raise NotImplementedError("Issue operations implemented in subtask-2-2")
+        """
+        Fetch work items (issues) with optional filters.
+
+        Uses WIQL query to find matching work items, then fetches details.
+        Returns empty list immediately if WIQL yields zero IDs.
+        """
+        filters = filters or IssueFilters()
+
+        try:
+            # Build WIQL query
+            wiql_conditions = ["[System.WorkItemType] IN ('Bug', 'User Story', 'Task')"]
+
+            # Map state filter
+            state_map = {"open": "Active", "closed": "Closed"}
+            state = state_map.get(filters.state, "Active")
+            wiql_conditions.append(f"[System.State] = '{state}'")
+
+            # Add author filter if specified
+            if filters.author:
+                wiql_conditions.append(f"[System.CreatedBy] = '{filters.author}'")
+
+            # Add assignee filter if specified
+            if filters.assignee:
+                wiql_conditions.append(f"[System.AssignedTo] = '{filters.assignee}'")
+
+            # Combine conditions
+            wiql_query = " AND ".join(wiql_conditions)
+            order_by = "[System.CreatedDate] DESC"
+            wiql = f"SELECT [System.Id] FROM workitems WHERE {wiql_query} ORDER BY {order_by}"
+
+            # Run WIQL query to get IDs
+            work_item_ids = self._client.run_wiql_query(wiql)
+
+            # Return empty list if no results
+            if not work_item_ids:
+                return []
+
+            # Limit results based on filter
+            if filters.limit and len(work_item_ids) > filters.limit:
+                work_item_ids = work_item_ids[: filters.limit]
+
+            # Fetch work item details by IDs
+            work_items = self._client.get_work_items_by_ids(work_item_ids)
+
+            # Parse to IssueData
+            result = []
+            for work_item in work_items:
+                # Apply label filters if specified
+                if filters.labels:
+                    work_item_tags = self._parse_tags(work_item)
+                    if not all(label in work_item_tags for label in filters.labels):
+                        continue
+
+                result.append(self._parse_issue_data(work_item))
+
+            return result
+
+        except Exception as e:
+            raise ValueError(f"Failed to fetch work items: {e}") from e
 
     async def create_issue(
         self,
@@ -321,24 +387,117 @@ class AzureDevOpsProvider:
         labels: list[str] | None = None,
         assignees: list[str] | None = None,
     ) -> IssueData:
-        """Create a new issue."""
-        raise NotImplementedError("Issue operations implemented in subtask-2-2")
+        """Create a new work item (Bug or Task)."""
+        try:
+            # Prepare fields for the work item
+            fields = {
+                "System.Title": title,
+                "System.Description": body,
+                "System.WorkItemType": "Bug",  # Default to Bug; could be parameterized
+                "System.State": "Active",
+            }
+
+            # Add tags if labels are provided (Azure DevOps uses tags instead of labels)
+            if labels:
+                fields["System.Tags"] = ";".join(labels)
+
+            # Note: Assignee handling may require user UUIDs or display names
+            # This is a simplified implementation using display names
+            if assignees and len(assignees) > 0:
+                fields["System.AssignedTo"] = assignees[0]
+
+            # Build JSON Patch for work item creation
+            patch_body = self._client.build_json_patch(fields)
+
+            # POST to work items endpoint
+            endpoint = "/_apis/wit/workitems/$Bug"
+            work_item = self._client._fetch(endpoint, method="POST", data=patch_body)
+
+            if not work_item:
+                raise ValueError("Failed to create work item")
+
+            return self._parse_issue_data(work_item)
+
+        except Exception as e:
+            raise ValueError(f"Failed to create work item: {e}") from e
 
     async def close_issue(
         self,
         number: int,
         comment: str | None = None,
     ) -> bool:
-        """Close an issue."""
-        raise NotImplementedError("Issue operations implemented in subtask-2-2")
+        """Close a work item by setting its state to Done."""
+        try:
+            # Add closing comment if provided
+            if comment:
+                await self.add_comment(number, comment)
+
+            # Prepare patch to set state to Done
+            patch_body = self._client.build_json_patch({"System.State": "Done"})
+
+            # PATCH the work item
+            endpoint = f"/_apis/wit/workitems/{number}"
+            result = self._client._fetch(endpoint, method="PATCH", data=patch_body)
+
+            if not result:
+                return False
+
+            # Verify the state was updated
+            state = result.get("fields", {}).get("System.State", "")
+            return state == "Done"
+
+        except Exception:
+            return False
 
     async def add_comment(
         self,
         issue_or_pr_number: int,
         body: str,
     ) -> int:
-        """Add a comment to an issue or PR."""
-        raise NotImplementedError("Issue operations implemented in subtask-2-2")
+        """Add a comment to a work item or PR."""
+        try:
+            # For PRs (pull requests)
+            repo_parts = self._repo.split("/")
+            repo_name = repo_parts[-1] if len(repo_parts) > 2 else "repo"
+
+            # Try as PR comment first
+            pr_endpoint = (
+                f"/_apis/git/repositories/{repo_name}/pullrequests/{issue_or_pr_number}/threads"
+            )
+
+            try:
+                thread_data = {
+                    "comments": [{"content": body, "commentType": 1}],
+                    "status": 1,  # Active
+                }
+                thread_response = self._client._fetch(
+                    pr_endpoint, method="POST", data=thread_data
+                )
+                if thread_response and "id" in thread_response:
+                    return thread_response.get("id", 0)
+            except Exception:
+                pass
+
+            # Fall back to work item comment
+            # Azure DevOps work item comments are added via history field
+            # For simplicity, we'll append to the description
+            endpoint = f"/_apis/wit/workitems/{issue_or_pr_number}"
+            work_item = self._client._fetch(endpoint)
+
+            if not work_item:
+                return 0
+
+            # Append comment to description
+            current_desc = work_item.get("fields", {}).get("System.Description", "")
+            updated_desc = f"{current_desc}\n\n---\n**Comment**: {body}"
+
+            patch_body = self._client.build_json_patch({"System.Description": updated_desc})
+            result = self._client._fetch(endpoint, method="PATCH", data=patch_body)
+
+            return 1 if result else 0
+
+        except Exception:
+            return 0
 
     # -------------------------------------------------------------------------
     # Label Operations (Stubs - to be implemented in subtask-2-3)
@@ -416,6 +575,73 @@ class AzureDevOpsProvider:
     # -------------------------------------------------------------------------
     # Helper Methods
     # -------------------------------------------------------------------------
+
+    def _parse_issue_data(self, data: dict[str, Any]) -> IssueData:
+        """Parse Azure DevOps work item data into IssueData."""
+        fields = data.get("fields", {})
+
+        # Extract author
+        created_by = fields.get("System.CreatedBy", {})
+        if isinstance(created_by, dict):
+            author = created_by.get("displayName", "unknown")
+        else:
+            author = str(created_by) if created_by else "unknown"
+
+        # Extract assignees
+        assignees = []
+        assigned_to = fields.get("System.AssignedTo", {})
+        if assigned_to:
+            if isinstance(assigned_to, dict):
+                assignee_name = assigned_to.get("displayName", "")
+                if assignee_name:
+                    assignees.append(assignee_name)
+            else:
+                assignee_name = str(assigned_to)
+                if assignee_name:
+                    assignees.append(assignee_name)
+
+        # Extract labels from tags
+        tags_str = fields.get("System.Tags", "")
+        labels = [tag.strip() for tag in tags_str.split(";") if tag.strip()] if tags_str else []
+
+        # Map state to standard open/closed
+        state = fields.get("System.State", "Active")
+        state_map = {
+            "Active": "open",
+            "Proposed": "open",
+            "New": "open",
+            "Done": "closed",
+            "Closed": "closed",
+            "Resolved": "closed",
+        }
+        normalized_state = state_map.get(state, "open")
+
+        # Extract milestone (iteration path if available)
+        milestone = fields.get("System.IterationPath")
+
+        return IssueData(
+            number=data.get("id", 0),
+            title=fields.get("System.Title", ""),
+            body=fields.get("System.Description", "") or "",
+            author=author,
+            state=normalized_state,
+            labels=labels,
+            created_at=self._parse_datetime(fields.get("System.CreatedDate")),
+            updated_at=self._parse_datetime(
+                fields.get("System.ChangedDate") or fields.get("System.CreatedDate")
+            ),
+            url=data.get("url", ""),
+            assignees=assignees,
+            milestone=milestone,
+            provider=ProviderType.AZURE_DEVOPS,
+            raw_data=data,
+        )
+
+    def _parse_tags(self, work_item: dict[str, Any]) -> list[str]:
+        """Extract tags from a work item."""
+        fields = work_item.get("fields", {})
+        tags_str = fields.get("System.Tags", "")
+        return [tag.strip() for tag in tags_str.split(";") if tag.strip()] if tags_str else []
 
     def _parse_pr_data(self, data: dict[str, Any], diff: str) -> PRData:
         """Parse Azure DevOps PR data into PRData."""
