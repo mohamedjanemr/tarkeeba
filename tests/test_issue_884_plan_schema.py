@@ -10,6 +10,7 @@ execution to get stuck because no "pending" subtasks are detected.
 import importlib
 import json
 from pathlib import Path
+from unittest.mock import AsyncMock
 
 import pytest
 from core.progress import get_next_subtask
@@ -21,11 +22,43 @@ def _write_plan(path: Path, data: dict) -> None:
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
+@pytest.mark.asyncio
+async def test_capability_graphiti_context_is_cached_and_refreshed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    from agents.coder import _get_capability_graphiti_context
+
+    get_context = AsyncMock(side_effect=["first", "retry", "next"])
+    monkeypatch.setattr("agents.coder.get_graphiti_context", get_context)
+    cache: dict[str, str | None] = {}
+    subtask = {"id": "capability-repositories", "description": "Repositories"}
+
+    first, first_retrieved = await _get_capability_graphiti_context(
+        cache, "phase-1", tmp_path, tmp_path, subtask
+    )
+    cached, cached_retrieved = await _get_capability_graphiti_context(
+        cache, "phase-1", tmp_path, tmp_path, subtask
+    )
+    retried, retry_retrieved = await _get_capability_graphiti_context(
+        cache, "phase-1", tmp_path, tmp_path, subtask, refresh=True
+    )
+    next_capability, next_retrieved = await _get_capability_graphiti_context(
+        cache, "phase-2", tmp_path, tmp_path, subtask
+    )
+
+    assert (first, first_retrieved) == ("first", True)
+    assert (cached, cached_retrieved) == ("first", False)
+    assert (retried, retry_retrieved) == ("retry", True)
+    assert (next_capability, next_retrieved) == ("next", True)
+    assert get_context.await_count == 3
+
+
 def test_generate_planner_prompt_loads_repo_planner_md(spec_dir: Path):
     prompt = generate_planner_prompt(spec_dir, project_dir=spec_dir.parent)
     prompt_generator = importlib.import_module(generate_planner_prompt.__module__)
     assert prompt_generator.__file__ is not None
     assert "observable capability slices" in prompt
+    assert "Broad typecheck, lint, build, and full-suite commands run once" in prompt
     assert "1-3 files max" not in prompt
     assert "--parallel" not in prompt
 
@@ -379,6 +412,10 @@ async def test_planner_session_does_not_trigger_post_session_processing_on_retry
     spec_dir = temp_git_repo / ".auto-claude" / "specs" / "001-test"
     spec_dir.mkdir(parents=True, exist_ok=True)
     (spec_dir / "spec.md").write_text("# Test spec\n", encoding="utf-8")
+    (spec_dir / "task_metadata.json").write_text(
+        json.dumps({"executionMode": "efficient", "maxPlannerAttempts": 1}),
+        encoding="utf-8",
+    )
 
     class DummyClient:
         async def __aenter__(self):
@@ -519,7 +556,7 @@ async def test_worktree_planning_to_coding_sync_updates_source_phase_status(
         project_dir=temp_git_repo,
         spec_dir=worktree_spec_dir,
         model="test-model",
-        max_iterations=2,
+        max_iterations=1,
         verbose=False,
         source_spec_dir=source_spec_dir,
     )

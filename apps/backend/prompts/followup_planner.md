@@ -152,7 +152,9 @@ If existing plan has phases 1-4:
 1. **Build on existing work** - Reference files created in earlier subtasks
 2. **Follow established patterns** - Use the same code style and conventions
 3. **Capability slices** - Group all files needed for one observable outcome
-4. **Clear verification** - Every subtask must have a way to verify it works
+4. **Focused verification** - Use checks scoped to each capability. Run broad
+   typecheck, lint, build, and full-suite commands once in the final integration
+   slice instead of repeating them in every follow-up slice
 5. **Preserve context** - Use patterns_from to point to relevant existing files
 6. **Cite acceptance criteria** - Add `acceptance_criteria_refs` with the AC-N
    criteria that drive each new capability

@@ -320,6 +320,9 @@ export interface TaskMetadata {
   maxAgentSessions?: number;  // Optional advanced override for coding sessions
   maxQaIterations?: number;  // Optional advanced override for QA review/fix cycles
   maxSpecAttempts?: number;  // Optional advanced override for spec phase attempts
+  maxImplementationSessions?: number;  // Optional base coding-session budget
+  maxRetrySessions?: number;  // Optional coding retry reserve
+  maxPlannerAttempts?: number;  // Optional implementation-planner attempt budget
 
   // Git/Worktree configuration
   baseBranch?: string;  // Override base branch for this task's worktree

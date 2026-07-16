@@ -265,7 +265,7 @@
     "executionModeLabel": "Execution strategy",
     "executionModes": {
       "efficient": "Efficient (Recommended)",
-      "efficientDescription": "Limits planning to 6 vertical subtasks, coding to 8 sessions, and QA to 2 reviews. Skips optional AI planning passes.",
+      "efficientDescription": "Limits planning to 6 capability slices, coding to 6 implementation sessions plus 2 retries, and QA to 2 reviews. Skips optional AI planning passes.",
       "full": "Full Autonomous",
       "fullDescription": "Uses exhaustive planning and autonomous retries without a coding-session limit. Best for unusually complex or high-risk work."
     },

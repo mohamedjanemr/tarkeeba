@@ -21,8 +21,11 @@ class ExecutionBudget:
     mode: str
     max_subtasks: int | None
     max_agent_sessions: int | None
+    max_implementation_sessions: int | None
+    max_retry_sessions: int | None
     max_qa_iterations: int
     max_spec_attempts: int
+    max_planner_attempts: int
     use_ai_phase_summaries: bool
     include_optional_spec_phases: bool
 
@@ -32,8 +35,11 @@ _MODE_DEFAULTS = {
         mode="efficient",
         max_subtasks=6,
         max_agent_sessions=8,
+        max_implementation_sessions=6,
+        max_retry_sessions=2,
         max_qa_iterations=2,
         max_spec_attempts=2,
+        max_planner_attempts=2,
         use_ai_phase_summaries=False,
         include_optional_spec_phases=False,
     ),
@@ -41,8 +47,11 @@ _MODE_DEFAULTS = {
         mode="full",
         max_subtasks=None,
         max_agent_sessions=None,
+        max_implementation_sessions=None,
+        max_retry_sessions=None,
         max_qa_iterations=FULL_MAX_QA_ITERATIONS,
         max_spec_attempts=3,
+        max_planner_attempts=3,
         use_ai_phase_summaries=True,
         include_optional_spec_phases=True,
     ),
@@ -86,6 +95,36 @@ def get_execution_budget(spec_dir: Path) -> ExecutionBudget:
     metadata = _load_metadata(spec_dir)
     mode = str(metadata.get("executionMode") or "full").lower()
     defaults = _MODE_DEFAULTS.get(mode, _MODE_DEFAULTS["full"])
+    legacy_agent_sessions = metadata.get("maxAgentSessions")
+    if legacy_agent_sessions is not None:
+        max_agent_sessions = _bounded_int(
+            legacy_agent_sessions,
+            defaults.max_agent_sessions,
+            minimum=1,
+            maximum=100,
+        )
+        # A legacy total override did not distinguish first attempts from
+        # retries, so preserve that flexibility while enforcing the total cap.
+        max_implementation_sessions = max_agent_sessions
+        max_retry_sessions = max_agent_sessions
+    else:
+        max_implementation_sessions = _bounded_int(
+            metadata.get("maxImplementationSessions"),
+            defaults.max_implementation_sessions,
+            minimum=1,
+            maximum=50,
+        )
+        max_retry_sessions = _bounded_int(
+            metadata.get("maxRetrySessions"),
+            defaults.max_retry_sessions,
+            minimum=0,
+            maximum=50,
+        )
+        max_agent_sessions = (
+            None
+            if max_implementation_sessions is None
+            else max_implementation_sessions + (max_retry_sessions or 0)
+        )
 
     return ExecutionBudget(
         mode=defaults.mode,
@@ -95,12 +134,9 @@ def get_execution_budget(spec_dir: Path) -> ExecutionBudget:
             minimum=1,
             maximum=50,
         ),
-        max_agent_sessions=_bounded_int(
-            metadata.get("maxAgentSessions"),
-            defaults.max_agent_sessions,
-            minimum=1,
-            maximum=100,
-        ),
+        max_agent_sessions=max_agent_sessions,
+        max_implementation_sessions=max_implementation_sessions,
+        max_retry_sessions=max_retry_sessions,
         max_qa_iterations=_bounded_int(
             metadata.get("maxQaIterations"),
             defaults.max_qa_iterations,
@@ -115,6 +151,13 @@ def get_execution_budget(spec_dir: Path) -> ExecutionBudget:
             maximum=3,
         )
         or defaults.max_spec_attempts,
+        max_planner_attempts=_bounded_int(
+            metadata.get("maxPlannerAttempts"),
+            defaults.max_planner_attempts,
+            minimum=1,
+            maximum=5,
+        )
+        or defaults.max_planner_attempts,
         use_ai_phase_summaries=defaults.use_ai_phase_summaries,
         include_optional_spec_phases=defaults.include_optional_spec_phases,
     )

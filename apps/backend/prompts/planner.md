@@ -315,7 +315,9 @@ Use ONLY these values for the `type` field in phases:
 2. **Exact ownership** - List every file the slice owns; multiple services are allowed
 3. **Slice target** - Prefer 6-12 total slices, bounded by the execution budget
 4. **Shared registries last** - Put IPC/preload/barrel/i18n/navigation/route registries in one integration slice
-5. **Clear verification** - Preserve every executable verification needed for the slice
+5. **Focused verification** - Capability slices run only checks scoped to their
+   owned files. Broad typecheck, lint, build, and full-suite commands run once
+   in the final integration slice.
 6. **Explicit dependencies** - Phases block until dependencies complete
 7. **Acceptance traceability** - Every subtask must include
    `acceptance_criteria_refs` with one or more AC-N identifiers from spec.md
@@ -336,6 +338,11 @@ Use ONLY these values for the `type` field in phases:
 | `none` | No verification needed | `{"type": "none"}` |
 
 **DO NOT invent types like `code_review`, `component`, `test`, `lint`, `build`. Use `manual` for human review, `command` for running tests.**
+
+**Do not repeat broad commands across capability slices.** A repository-wide
+typecheck, lint, build, or full test suite belongs only in the final
+`integration` phase. Earlier slices should use the narrowest relevant test
+command or a targeted API/browser check.
 
 ### Special Subtask Types
 
