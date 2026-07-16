@@ -44,6 +44,8 @@ import { GitHubIssues } from './components/GitHubIssues';
 import { GitLabIssues } from './components/GitLabIssues';
 import { GitHubPRs } from './components/github-prs';
 import { GitLabMergeRequests } from './components/gitlab-merge-requests';
+import { AzureDevOpsIssues } from './components/azure-devops-issues/AzureDevOpsIssues';
+import { AzureDevOpsPullRequests } from './components/azure-devops-pull-requests/AzureDevOpsPullRequests';
 import { Changelog } from './components/Changelog';
 import { Worktrees } from './components/Worktrees';
 import { Memory } from './components/Memory';
@@ -945,6 +947,24 @@ export function App() {
                     projectId={activeProjectId || selectedProjectId!}
                     onOpenSettings={() => {
                       setSettingsInitialProjectSection('gitlab');
+                      setIsSettingsDialogOpen(true);
+                    }}
+                  />
+                )}
+                {activeView === 'azure-devops-issues' && (activeProjectId || selectedProjectId) && (
+                  <AzureDevOpsIssues
+                    onOpenSettings={() => {
+                      setSettingsInitialProjectSection('azure-devops');
+                      setIsSettingsDialogOpen(true);
+                    }}
+                    onNavigateToTask={handleGoToTask}
+                  />
+                )}
+                {activeView === 'azure-devops-prs' && (activeProjectId || selectedProjectId) && (
+                  <AzureDevOpsPullRequests
+                    projectId={activeProjectId || selectedProjectId!}
+                    onOpenSettings={() => {
+                      setSettingsInitialProjectSection('azure-devops');
                       setIsSettingsDialogOpen(true);
                     }}
                   />

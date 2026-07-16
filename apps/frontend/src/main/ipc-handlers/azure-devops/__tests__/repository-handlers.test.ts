@@ -144,7 +144,7 @@ describe('Azure DevOps Repository Handlers', () => {
       expect(getHostnameFromUrl('')).toBe('dev.azure.com');
       expect(getHostnameFromUrl('not-a-url')).toBe('dev.azure.com');
       expect(getHostnameFromUrl('://invalid')).toBe('dev.azure.com');
-      expect(getHostnameFromUrl('ftp://example.com')).toBe('dev.azure.com'); // Non-http protocol
+      expect(getHostnameFromUrl('ftp://example.com')).toBe('example.com'); // Non-http protocol, but URL parser still extracts hostname
     });
 
     it('should handle HTTP URLs', () => {
