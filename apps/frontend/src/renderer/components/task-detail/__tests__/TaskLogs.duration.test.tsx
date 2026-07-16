@@ -29,7 +29,7 @@ function createTask(overrides: Partial<Task> = {}): Task {
     projectId: 'project-duration-test',
     title: 'A task used to verify duration rendering',
     description: 'A task description',
-    status: 'coding',
+    status: 'in_progress',
     subtasks: [],
     logs: [],
     createdAt: new Date('2026-07-16T00:00:00.000Z'),
