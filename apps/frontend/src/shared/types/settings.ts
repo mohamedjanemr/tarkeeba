@@ -5,6 +5,7 @@
 import type { NotificationSettings, GraphitiEmbeddingProvider } from './project';
 import type { ChangelogFormat, ChangelogAudience, ChangelogEmojiLevel } from './changelog';
 import type { SupportedLanguage } from '../constants/i18n';
+import type { AgentSettingsState } from './agent-settings';
 
 // Color theme types for multi-theme support
 export type ColorTheme = 'default' | 'dusk' | 'lime' | 'ocean' | 'retro' | 'neo' | 'forest';
@@ -313,6 +314,11 @@ export interface AppSettings {
   spendWarningThresholdUsd?: number;
   // Enable/disable cost warning notifications on the usage/cost dashboard
   costWarningEnabled?: boolean;
+  // Canonical provider-agnostic agent settings (Claude, Codex, ...).
+  // Source of truth for task-pipeline provider defaults going forward.
+  // Legacy fields above (selectedAgentProfile, customPhaseModels, customPhaseThinking)
+  // remain readable/synchronized during the compatibility period.
+  agentSettings?: AgentSettingsState;
 }
 
 // GPU acceleration mode for terminal WebGL rendering

@@ -3,6 +3,7 @@
  */
 
 import type { ThinkingLevel, PhaseModelConfig, PhaseThinkingConfig } from './settings';
+import type { TaskAgentConfig } from './agent-settings';
 
 export type AgentProvider = 'claude' | 'codex';
 export type CodexReasoningEffort = 'low' | 'medium' | 'high' | 'xhigh';
@@ -303,7 +304,13 @@ export interface TaskMetadata {
   // Review settings
   requireReviewBeforeCoding?: boolean;  // Require human review of spec/plan before coding starts
 
+  // Canonical provider-agnostic agent configuration snapshot.
+  // Authoritative for new/edited tasks; legacy fields below remain readable
+  // as fallback for tasks created before this contract existed.
+  agentConfig?: TaskAgentConfig;
+
   // Agent configuration (from agent profile or manual selection)
+  // Legacy fields — retained for backward compatibility. Prefer agentConfig.
   provider?: AgentProvider;  // Execution provider; defaults to Claude for compatibility
   codexProfileId?: string;  // OpenAI account locked to this task
   codexModel?: string;  // Codex model ID when provider is codex

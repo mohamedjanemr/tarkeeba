@@ -241,6 +241,36 @@ export function sanitizeThinkingLevel(val: string): string {
 export const PHASE_KEYS: readonly (keyof PhaseModelConfig)[] = ['spec', 'planning', 'coding', 'qa'] as const;
 
 // ============================================
+// Codex (OpenAI) Models and Reasoning Effort
+// ============================================
+
+// Default Codex model used when no per-phase selection has been made yet
+export const DEFAULT_CODEX_MODEL = 'gpt-5.6-sol';
+
+// Default Codex reasoning effort used when no per-phase selection has been made yet
+export const DEFAULT_CODEX_REASONING_EFFORT = 'high';
+
+// Static fallback catalog used when runtime Codex model discovery is unavailable
+// Keep in sync with the bundled list historically defined in TaskFormFields.tsx
+export const CODEX_MODEL_CATALOG: { id: string; label: string; description?: string }[] = [
+  { id: 'gpt-5.6-sol', label: 'GPT-5.6-Sol', description: 'Latest frontier agentic coding model.' },
+  { id: 'gpt-5.6-terra', label: 'GPT-5.6-Terra', description: 'Balanced agentic coding model for everyday work.' },
+  { id: 'gpt-5.6-luna', label: 'GPT-5.6-Luna', description: 'Fast and affordable agentic coding model.' },
+  { id: 'gpt-5.5', label: 'GPT-5.5' },
+  { id: 'gpt-5.4', label: 'GPT-5.4' },
+  { id: 'gpt-5.4-mini', label: 'GPT-5.4-Mini' },
+  { id: 'gpt-5.2', label: 'GPT-5.2' }
+];
+
+// Codex reasoning effort levels (must match CodexReasoningEffort in shared/types/task.ts)
+export const CODEX_REASONING_LEVELS: { value: string; label: string; description?: string }[] = [
+  { value: 'low', label: 'Low', description: 'Fastest, least deliberation' },
+  { value: 'medium', label: 'Medium', description: 'Balanced speed and depth' },
+  { value: 'high', label: 'High', description: 'Deeper reasoning' },
+  { value: 'xhigh', label: 'X-High', description: 'Maximum reasoning depth' }
+];
+
+// ============================================
 // Memory Backends
 // ============================================
 

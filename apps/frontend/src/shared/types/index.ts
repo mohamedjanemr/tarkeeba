@@ -11,6 +11,7 @@ export * from './task';
 export * from './kanban';
 export * from './terminal';
 export * from './agent';
+export * from './agent-settings';
 export * from './profile';
 export * from './unified-account';
 export * from './settings';
