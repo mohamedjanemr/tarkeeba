@@ -24,10 +24,16 @@ const GITLAB_ENV_KEYS = {
 // Azure DevOps environment variable keys
 const AZURE_DEVOPS_ENV_KEYS = {
   ENABLED: 'AZURE_DEVOPS_ENABLED',
-  TOKEN: 'AZURE_DEVOPS_TOKEN',
-  ORGANIZATION: 'AZURE_DEVOPS_ORGANIZATION',
+  TOKEN: 'AZURE_DEVOPS_PAT',
+  ORGANIZATION: 'AZURE_DEVOPS_ORG',
   PROJECT: 'AZURE_DEVOPS_PROJECT',
   AUTO_SYNC: 'AZURE_DEVOPS_AUTO_SYNC'
+} as const;
+
+// Read the initially shipped names so existing project files migrate on save.
+const LEGACY_AZURE_DEVOPS_ENV_KEYS = {
+  TOKEN: 'AZURE_DEVOPS_TOKEN',
+  ORGANIZATION: 'AZURE_DEVOPS_ORGANIZATION'
 } as const;
 
 /**
@@ -483,13 +489,17 @@ ${existingVars['GRAPHITI_DB_PATH'] ? `GRAPHITI_DB_PATH=${existingVars['GRAPHITI_
       }
 
       // Azure DevOps config
-      if (vars[AZURE_DEVOPS_ENV_KEYS.TOKEN]) {
-        config.azureDevOpsToken = vars[AZURE_DEVOPS_ENV_KEYS.TOKEN];
+      const azureDevOpsToken = vars[AZURE_DEVOPS_ENV_KEYS.TOKEN]
+        || vars[LEGACY_AZURE_DEVOPS_ENV_KEYS.TOKEN];
+      const azureDevOpsOrganization = vars[AZURE_DEVOPS_ENV_KEYS.ORGANIZATION]
+        || vars[LEGACY_AZURE_DEVOPS_ENV_KEYS.ORGANIZATION];
+      if (azureDevOpsToken) {
+        config.azureDevOpsToken = azureDevOpsToken;
         // Enable by default if token exists and AZURE_DEVOPS_ENABLED is not explicitly false
         config.azureDevOpsEnabled = vars[AZURE_DEVOPS_ENV_KEYS.ENABLED]?.toLowerCase() !== 'false';
       }
-      if (vars[AZURE_DEVOPS_ENV_KEYS.ORGANIZATION]) {
-        config.azureDevOpsOrganization = vars[AZURE_DEVOPS_ENV_KEYS.ORGANIZATION];
+      if (azureDevOpsOrganization) {
+        config.azureDevOpsOrganization = azureDevOpsOrganization;
       }
       if (vars[AZURE_DEVOPS_ENV_KEYS.PROJECT]) {
         config.azureDevOpsProject = vars[AZURE_DEVOPS_ENV_KEYS.PROJECT];

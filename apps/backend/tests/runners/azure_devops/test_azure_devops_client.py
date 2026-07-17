@@ -7,7 +7,6 @@ from unittest import mock
 from urllib.error import HTTPError
 
 import pytest
-
 from runners.azure_devops.azure_devops_client import (
     AzureDevOpsClient,
     AzureDevOpsConfig,
@@ -31,7 +30,9 @@ class TestAzureDevOpsClientAuth:
 
         # Expected: Basic base64(':' + pat)
         expected_credentials = f":{config.pat}"
-        expected_encoded = base64.b64encode(expected_credentials.encode("utf-8")).decode("utf-8")
+        expected_encoded = base64.b64encode(
+            expected_credentials.encode("utf-8")
+        ).decode("utf-8")
         expected_header = f"Basic {expected_encoded}"
 
         assert auth_header == expected_header
@@ -61,6 +62,24 @@ class TestAzureDevOpsClientAuth:
             encoded_part = auth_header.split(" ", 1)[1]
             decoded = base64.b64decode(encoded_part).decode("utf-8")
             assert decoded == f":{pat}"
+
+    def test_get_authenticated_user_id(self):
+        """The connection-data identity is used for reviewer votes."""
+        config = AzureDevOpsConfig(
+            pat="test-pat",
+            organization="org",
+            project="project",
+        )
+        client = AzureDevOpsClient(Path("/tmp"), config)
+
+        with mock.patch.object(
+            client,
+            "_fetch",
+            return_value={"authenticatedUser": {"id": "reviewer-id"}},
+        ) as fetch:
+            assert client.get_authenticated_user_id() == "reviewer-id"
+
+        fetch.assert_called_once_with("/_apis/connectionData")
 
     def test_authorization_header_empty_username(self):
         """Test that the username part of Basic auth is empty."""
@@ -187,7 +206,9 @@ class TestAzureDevOpsClientRetry:
         )
         success_response = mock.MagicMock()
         success_response.status = 200
-        success_response.read.return_value = json.dumps({"value": "success"}).encode("utf-8")
+        success_response.read.return_value = json.dumps({"value": "success"}).encode(
+            "utf-8"
+        )
         success_response.__enter__.return_value = success_response
         success_response.__exit__.return_value = None
 
@@ -221,7 +242,9 @@ class TestAzureDevOpsClientRetry:
         )
         success_response = mock.MagicMock()
         success_response.status = 200
-        success_response.read.return_value = json.dumps({"value": "success"}).encode("utf-8")
+        success_response.read.return_value = json.dumps({"value": "success"}).encode(
+            "utf-8"
+        )
         success_response.__enter__.return_value = success_response
         success_response.__exit__.return_value = None
 
@@ -254,7 +277,9 @@ class TestAzureDevOpsClientRetry:
         )
         success_response = mock.MagicMock()
         success_response.status = 200
-        success_response.read.return_value = json.dumps({"value": "success"}).encode("utf-8")
+        success_response.read.return_value = json.dumps({"value": "success"}).encode(
+            "utf-8"
+        )
         success_response.__enter__.return_value = success_response
         success_response.__exit__.return_value = None
 

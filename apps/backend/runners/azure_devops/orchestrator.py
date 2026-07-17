@@ -215,9 +215,7 @@ class AzureDevOpsOrchestrator:
                 f"({len(context.changed_files)} files, {context.total_additions}+/{context.total_deletions}-)"
             )
 
-            self._report_progress(
-                "analyzing", 30, "Running AI review...", pr_id=pr_id
-            )
+            self._report_progress("analyzing", 30, "Running AI review...", pr_id=pr_id)
 
             # Run review
             findings, verdict, summary, blockers = await self.review_engine.run_review(

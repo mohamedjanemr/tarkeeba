@@ -187,7 +187,7 @@ describe('Azure DevOps Repository Handlers', () => {
     it('should represent disconnected status with error', () => {
       const status: AzureDevOpsSyncStatus = {
         connected: false,
-        error: 'Azure DevOps not configured. Please add AZURE_DEVOPS_PAT, AZURE_DEVOPS_ORGANIZATION, and AZURE_DEVOPS_PROJECT to your .env file.'
+        error: 'Azure DevOps not configured. Please add AZURE_DEVOPS_PAT, AZURE_DEVOPS_ORG, and AZURE_DEVOPS_PROJECT to your .env file.'
       };
 
       expect(status.connected).toBe(false);

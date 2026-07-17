@@ -141,8 +141,13 @@ function getTokenFromAzCli(organization?: string): string | null {
 const AZURE_DEVOPS_ENV_KEYS = {
   ENABLED: 'AZURE_DEVOPS_ENABLED',
   PAT: 'AZURE_DEVOPS_PAT',
-  ORGANIZATION: 'AZURE_DEVOPS_ORGANIZATION',
+  ORGANIZATION: 'AZURE_DEVOPS_ORG',
   PROJECT: 'AZURE_DEVOPS_PROJECT'
+} as const;
+
+const LEGACY_AZURE_DEVOPS_ENV_KEYS = {
+  PAT: 'AZURE_DEVOPS_TOKEN',
+  ORGANIZATION: 'AZURE_DEVOPS_ORGANIZATION'
 } as const;
 
 /**
@@ -175,9 +180,14 @@ export async function getAzureDevOpsConfig(project: Project): Promise<AzureDevOp
       return null;
     }
 
-    const pat = sanitizeToken(vars[AZURE_DEVOPS_ENV_KEYS.PAT]);
+    const pat = sanitizeToken(
+      vars[AZURE_DEVOPS_ENV_KEYS.PAT] || vars[LEGACY_AZURE_DEVOPS_ENV_KEYS.PAT]
+    );
     const projectName = sanitizeProjectName(vars[AZURE_DEVOPS_ENV_KEYS.PROJECT]);
-    const organization = normalizeOrganization(vars[AZURE_DEVOPS_ENV_KEYS.ORGANIZATION]);
+    const organization = normalizeOrganization(
+      vars[AZURE_DEVOPS_ENV_KEYS.ORGANIZATION]
+        || vars[LEGACY_AZURE_DEVOPS_ENV_KEYS.ORGANIZATION]
+    );
 
     if (!pat || !projectName || !organization) return null;
 
@@ -223,6 +233,20 @@ export function buildAzureDevOpsApiBaseUrl(organization: string, baseUrl: string
   return `${baseUrl}/${normalizedOrg}`;
 }
 
+function buildAzureDevOpsEndpointUrl(
+  organization: string,
+  endpoint: string,
+  baseUrl: string
+): string {
+  const organizationBase = buildAzureDevOpsApiBaseUrl(organization, baseUrl);
+  // Some APIs are organization-scoped (`/_apis/...`) while project-scoped
+  // APIs include `/{project}/_apis/...`. Other callers pass the portion after
+  // `_apis`; retain that shorthand for the common organization-scoped case.
+  return endpoint.includes('/_apis/') || endpoint.startsWith('/_apis')
+    ? `${organizationBase}${endpoint}`
+    : `${organizationBase}/_apis${endpoint}`;
+}
+
 // Default timeout for Azure DevOps API requests (30 seconds)
 const AZURE_DEVOPS_API_TIMEOUT_MS = 30000;
 
@@ -251,7 +275,7 @@ export async function azureDevOpsFetch(
     throw new Error('Azure DevOps endpoint must be a relative path');
   }
 
-  const url = `${baseUrl}/${normalizedOrg}/_apis${endpoint}`;
+  const url = buildAzureDevOpsEndpointUrl(normalizedOrg, endpoint, baseUrl);
 
   // Create abort controller for timeout
   const controller = new AbortController();
@@ -318,7 +342,7 @@ export async function azureDevOpsFetchWithCount(
     throw new Error('Azure DevOps endpoint must be a relative path');
   }
 
-  const url = `${baseUrl}/${normalizedOrg}/_apis${endpoint}`;
+  const url = buildAzureDevOpsEndpointUrl(normalizedOrg, endpoint, baseUrl);
 
   // Create abort controller for timeout
   const controller = new AbortController();

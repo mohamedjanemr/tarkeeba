@@ -34,6 +34,7 @@ API_VERSION = "7.1"
 
 # Valid Azure DevOps API endpoint patterns
 VALID_ENDPOINT_PATTERNS = (
+    "/_apis/connectionData",
     "/_apis/git/",
     "/_apis/pullrequestreview/",
     "/_apis/wit/",
@@ -88,6 +89,19 @@ class AzureDevOpsClient:
         credentials = f":{self.config.pat}"
         encoded = base64.b64encode(credentials.encode("utf-8")).decode("utf-8")
         return f"Basic {encoded}"
+
+    def get_authenticated_user_id(self) -> str:
+        """Return the Azure DevOps identity ID associated with the PAT."""
+        connection_data = self._fetch("/_apis/connectionData")
+        authenticated_user = (
+            connection_data.get("authenticatedUser", {})
+            if isinstance(connection_data, dict)
+            else {}
+        )
+        user_id = authenticated_user.get("id")
+        if not isinstance(user_id, str) or not user_id.strip():
+            raise ValueError("Azure DevOps did not return an authenticated user ID")
+        return user_id
 
     def _api_url(self, endpoint: str) -> str:
         """Build full API URL."""

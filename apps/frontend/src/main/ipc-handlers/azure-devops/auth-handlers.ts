@@ -6,8 +6,8 @@
 import { ipcMain } from 'electron';
 import { IPC_CHANNELS } from '../../../shared/constants';
 import type { IPCResult } from '../../../shared/types';
-import { normalizeOrganizationReference, buildAzureDevOpsApiBaseUrl, azureDevOpsFetch, AzureDevOpsAPIError } from './utils';
-import type { AzureDevOpsConfig, AzureDevOpsAPIUser } from './types';
+import { azureDevOpsFetch, AzureDevOpsAPIError } from './utils';
+import type { AzureDevOpsAPIUser } from './types';
 
 // Debug logging helper - requires BOTH development mode AND DEBUG flag for auth handlers
 // This is intentionally more restrictive than other handlers to prevent accidental token logging
@@ -341,89 +341,6 @@ export function registerValidatePAT(): void {
 }
 
 /**
- * Check if a PAT connection is valid (simple connectivity check)
- */
-export function registerCheckPATConnection(): void {
-  ipcMain.handle(
-    IPC_CHANNELS.AZURE_DEVOPS_CHECK_CONNECTION,
-    async (
-      _event,
-      organization: string,
-      project: string,
-      pat: string
-    ): Promise<IPCResult<{ connected: boolean; error?: string }>> => {
-      debugLog('checkPATConnection handler called');
-      try {
-        if (!isValidOrganization(organization)) {
-          return {
-            success: false,
-            error: 'Invalid organization name'
-          };
-        }
-
-        if (!isValidProject(project)) {
-          return {
-            success: false,
-            error: 'Invalid project name'
-          };
-        }
-
-        if (!isValidPATFormat(pat)) {
-          return {
-            success: false,
-            error: 'Invalid PAT format'
-          };
-        }
-
-        debugLog('Checking PAT connection...');
-
-        // Try to fetch organization info as a quick connectivity check
-        const response = await azureDevOpsFetch(
-          pat,
-          organization,
-          `/projects/${encodeURIComponent(project)}?api-version=7.1`
-        );
-
-        if (response) {
-          debugLog('Connection check successful');
-          return {
-            success: true,
-            data: { connected: true }
-          };
-        }
-
-        return {
-          success: true,
-          data: {
-            connected: false,
-            error: 'No response from Azure DevOps API'
-          }
-        };
-      } catch (error) {
-        if (error instanceof AzureDevOpsAPIError) {
-          return {
-            success: true,
-            data: {
-              connected: false,
-              error: `API Error ${error.statusCode}: ${error.message}`
-            }
-          };
-        }
-        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-        debugLog('Connection check failed:', errorMsg);
-        return {
-          success: true,
-          data: {
-            connected: false,
-            error: errorMsg
-          }
-        };
-      }
-    }
-  );
-}
-
-/**
  * Detect the default organization from available Azure DevOps instances
  * Returns the first available organization
  */
@@ -552,7 +469,6 @@ export function registerAzureDevOpsAuthHandlers(): void {
   registerSavePAT();
   registerGetUser();
   registerValidatePAT();
-  registerCheckPATConnection();
   registerDetectOrganization();
   registerDetectProject();
 }

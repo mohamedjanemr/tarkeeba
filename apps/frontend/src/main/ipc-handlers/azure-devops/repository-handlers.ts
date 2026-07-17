@@ -29,8 +29,8 @@ function debugLog(message: string, data?: unknown): void {
 interface AzureDevOpsSyncStatus {
   connected: boolean;
   error?: string;
-  organization?: string;
-  project?: string;
+  organizationName?: string;
+  projectName?: string;
   projectId?: string;
   workItemCount?: number;
   lastSyncedAt?: string;
@@ -57,7 +57,7 @@ export function registerCheckConnection(): void {
           success: true,
           data: {
             connected: false,
-            error: 'Azure DevOps not configured. Please add AZURE_DEVOPS_PAT, AZURE_DEVOPS_ORGANIZATION, and AZURE_DEVOPS_PROJECT to your .env file.'
+            error: 'Azure DevOps not configured. Please add AZURE_DEVOPS_PAT, AZURE_DEVOPS_ORG, and AZURE_DEVOPS_PROJECT to your .env file.'
           }
         };
       }
@@ -92,8 +92,8 @@ export function registerCheckConnection(): void {
           success: true,
           data: {
             connected: true,
-            organization: config.organization,
-            project: config.project,
+            organizationName: config.organization,
+            projectName: config.project,
             projectId: projectInfo.id,
             workItemCount,
             lastSyncedAt: new Date().toISOString()

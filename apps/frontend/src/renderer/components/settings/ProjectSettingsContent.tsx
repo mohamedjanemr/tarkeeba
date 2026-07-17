@@ -104,11 +104,11 @@ function ProjectSettingsContentInner({
     isCheckingLinear,
     handleInitialize,
     error,
-    showAzureDevOpsToken = false,
-    setShowAzureDevOpsToken = () => {},
-    azureDevOpsConnectionStatus = null,
-    isCheckingAzureDevOps = false
-  } = hook as any;
+    showAzureDevOpsToken,
+    setShowAzureDevOpsToken,
+    azureDevOpsConnectionStatus,
+    isCheckingAzureDevOps
+  } = hook;
 
   // Expose hook to parent for save coordination - only once when dialog opens
   // We use hookRef to avoid infinite loops (hook object is recreated each render)

@@ -8,7 +8,6 @@ Wraps the AzureDevOpsClient functionality.
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -30,8 +29,8 @@ try:
     )
 except (ImportError, ValueError, SystemError):
     # Fallback for testing/import-time resolution
-    import sys
     import importlib.util
+    import sys
 
     _protocol_path = str(
         Path(__file__).parent.parent.parent / "github" / "providers" / "protocol.py"
@@ -230,7 +229,9 @@ class AzureDevOpsProvider:
             "status": 1,  # Active
         }
 
-        thread_response = self._client._fetch(thread_endpoint, method="POST", data=thread_data)
+        thread_response = self._client._fetch(
+            thread_endpoint, method="POST", data=thread_data
+        )
         thread_id = thread_response.get("id", 0) if thread_response else 0
 
         # Map review event to vote value
@@ -238,13 +239,12 @@ class AzureDevOpsProvider:
         vote_map = {"approve": 10, "request_changes": -10, "comment": 0}
         vote = vote_map.get(review.event.lower(), 0)
 
-        # Set reviewer vote if not just a comment
-        if vote != 0:
-            reviewers_endpoint = (
-                f"/_apis/git/repositories/{repo_name}/pullrequests/{pr_number}/reviewers"
-            )
-            # Note: In a real implementation, we'd need to get the current user ID
-            # For now, we just track that a vote was attempted
+        reviewer_id = self._client.get_authenticated_user_id()
+        reviewer_endpoint = (
+            f"/_apis/git/repositories/{repo_name}/pullrequests/{pr_number}"
+            f"/reviewers/{reviewer_id}"
+        )
+        self._client._fetch(reviewer_endpoint, method="PUT", data={"vote": vote})
 
         return thread_id
 
@@ -260,9 +260,7 @@ class AzureDevOpsProvider:
             repo_parts = self._repo.split("/")
             repo_name = repo_parts[-1] if len(repo_parts) > 2 else "repo"
 
-            endpoint = (
-                f"/_apis/git/repositories/{repo_name}/pullrequests/{pr_number}"
-            )
+            endpoint = f"/_apis/git/repositories/{repo_name}/pullrequests/{pr_number}"
 
             # Get the PR first to extract the last commit ID
             pr_data = self._client._fetch(endpoint)
@@ -314,9 +312,7 @@ class AzureDevOpsProvider:
             if comment:
                 await self.add_comment(pr_number, comment)
 
-            endpoint = (
-                f"/_apis/git/repositories/{repo_name}/pullrequests/{pr_number}"
-            )
+            endpoint = f"/_apis/git/repositories/{repo_name}/pullrequests/{pr_number}"
 
             close_data = {"status": "abandoned"}
 
@@ -487,9 +483,7 @@ class AzureDevOpsProvider:
             repo_name = repo_parts[-1] if len(repo_parts) > 2 else "repo"
 
             # Try as PR comment first
-            pr_endpoint = (
-                f"/_apis/git/repositories/{repo_name}/pullrequests/{issue_or_pr_number}/threads"
-            )
+            pr_endpoint = f"/_apis/git/repositories/{repo_name}/pullrequests/{issue_or_pr_number}/threads"
 
             try:
                 thread_data = {
@@ -517,7 +511,9 @@ class AzureDevOpsProvider:
             current_desc = work_item.get("fields", {}).get("System.Description", "")
             updated_desc = f"{current_desc}\n\n---\n**Comment**: {body}"
 
-            patch_body = self._client.build_json_patch({"System.Description": updated_desc})
+            patch_body = self._client.build_json_patch(
+                {"System.Description": updated_desc}
+            )
             result = self._client._fetch(endpoint, method="PATCH", data=patch_body)
 
             return 1 if result else 0
@@ -745,7 +741,11 @@ class AzureDevOpsProvider:
             full_endpoint = endpoint
             if params:
                 param_str = "&".join(f"{k}={v}" for k, v in params.items())
-                full_endpoint = f"{endpoint}?{param_str}" if "?" not in endpoint else f"{endpoint}&{param_str}"
+                full_endpoint = (
+                    f"{endpoint}?{param_str}"
+                    if "?" not in endpoint
+                    else f"{endpoint}&{param_str}"
+                )
 
             return self._client._fetch(full_endpoint, method="GET")
 
@@ -804,7 +804,11 @@ class AzureDevOpsProvider:
 
         # Extract labels from tags
         tags_str = fields.get("System.Tags", "")
-        labels = [tag.strip() for tag in tags_str.split(";") if tag.strip()] if tags_str else []
+        labels = (
+            [tag.strip() for tag in tags_str.split(";") if tag.strip()]
+            if tags_str
+            else []
+        )
 
         # Map state to standard open/closed
         state = fields.get("System.State", "Active")
@@ -843,7 +847,11 @@ class AzureDevOpsProvider:
         """Extract tags from a work item."""
         fields = work_item.get("fields", {})
         tags_str = fields.get("System.Tags", "")
-        return [tag.strip() for tag in tags_str.split(";") if tag.strip()] if tags_str else []
+        return (
+            [tag.strip() for tag in tags_str.split(";") if tag.strip()]
+            if tags_str
+            else []
+        )
 
     def _parse_pr_data(self, data: dict[str, Any], diff: str) -> PRData:
         """Parse Azure DevOps PR data into PRData."""
@@ -894,7 +902,9 @@ class AzureDevOpsProvider:
             diff=diff,
             url=data.get("url", ""),
             created_at=self._parse_datetime(data.get("creationDate")),
-            updated_at=self._parse_datetime(data.get("closedDate") or data.get("creationDate")),
+            updated_at=self._parse_datetime(
+                data.get("closedDate") or data.get("creationDate")
+            ),
             labels=[],  # Azure DevOps PRs don't have labels
             reviewers=reviewers,
             is_draft=data.get("isDraft", False),

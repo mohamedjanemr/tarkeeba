@@ -293,28 +293,19 @@ export interface AzureDevOpsAPI {
     callback: (projectId: string, error: string) => void
   ) => IpcListenerCleanup;
 
-  // Release operations
-  createAzureDevOpsRelease: (
-    projectId: string,
-    tagName: string,
-    releaseNotes: string,
-    options?: { description?: string; ref?: string }
-  ) => Promise<IPCResult<{ url: string }>>;
-
   // PAT (Personal Access Token) operations
-  savePAT: (organization: string, pat: string) => Promise<IPCResult<{ success: boolean }>>;
-  getPAT: (organization: string) => Promise<IPCResult<{ pat?: string }>>;
-  validatePAT: (organization: string, pat: string) => Promise<IPCResult<{ valid: boolean }>>;
-  deletePAT: (organization: string) => Promise<IPCResult<{ success: boolean }>>;
+  savePAT: (organization: string, project: string, pat: string) => Promise<IPCResult<{ success: boolean }>>;
+  validatePAT: (organization: string, project: string, pat: string) => Promise<IPCResult<{ valid: boolean; message?: string }>>;
 
   // User operations
-  getAzureDevOpsUser: () => Promise<IPCResult<{ username: string; displayName?: string }>>;
+  getAzureDevOpsUser: (organization: string, pat: string) => Promise<IPCResult<{
+    user?: { id: string; displayName: string; emailAddress?: string };
+    authenticated: boolean;
+  }>>;
 
   // Organization and project detection
-  detectAzureDevOpsOrganization: (projectPath: string) => Promise<IPCResult<{ organization: string }>>;
-  detectAzureDevOpsProject: (organization: string, projectPath: string) => Promise<IPCResult<{ project: string }>>;
-  getAzureDevOpsBranches: (organization: string, project: string) => Promise<IPCResult<string[]>>;
-  listAzureDevOpsOrganizations: () => Promise<IPCResult<{ organizations: Array<{ id: string; name: string }> }>>;
+  detectAzureDevOpsOrganization: (pat: string) => Promise<IPCResult<{ organization?: string }>>;
+  detectAzureDevOpsProject: (organization: string, pat: string) => Promise<IPCResult<{ project?: string }>>;
 
   // Event Listeners
   onAzureDevOpsInvestigationProgress: (
@@ -526,44 +517,25 @@ export const createAzureDevOpsAPI = (): AzureDevOpsAPI => ({
   ): IpcListenerCleanup =>
     createIpcListener(IPC_CHANNELS.AZURE_DEVOPS_TRIAGE_ERROR, callback),
 
-  // Release operations
-  createAzureDevOpsRelease: (
-    projectId: string,
-    tagName: string,
-    releaseNotes: string,
-    options?: { description?: string; ref?: string }
-  ): Promise<IPCResult<{ url: string }>> =>
-    invokeIpc(IPC_CHANNELS.AZURE_DEVOPS_CREATE_RELEASE, projectId, tagName, releaseNotes, options),
-
   // PAT (Personal Access Token) operations
-  savePAT: (organization: string, pat: string): Promise<IPCResult<{ success: boolean }>> =>
-    invokeIpc(IPC_CHANNELS.AZURE_DEVOPS_SAVE_PAT, organization, pat),
+  savePAT: (organization: string, project: string, pat: string): Promise<IPCResult<{ success: boolean }>> =>
+    invokeIpc(IPC_CHANNELS.AZURE_DEVOPS_SAVE_PAT, organization, project, pat),
 
-  getPAT: (organization: string): Promise<IPCResult<{ pat?: string }>> =>
-    invokeIpc(IPC_CHANNELS.AZURE_DEVOPS_GET_PAT, organization),
-
-  validatePAT: (organization: string, pat: string): Promise<IPCResult<{ valid: boolean }>> =>
-    invokeIpc(IPC_CHANNELS.AZURE_DEVOPS_VALIDATE_PAT, organization, pat),
-
-  deletePAT: (organization: string): Promise<IPCResult<{ success: boolean }>> =>
-    invokeIpc(IPC_CHANNELS.AZURE_DEVOPS_DELETE_PAT, organization),
+  validatePAT: (organization: string, project: string, pat: string): Promise<IPCResult<{ valid: boolean; message?: string }>> =>
+    invokeIpc(IPC_CHANNELS.AZURE_DEVOPS_VALIDATE_PAT, organization, project, pat),
 
   // User operations
-  getAzureDevOpsUser: (): Promise<IPCResult<{ username: string; displayName?: string }>> =>
-    invokeIpc(IPC_CHANNELS.AZURE_DEVOPS_GET_USER),
+  getAzureDevOpsUser: (organization: string, pat: string): Promise<IPCResult<{
+    user?: { id: string; displayName: string; emailAddress?: string };
+    authenticated: boolean;
+  }>> => invokeIpc(IPC_CHANNELS.AZURE_DEVOPS_GET_USER, organization, pat),
 
   // Organization and project detection
-  detectAzureDevOpsOrganization: (projectPath: string): Promise<IPCResult<{ organization: string }>> =>
-    invokeIpc(IPC_CHANNELS.AZURE_DEVOPS_DETECT_ORG, projectPath),
+  detectAzureDevOpsOrganization: (pat: string): Promise<IPCResult<{ organization?: string }>> =>
+    invokeIpc(IPC_CHANNELS.AZURE_DEVOPS_DETECT_ORG, pat),
 
-  detectAzureDevOpsProject: (organization: string, projectPath: string): Promise<IPCResult<{ project: string }>> =>
-    invokeIpc(IPC_CHANNELS.AZURE_DEVOPS_DETECT_PROJECT, organization, projectPath),
-
-  getAzureDevOpsBranches: (organization: string, project: string): Promise<IPCResult<string[]>> =>
-    invokeIpc(IPC_CHANNELS.AZURE_DEVOPS_GET_BRANCHES, organization, project),
-
-  listAzureDevOpsOrganizations: (): Promise<IPCResult<{ organizations: Array<{ id: string; name: string }> }>> =>
-    invokeIpc(IPC_CHANNELS.AZURE_DEVOPS_LIST_ORGS),
+  detectAzureDevOpsProject: (organization: string, pat: string): Promise<IPCResult<{ project?: string }>> =>
+    invokeIpc(IPC_CHANNELS.AZURE_DEVOPS_DETECT_PROJECT, organization, pat),
 
   // Event Listeners
   onAzureDevOpsInvestigationProgress: (
