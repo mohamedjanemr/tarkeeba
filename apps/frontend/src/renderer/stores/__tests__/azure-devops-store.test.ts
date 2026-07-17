@@ -33,39 +33,54 @@ vi.stubGlobal('window', {
 const sampleWorkItem: AzureDevOpsWorkItem = {
   id: 1,
   title: 'Test Work Item',
-  type: 'User Story',
+  workItemType: 'User Story',
   state: 'Active',
   description: 'This is a test work item',
-  assignedTo: 'test@example.com',
-  priority: 1,
-  url: 'https://example.com/work/1'
+  tags: [],
+  assignedTo: { displayName: 'Test User' },
+  author: { displayName: 'Test Author' },
+  createdAt: '2026-07-15T09:00:00Z',
+  updatedAt: '2026-07-15T10:00:00Z',
+  commentCount: 0,
+  webUrl: 'https://example.com/work/1',
+  projectName: 'Test Project'
 };
 
 const sampleClosedWorkItem: AzureDevOpsWorkItem = {
   id: 2,
   title: 'Closed Work Item',
-  type: 'Bug',
+  workItemType: 'Bug',
   state: 'Closed',
   description: 'This is a closed work item',
-  assignedTo: 'test@example.com',
-  priority: 2,
-  url: 'https://example.com/work/2'
+  tags: [],
+  assignedTo: { displayName: 'Test User' },
+  author: { displayName: 'Test Author' },
+  createdAt: '2026-07-14T09:00:00Z',
+  updatedAt: '2026-07-15T10:00:00Z',
+  closedAt: '2026-07-15T10:00:00Z',
+  commentCount: 0,
+  webUrl: 'https://example.com/work/2',
+  projectName: 'Test Project'
 };
 
 const sampleSyncStatus: AzureDevOpsSyncStatus = {
   connected: true,
-  lastSync: '2026-07-15T10:00:00Z',
-  syncCount: 42,
-  organization: 'MyOrg',
-  projectId: 'test-project'
+  lastSyncedAt: '2026-07-15T10:00:00Z',
+  workItemCount: 42,
+  organizationName: 'MyOrg',
+  projectName: 'Test Project'
 };
 
 const sampleInvestigationResult: AzureDevOpsInvestigationResult = {
+  success: true,
   workItemId: 1,
-  title: 'Test Work Item',
-  findings: 'Investigation findings here',
-  suggestedActions: ['Action 1', 'Action 2'],
-  timestamp: '2026-07-15T10:00:00Z'
+  analysis: {
+    summary: 'Investigation findings here',
+    proposedSolution: 'Apply the suggested fix',
+    affectedFiles: ['src/example.ts'],
+    estimatedComplexity: 'simple',
+    acceptanceCriteria: ['The issue is resolved']
+  }
 };
 
 describe('azure-devops-store', () => {

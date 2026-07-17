@@ -386,6 +386,48 @@ export const integrationMock = {
   onGitLabInvestigationComplete: () => () => {},
   onGitLabInvestigationError: () => () => {},
 
+  // Azure DevOps Integration Operations
+  getAzureDevOpsWorkItems: async () => ({
+    success: true,
+    data: []
+  }),
+
+  getAzureDevOpsWorkItem: async () => ({
+    success: false,
+    error: 'Not available in browser mock'
+  }),
+
+  checkAzureDevOpsConnection: async () => ({
+    success: true,
+    data: {
+      connected: false,
+      error: 'Not available in browser mock'
+    }
+  }),
+
+  investigateAzureDevOpsWorkItem: () => {
+    console.warn('[Browser Mock] investigateAzureDevOpsWorkItem called');
+  },
+
+  importAzureDevOpsWorkItems: async () => ({
+    success: false,
+    error: 'Not available in browser mock'
+  }),
+
+  getAzureDevOpsPullRequests: async () => ({
+    success: true,
+    data: []
+  }),
+
+  getAzureDevOpsPullRequest: async () => ({
+    success: false,
+    error: 'Not available in browser mock'
+  }),
+
+  onAzureDevOpsInvestigationProgress: () => () => {},
+  onAzureDevOpsInvestigationComplete: () => () => {},
+  onAzureDevOpsInvestigationError: () => () => {},
+
   // OAuth device code event listener (for streaming device code during auth)
   onGitHubAuthDeviceCode: () => () => {}
 };
