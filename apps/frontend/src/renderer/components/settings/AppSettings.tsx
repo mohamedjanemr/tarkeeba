@@ -31,6 +31,16 @@ function GitLabIcon({ className }: { className?: string }) {
     </svg>
   );
 }
+
+// Azure DevOps icon component (lucide-react doesn't have one)
+function AzureDevOpsIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" role="img" aria-labelledby="azure-devops-icon-title">
+      <title id="azure-devops-icon-title">Azure DevOps</title>
+      <path d="M2 2h8v8H2V2zm12 0h8v8h-8V2zM2 14h8v8H2v-8zm12 0h8v8h-8v-8z"/>
+    </svg>
+  );
+}
 import {
   FullScreenDialog,
   FullScreenDialogContent,
@@ -93,6 +103,7 @@ const projectNavItemsConfig: NavItemConfig<ProjectSettingsSection>[] = [
   { id: 'linear', icon: Zap },
   { id: 'github', icon: Github },
   { id: 'gitlab', icon: GitLabIcon },
+  { id: 'azure-devops', icon: AzureDevOpsIcon },
   { id: 'memory', icon: Database }
 ];
 

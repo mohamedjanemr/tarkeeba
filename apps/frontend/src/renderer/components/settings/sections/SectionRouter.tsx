@@ -6,6 +6,7 @@ import { SecuritySettings } from '../../project-settings/SecuritySettings';
 import { LinearIntegration } from '../integrations/LinearIntegration';
 import { GitHubIntegration } from '../integrations/GitHubIntegration';
 import { GitLabIntegration } from '../integrations/GitLabIntegration';
+import { AzureDevOpsIntegration } from '../integrations/AzureDevOpsIntegration';
 import { InitializationGuard } from '../common/InitializationGuard';
 import type { ProjectSettingsSection } from '../ProjectSettingsContent';
 
@@ -33,6 +34,10 @@ interface SectionRouterProps {
   setShowGitLabToken: React.Dispatch<React.SetStateAction<boolean>>;
   gitLabConnectionStatus: GitLabSyncStatus | null;
   isCheckingGitLab: boolean;
+  showAzureDevOpsToken: boolean;
+  setShowAzureDevOpsToken: React.Dispatch<React.SetStateAction<boolean>>;
+  azureDevOpsConnectionStatus: any;
+  isCheckingAzureDevOps: boolean;
   linearConnectionStatus: LinearSyncStatus | null;
   isCheckingLinear: boolean;
   handleInitialize: () => Promise<void>;
@@ -67,6 +72,10 @@ export function SectionRouter({
   setShowGitLabToken,
   gitLabConnectionStatus,
   isCheckingGitLab,
+  showAzureDevOpsToken,
+  setShowAzureDevOpsToken,
+  azureDevOpsConnectionStatus,
+  isCheckingAzureDevOps,
   linearConnectionStatus,
   isCheckingLinear,
   handleInitialize,
@@ -161,6 +170,32 @@ export function SectionRouter({
               setShowGitLabToken={setShowGitLabToken}
               gitLabConnectionStatus={gitLabConnectionStatus}
               isCheckingGitLab={isCheckingGitLab}
+              projectPath={project.path}
+              settings={settings}
+              setSettings={setSettings}
+            />
+          </InitializationGuard>
+        </SettingsSection>
+      );
+
+    case 'azure-devops':
+      return (
+        <SettingsSection
+          title={t('projectSections.azureDevOps.integrationTitle')}
+          description={t('projectSections.azureDevOps.integrationDescription')}
+        >
+          <InitializationGuard
+            initialized={!!project.autoBuildPath}
+            title={t('projectSections.azureDevOps.integrationTitle')}
+            description={t('projectSections.azureDevOps.syncDescription')}
+          >
+            <AzureDevOpsIntegration
+              envConfig={envConfig}
+              updateEnvConfig={updateEnvConfig}
+              showAzureDevOpsToken={showAzureDevOpsToken}
+              setShowAzureDevOpsToken={setShowAzureDevOpsToken}
+              azureDevOpsConnectionStatus={azureDevOpsConnectionStatus}
+              isCheckingAzureDevOps={isCheckingAzureDevOps}
               projectPath={project.path}
               settings={settings}
               setSettings={setSettings}

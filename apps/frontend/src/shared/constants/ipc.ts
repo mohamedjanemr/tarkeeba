@@ -318,6 +318,93 @@ export const IPC_CHANNELS = {
   GITLAB_INVESTIGATION_COMPLETE: 'gitlab:investigationComplete',
   GITLAB_INVESTIGATION_ERROR: 'gitlab:investigationError',
 
+  // Azure DevOps integration
+  AZURE_DEVOPS_GET_PROJECTS: 'azureDevOps:getProjects',
+  AZURE_DEVOPS_GET_ISSUES: 'azureDevOps:getIssues',
+  AZURE_DEVOPS_GET_ISSUE: 'azureDevOps:getIssue',
+  AZURE_DEVOPS_GET_ISSUE_COMMENTS: 'azureDevOps:getIssueComments',
+  AZURE_DEVOPS_CHECK_CONNECTION: 'azureDevOps:checkConnection',
+  AZURE_DEVOPS_INVESTIGATE_ISSUE: 'azureDevOps:investigateIssue',
+  AZURE_DEVOPS_IMPORT_ISSUES: 'azureDevOps:importIssues',
+  AZURE_DEVOPS_CREATE_RELEASE: 'azureDevOps:createRelease',
+
+  // Azure DevOps Pull Requests
+  AZURE_DEVOPS_GET_PULL_REQUESTS: 'azureDevOps:getPullRequests',
+  AZURE_DEVOPS_GET_PULL_REQUEST: 'azureDevOps:getPullRequest',
+  AZURE_DEVOPS_CREATE_PULL_REQUEST: 'azureDevOps:createPullRequest',
+  AZURE_DEVOPS_UPDATE_PULL_REQUEST: 'azureDevOps:updatePullRequest',
+
+  // Azure DevOps PAT-based authentication (no CLI dependency)
+  AZURE_DEVOPS_SAVE_PAT: 'azureDevOps:savePat',
+  AZURE_DEVOPS_GET_PAT: 'azureDevOps:getPat',
+  AZURE_DEVOPS_VALIDATE_PAT: 'azureDevOps:validatePat',
+  AZURE_DEVOPS_DELETE_PAT: 'azureDevOps:deletePat',
+  AZURE_DEVOPS_GET_USER: 'azureDevOps:getUser',
+  AZURE_DEVOPS_DETECT_ORG: 'azureDevOps:detectOrg',
+  AZURE_DEVOPS_DETECT_PROJECT: 'azureDevOps:detectProject',
+  AZURE_DEVOPS_GET_BRANCHES: 'azureDevOps:getBranches',
+  AZURE_DEVOPS_LIST_ORGS: 'azureDevOps:listOrgs',
+
+  // Azure DevOps PR Review operations
+  AZURE_DEVOPS_PR_GET_DIFF: 'azureDevOps:pr:getDiff',
+  AZURE_DEVOPS_PR_REVIEW: 'azureDevOps:pr:review',
+  AZURE_DEVOPS_PR_REVIEW_CANCEL: 'azureDevOps:pr:reviewCancel',
+  AZURE_DEVOPS_PR_GET_REVIEW: 'azureDevOps:pr:getReview',
+  AZURE_DEVOPS_PR_FOLLOWUP_REVIEW: 'azureDevOps:pr:followupReview',
+  AZURE_DEVOPS_PR_POST_REVIEW: 'azureDevOps:pr:postReview',
+  AZURE_DEVOPS_PR_POST_COMMENT: 'azureDevOps:pr:postComment',
+  AZURE_DEVOPS_PR_MERGE: 'azureDevOps:pr:merge',
+  AZURE_DEVOPS_PR_ASSIGN: 'azureDevOps:pr:assign',
+  AZURE_DEVOPS_PR_CHECK_NEW_COMMITS: 'azureDevOps:pr:checkNewCommits',
+
+  // Azure DevOps PR Review events (main -> renderer)
+  AZURE_DEVOPS_PR_REVIEW_PROGRESS: 'azureDevOps:pr:reviewProgress',
+  AZURE_DEVOPS_PR_REVIEW_COMPLETE: 'azureDevOps:pr:reviewComplete',
+  AZURE_DEVOPS_PR_REVIEW_ERROR: 'azureDevOps:pr:reviewError',
+
+  // Azure DevOps Auto-Fix operations
+  AZURE_DEVOPS_AUTOFIX_START: 'azureDevOps:autofix:start',
+  AZURE_DEVOPS_AUTOFIX_STOP: 'azureDevOps:autofix:stop',
+  AZURE_DEVOPS_AUTOFIX_GET_QUEUE: 'azureDevOps:autofix:getQueue',
+  AZURE_DEVOPS_AUTOFIX_CHECK_LABELS: 'azureDevOps:autofix:checkLabels',
+  AZURE_DEVOPS_AUTOFIX_CHECK_NEW: 'azureDevOps:autofix:checkNew',
+  AZURE_DEVOPS_AUTOFIX_GET_CONFIG: 'azureDevOps:autofix:getConfig',
+  AZURE_DEVOPS_AUTOFIX_SAVE_CONFIG: 'azureDevOps:autofix:saveConfig',
+  AZURE_DEVOPS_AUTOFIX_BATCH: 'azureDevOps:autofix:batch',
+  AZURE_DEVOPS_AUTOFIX_GET_BATCHES: 'azureDevOps:autofix:getBatches',
+
+  // Azure DevOps Auto-Fix events (main -> renderer)
+  AZURE_DEVOPS_AUTOFIX_PROGRESS: 'azureDevOps:autofix:progress',
+  AZURE_DEVOPS_AUTOFIX_COMPLETE: 'azureDevOps:autofix:complete',
+  AZURE_DEVOPS_AUTOFIX_ERROR: 'azureDevOps:autofix:error',
+  AZURE_DEVOPS_AUTOFIX_BATCH_PROGRESS: 'azureDevOps:autofix:batchProgress',
+  AZURE_DEVOPS_AUTOFIX_BATCH_COMPLETE: 'azureDevOps:autofix:batchComplete',
+  AZURE_DEVOPS_AUTOFIX_BATCH_ERROR: 'azureDevOps:autofix:batchError',
+
+  // Azure DevOps Issue Analysis Preview (proactive batch workflow)
+  AZURE_DEVOPS_AUTOFIX_ANALYZE_PREVIEW: 'azureDevOps:autofix:analyzePreview',
+  AZURE_DEVOPS_AUTOFIX_ANALYZE_PREVIEW_PROGRESS: 'azureDevOps:autofix:analyzePreviewProgress',
+  AZURE_DEVOPS_AUTOFIX_ANALYZE_PREVIEW_COMPLETE: 'azureDevOps:autofix:analyzePreviewComplete',
+  AZURE_DEVOPS_AUTOFIX_ANALYZE_PREVIEW_ERROR: 'azureDevOps:autofix:analyzePreviewError',
+  AZURE_DEVOPS_AUTOFIX_APPROVE_BATCHES: 'azureDevOps:autofix:approveBatches',
+
+  // Azure DevOps Triage operations
+  AZURE_DEVOPS_TRIAGE_RUN: 'azureDevOps:triage:run',
+  AZURE_DEVOPS_TRIAGE_GET_RESULTS: 'azureDevOps:triage:getResults',
+  AZURE_DEVOPS_TRIAGE_APPLY_LABELS: 'azureDevOps:triage:applyLabels',
+  AZURE_DEVOPS_TRIAGE_GET_CONFIG: 'azureDevOps:triage:getConfig',
+  AZURE_DEVOPS_TRIAGE_SAVE_CONFIG: 'azureDevOps:triage:saveConfig',
+
+  // Azure DevOps Triage events (main -> renderer)
+  AZURE_DEVOPS_TRIAGE_PROGRESS: 'azureDevOps:triage:progress',
+  AZURE_DEVOPS_TRIAGE_COMPLETE: 'azureDevOps:triage:complete',
+  AZURE_DEVOPS_TRIAGE_ERROR: 'azureDevOps:triage:error',
+
+  // Azure DevOps Investigation events (main -> renderer)
+  AZURE_DEVOPS_INVESTIGATION_PROGRESS: 'azureDevOps:investigationProgress',
+  AZURE_DEVOPS_INVESTIGATION_COMPLETE: 'azureDevOps:investigationComplete',
+  AZURE_DEVOPS_INVESTIGATION_ERROR: 'azureDevOps:investigationError',
+
   // GitLab MR Review operations
   GITLAB_MR_GET_DIFF: 'gitlab:mr:getDiff',
   GITLAB_MR_REVIEW: 'gitlab:mr:review',

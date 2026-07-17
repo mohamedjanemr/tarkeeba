@@ -71,6 +71,9 @@ tests/
 tests/*
 !tests/test_query_memory_browser.py
 !tests/test_spec_rate_limit.py
+!tests/runners/
+!tests/runners/azure_devops/
+!tests/runners/azure_devops/*.py
 
 # Tarkeeba data directory
 .auto-claude/

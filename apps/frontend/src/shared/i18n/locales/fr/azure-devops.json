@@ -1,0 +1,208 @@
+{
+  "title": "Azure DevOps Éléments de travail",
+  "states": {
+    "opened": "Actif",
+    "closed": "Fermé"
+  },
+  "complexity": {
+    "simple": "Simple",
+    "standard": "Standard",
+    "complex": "Complexe"
+  },
+  "header": {
+    "open": "actifs",
+    "searchPlaceholder": "Rechercher les éléments de travail..."
+  },
+  "filters": {
+    "opened": "Actifs",
+    "closed": "Fermés",
+    "all": "Tous"
+  },
+  "empty": {
+    "noMatch": "Aucun élément de travail ne correspond à votre recherche",
+    "selectIssue": "Sélectionnez un élément de travail pour voir les détails"
+  },
+  "notConnected": {
+    "title": "Azure DevOps non connecté",
+    "description": "Configurez votre jeton d'accès personnel (PAT) Azure DevOps et le projet dans les paramètres du projet pour synchroniser les éléments de travail.",
+    "openSettings": "Ouvrir les paramètres"
+  },
+  "detail": {
+    "notes": "commentaires",
+    "viewTask": "Voir la tâche",
+    "createTask": "Créer une tâche",
+    "taskLinked": "Tâche liée",
+    "taskId": "ID de tâche",
+    "description": "Description",
+    "noDescription": "Aucune description fournie.",
+    "assignees": "Assigné à",
+    "milestone": "Itération"
+  },
+  "investigation": {
+    "title": "Créer une tâche à partir d'un élément de travail",
+    "issuePrefix": "Élément de travail",
+    "description": "Créez une tâche à partir de cet élément de travail Azure DevOps. La tâche sera ajoutée à votre tableau Kanban dans la colonne Backlog.",
+    "selectNotes": "Sélectionner les commentaires à inclure",
+    "deselectAll": "Tout désélectionner",
+    "selectAll": "Tout sélectionner",
+    "willInclude": "La tâche inclura :",
+    "includeTitle": "Titre et description de l'élément de travail",
+    "includeLink": "Lien vers l'élément de travail Azure DevOps",
+    "includeLabels": "Tags et métadonnées de l'élément de travail",
+    "noNotes": "Pas de commentaires (cet élément de travail n'a pas de commentaires)",
+    "failedToLoadNotes": "Échec du chargement des commentaires",
+    "taskCreated": "Tâche créée ! Consultez-la dans votre tableau Kanban.",
+    "creating": "Création...",
+    "cancel": "Annuler",
+    "done": "Terminé",
+    "close": "Fermer"
+  },
+  "settings": {
+    "enableIssues": "Activer les éléments de travail Azure DevOps",
+    "enableIssuesDescription": "Synchroniser les éléments de travail depuis Azure DevOps et créer des tâches automatiquement",
+    "instance": "Organisation Azure DevOps",
+    "instanceDescription": "Entrez l'URL de votre organisation (p. ex., https://dev.azure.com/votre-org)",
+    "connectedVia": "Connecté via jeton d'accès personnel (PAT)",
+    "authenticatedAs": "Authentifié en tant que",
+    "useDifferentToken": "Utiliser un autre jeton",
+    "authentication": "Authentification Azure DevOps",
+    "useManualToken": "Utiliser un jeton manuel",
+    "authenticating": "Authentification avec Azure DevOps...",
+    "browserWindow": "Une fenêtre de navigateur devrait s'ouvrir pour vous connecter.",
+    "personalAccessToken": "Jeton d'accès personnel (PAT)",
+    "useOAuth": "Utiliser OAuth à la place",
+    "tokenScope": "Créez un jeton avec le scope",
+    "scopeApi": "work_write, code_read",
+    "scopeFrom": "depuis",
+    "gitlabSettings": "Paramètres Azure DevOps",
+    "project": "Projet",
+    "enterManually": "Saisir manuellement",
+    "loadingProjects": "Chargement des projets...",
+    "selectProject": "Sélectionner un projet...",
+    "searchProjects": "Rechercher des projets...",
+    "noMatchingProjects": "Aucun projet correspondant",
+    "noProjectsFound": "Aucun projet trouvé",
+    "selected": "Sélectionné",
+    "projectFormat": "Format :",
+    "projectFormatExample": "(ex: MonOrganisation/MonProjet)",
+    "connectionStatus": "État de la connexion",
+    "checking": "Vérification...",
+    "connectedTo": "Connecté à",
+    "notConnected": "Non connecté",
+    "issuesAvailable": "Éléments de travail disponibles",
+    "issuesAvailableDescription": "Accédez aux éléments de travail Azure DevOps depuis la barre latérale pour les consulter, investiguer et créer des tâches.",
+    "defaultBranch": "Branche par défaut",
+    "defaultBranchDescription": "Branche de base pour créer les worktrees de tâches",
+    "loadingBranches": "Chargement des branches...",
+    "autoDetect": "Auto-détection (main/master)",
+    "searchBranches": "Rechercher des branches...",
+    "noMatchingBranches": "Aucune branche correspondante",
+    "noBranchesFound": "Aucune branche trouvée",
+    "branchFromNote": "Toutes les nouvelles tâches partiront de",
+    "autoSyncOnLoad": "Sync auto au chargement",
+    "autoSyncDescription": "Récupérer automatiquement les éléments de travail au chargement du projet",
+    "cli": {
+      "required": "Azure CLI requis",
+      "notInstalled": "La CLI Azure est requise pour l'authentification OAuth. Installez-la pour utiliser l'option 'Utiliser OAuth'.",
+      "installButton": "Installer Azure CLI",
+      "installing": "Installation...",
+      "installSuccess": "Installation démarrée dans votre terminal. Terminez-la et cliquez sur Actualiser.",
+      "refresh": "Actualiser",
+      "learnMore": "En savoir plus",
+      "installed": "Azure CLI installé :"
+    }
+  },
+  "mergeRequests": {
+    "title": "Demandes de tirage Azure DevOps",
+    "newMR": "Nouvelle demande de tirage",
+    "selectMR": "Sélectionnez une demande de tirage pour voir les détails",
+    "states": {
+      "opened": "Actif",
+      "closed": "Abandonné",
+      "merged": "Complété",
+      "locked": "Brouillon"
+    },
+    "filters": {
+      "opened": "Actifs",
+      "closed": "Abandonnés",
+      "merged": "Complétés",
+      "all": "Tous"
+    }
+  },
+  "mrReview": {
+    "runReview": "Lancer la revue IA",
+    "reviewing": "Analyse en cours...",
+    "followupReview": "Revue de suivi",
+    "newCommits": "nouveau commit",
+    "newCommitsPlural": "nouveaux commits",
+    "cancel": "Annuler",
+    "postFindings": "Publier les résultats",
+    "posting": "Publication...",
+    "postedTo": "Publié sur Azure DevOps",
+    "approve": "Approuver",
+    "approving": "Approbation...",
+    "merge": "Compléter la PR",
+    "merging": "Complément en cours...",
+    "aiReviewResult": "Résultat de la revue IA",
+    "followupReviewResult": "Revue de suivi",
+    "description": "Description",
+    "noDescription": "Aucune description fournie.",
+    "labels": "Labels",
+    "status": {
+      "notReviewed": "Non analysée",
+      "notReviewedDesc": "Lancez une revue IA pour analyser cette PR",
+      "reviewComplete": "Revue terminée",
+      "reviewCompleteDesc": "problème(s) trouvé(s). Sélectionnez et publiez sur Azure DevOps.",
+      "waitingForChanges": "En attente de modifications",
+      "waitingForChangesDesc": "résultat(s) publié(s). En attente des corrections du contributeur.",
+      "readyToMerge": "Prête à compléter",
+      "readyToMergeDesc": "Aucun problème bloquant. Cette PR peut être complétée.",
+      "needsAttention": "Attention requise",
+      "needsAttentionDesc": "résultat(s) à publier sur Azure DevOps.",
+      "readyForFollowup": "Prête pour suivi",
+      "readyForFollowupDesc": "depuis la revue. Lancez un suivi pour vérifier si les problèmes sont résolus.",
+      "blockingIssues": "Problèmes bloquants",
+      "blockingIssuesDesc": "problème(s) bloquant(s) encore ouvert(s)."
+    },
+    "overallStatus": {
+      "approve": "Approuver",
+      "requestChanges": "Modifications demandées",
+      "comment": "Commentaire"
+    },
+    "resolution": {
+      "resolved": "résolu(s)",
+      "stillOpen": "encore ouvert(s)",
+      "newIssue": "nouveau problème",
+      "newIssues": "nouveaux problèmes"
+    }
+  },
+  "findings": {
+    "summary": "sélectionné(s)",
+    "selectCriticalHigh": "Sélectionner Bloquant/Requis",
+    "selectAll": "Tout sélectionner",
+    "clear": "Effacer",
+    "noIssues": "Aucun problème trouvé ! Le code est bon.",
+    "suggestedFix": "Correction suggérée :",
+    "posted": "Publié",
+    "severity": {
+      "critical": "Bloquant",
+      "criticalDesc": "À corriger",
+      "high": "Requis",
+      "highDesc": "À traiter",
+      "medium": "Recommandé",
+      "mediumDesc": "Améliore la qualité",
+      "low": "Suggestion",
+      "lowDesc": "À considérer"
+    },
+    "category": {
+      "security": "Sécurité",
+      "quality": "Qualité",
+      "style": "Style",
+      "test": "Test",
+      "docs": "Documentation",
+      "pattern": "Pattern",
+      "performance": "Performance",
+      "logic": "Logique"
+    }
+  }
+}

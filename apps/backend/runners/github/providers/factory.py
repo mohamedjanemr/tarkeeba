@@ -99,10 +99,21 @@ def get_provider(
         )
 
     if provider_type == ProviderType.AZURE_DEVOPS:
-        raise NotImplementedError(
-            "Azure DevOps provider not yet implemented. "
-            "See providers/azure_devops_provider.py.stub for interface."
-        )
+        # Imported lazily (rather than at module load time) to avoid a circular
+        # import: AzureDevOpsProvider imports runners.github.providers.protocol,
+        # which forces this package's __init__ to run, which imports this very
+        # module. Deferring the import until the provider is actually
+        # requested sidesteps that entirely.
+        try:
+            from ...azure_devops.providers.azure_devops_provider import (
+                AzureDevOpsProvider,
+            )
+        except (ImportError, ValueError, ModuleNotFoundError) as exc:
+            raise NotImplementedError(
+                "Azure DevOps provider not available. "
+                "Ensure the azure_devops runner module is installed."
+            ) from exc
+        return AzureDevOpsProvider(_repo=repo, **kwargs)
 
     raise ValueError(f"Unsupported provider type: {provider_type}")
 

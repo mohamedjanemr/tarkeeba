@@ -144,7 +144,13 @@ import type {
   GitLabInvestigationStatus,
   GitLabMRReviewResult,
   GitLabMRReviewProgress,
-  GitLabNewCommitsCheck
+  GitLabNewCommitsCheck,
+  AzureDevOpsWorkItem,
+  AzureDevOpsSyncStatus,
+  AzureDevOpsImportResult,
+  AzureDevOpsInvestigationResult,
+  AzureDevOpsInvestigationStatus,
+  AzureDevOpsPullRequest
 } from './integrations';
 import type { APIProfile, ProfilesFile, TestConnectionResult, DiscoverModelsResult } from './profile';
 import type {
@@ -686,6 +692,28 @@ export interface ElectronAPI {
     callback: (projectId: string, result: GitLabInvestigationResult) => void
   ) => () => void;
   onGitLabInvestigationError: (
+    callback: (projectId: string, error: string) => void
+  ) => () => void;
+
+  // Azure DevOps work item operations
+  getAzureDevOpsWorkItems: (projectId: string, state?: 'open' | 'closed' | 'all') => Promise<IPCResult<AzureDevOpsWorkItem[]>>;
+  getAzureDevOpsWorkItem: (projectId: string, workItemId: number) => Promise<IPCResult<AzureDevOpsWorkItem>>;
+  checkAzureDevOpsConnection: (projectId: string) => Promise<IPCResult<AzureDevOpsSyncStatus>>;
+  investigateAzureDevOpsWorkItem: (projectId: string, workItemId: number, selectedCommentIds?: number[]) => void;
+  importAzureDevOpsWorkItems: (projectId: string, workItemIds: number[]) => Promise<IPCResult<AzureDevOpsImportResult>>;
+
+  // Azure DevOps Pull Request operations
+  getAzureDevOpsPullRequests: (projectId: string, state?: 'active' | 'abandoned' | 'completed' | 'all') => Promise<IPCResult<AzureDevOpsPullRequest[]>>;
+  getAzureDevOpsPullRequest: (projectId: string, pullRequestId: number) => Promise<IPCResult<AzureDevOpsPullRequest>>;
+
+  // Azure DevOps event listeners
+  onAzureDevOpsInvestigationProgress: (
+    callback: (projectId: string, status: AzureDevOpsInvestigationStatus) => void
+  ) => () => void;
+  onAzureDevOpsInvestigationComplete: (
+    callback: (projectId: string, result: AzureDevOpsInvestigationResult) => void
+  ) => () => void;
+  onAzureDevOpsInvestigationError: (
     callback: (projectId: string, error: string) => void
   ) => () => void;
 

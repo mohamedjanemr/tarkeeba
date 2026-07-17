@@ -433,6 +433,121 @@ export interface GitLabTriageResult {
 }
 
 // ============================================
+// Azure DevOps Integration Types
+// ============================================
+
+export interface AzureDevOpsWorkItem {
+  id: number;
+  title: string;
+  description?: string;
+  state: string; // e.g., 'New', 'Active', 'Closed', 'Done'
+  workItemType: string; // e.g., 'Bug', 'Feature', 'Task', 'User Story'
+  tags: string[];
+  assignedTo?: {
+    displayName: string;
+    imageUrl?: string;
+  };
+  author: {
+    displayName: string;
+    imageUrl?: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+  closedAt?: string;
+  commentCount: number;
+  webUrl: string;
+  projectName: string;
+}
+
+export interface AzureDevOpsComment {
+  id: number;
+  content: string;
+  author: {
+    displayName: string;
+    imageUrl?: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+  isDeleted: boolean;
+}
+
+export interface AzureDevOpsProject {
+  id: string;
+  name: string;
+  description?: string;
+  url: string;
+  visibility: 'private' | 'public';
+}
+
+export interface AzureDevOpsSyncStatus {
+  connected: boolean;
+  organizationName?: string;
+  projectName?: string;
+  workItemCount?: number;
+  lastSyncedAt?: string;
+  error?: string;
+}
+
+export interface AzureDevOpsImportResult {
+  success: boolean;
+  imported: number;
+  failed: number;
+  errors?: string[];
+  tasks?: import('./task').Task[];
+}
+
+export interface AzureDevOpsInvestigationResult {
+  success: boolean;
+  workItemId: number;
+  analysis: {
+    summary: string;
+    proposedSolution: string;
+    affectedFiles: string[];
+    estimatedComplexity: 'simple' | 'standard' | 'complex';
+    acceptanceCriteria: string[];
+  };
+  taskId?: string;
+  error?: string;
+}
+
+export interface AzureDevOpsInvestigationStatus {
+  phase: 'idle' | 'fetching' | 'analyzing' | 'creating_task' | 'complete' | 'error';
+  workItemId?: number;
+  progress: number;
+  message: string;
+  error?: string;
+}
+
+// ============================================
+// Azure DevOps Pull Request Types
+// ============================================
+
+export interface AzureDevOpsPullRequest {
+  pullRequestId: number;
+  title: string;
+  description?: string;
+  status: 'active' | 'abandoned' | 'completed';
+  sourceBranch: string;
+  targetBranch: string;
+  author: {
+    displayName: string;
+    imageUrl?: string;
+  };
+  reviewers: Array<{
+    displayName: string;
+    imageUrl?: string;
+    vote: number; // -10: rejected, 0: pending, 5: waiting, 10: approved
+  }>;
+  labels?: Array<{ id: string; name: string }>;
+  webUrl: string;
+  createdAt: string;
+  updatedAt: string;
+  closedAt?: string;
+  repositoryId?: string;
+  projectName?: string;
+}
+
+// ============================================
 // Roadmap Integration Types (Canny, etc.)
 // ============================================
 

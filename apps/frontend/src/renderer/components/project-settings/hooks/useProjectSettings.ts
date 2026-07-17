@@ -13,7 +13,8 @@ import type {
   ProjectEnvConfig,
   LinearSyncStatus,
   GitHubSyncStatus,
-  GitLabSyncStatus
+  GitLabSyncStatus,
+  AzureDevOpsSyncStatus
 } from '../../../../shared/types';
 
 export interface UseProjectSettingsReturn {
@@ -60,6 +61,12 @@ export interface UseProjectSettingsReturn {
   setShowGitLabToken: React.Dispatch<React.SetStateAction<boolean>>;
   gitLabConnectionStatus: GitLabSyncStatus | null;
   isCheckingGitLab: boolean;
+
+  // Azure DevOps state
+  showAzureDevOpsToken: boolean;
+  setShowAzureDevOpsToken: React.Dispatch<React.SetStateAction<boolean>>;
+  azureDevOpsConnectionStatus: AzureDevOpsSyncStatus | null;
+  isCheckingAzureDevOps: boolean;
 
   // Claude auth state
   isCheckingClaudeAuth: boolean;
@@ -124,6 +131,11 @@ export function useProjectSettings(
   const [showGitLabToken, setShowGitLabToken] = useState(false);
   const [gitLabConnectionStatus, setGitLabConnectionStatus] = useState<GitLabSyncStatus | null>(null);
   const [isCheckingGitLab, setIsCheckingGitLab] = useState(false);
+
+  // Azure DevOps state
+  const [showAzureDevOpsToken, setShowAzureDevOpsToken] = useState(false);
+  const [azureDevOpsConnectionStatus, setAzureDevOpsConnectionStatus] = useState<AzureDevOpsSyncStatus | null>(null);
+  const [isCheckingAzureDevOps, setIsCheckingAzureDevOps] = useState(false);
 
   // Claude auth state
   const [isCheckingClaudeAuth, setIsCheckingClaudeAuth] = useState(false);
@@ -281,6 +293,46 @@ export function useProjectSettings(
     }
   }, [envConfig?.gitlabEnabled, envConfig?.gitlabToken, envConfig?.gitlabProject, project.id]);
 
+  // Check Azure DevOps connection when PAT, organization, or project changes.
+  useEffect(() => {
+    const checkAzureDevOpsConnection = async () => {
+      if (
+        !envConfig?.azureDevOpsEnabled
+        || !envConfig.azureDevOpsToken
+        || !envConfig.azureDevOpsOrganization
+        || !envConfig.azureDevOpsProject
+      ) {
+        setAzureDevOpsConnectionStatus(null);
+        return;
+      }
+
+      setIsCheckingAzureDevOps(true);
+      try {
+        const result = await window.electronAPI.checkAzureDevOpsConnection(project.id);
+        if (result.success && result.data) {
+          setAzureDevOpsConnectionStatus(result.data);
+        } else {
+          setAzureDevOpsConnectionStatus({
+            connected: false,
+            error: result.error || 'Failed to check connection'
+          });
+        }
+      } catch {
+        setAzureDevOpsConnectionStatus({ connected: false, error: 'Failed to check connection' });
+      } finally {
+        setIsCheckingAzureDevOps(false);
+      }
+    };
+
+    checkAzureDevOpsConnection();
+  }, [
+    envConfig?.azureDevOpsEnabled,
+    envConfig?.azureDevOpsToken,
+    envConfig?.azureDevOpsOrganization,
+    envConfig?.azureDevOpsProject,
+    project.id
+  ]);
+
   const toggleSection = (section: string) => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
@@ -428,6 +480,10 @@ export function useProjectSettings(
     setShowGitLabToken,
     gitLabConnectionStatus,
     isCheckingGitLab,
+    showAzureDevOpsToken,
+    setShowAzureDevOpsToken,
+    azureDevOpsConnectionStatus,
+    isCheckingAzureDevOps,
     isCheckingClaudeAuth,
     claudeAuthStatus,
     setClaudeAuthStatus,
