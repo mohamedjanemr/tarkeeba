@@ -545,7 +545,7 @@ export function registerTaskExecutionHandlers(
 
         taskStateManager.handleUiEvent(
           taskId,
-          { type: 'USER_RESUMED' },
+          { type: 'FOLLOWUP_REQUESTED' },
           task,
           project
         );

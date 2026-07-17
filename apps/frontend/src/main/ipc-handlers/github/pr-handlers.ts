@@ -42,6 +42,7 @@ import type {
   StartPollingRequest,
   StopPollingRequest,
   PollingMetadata,
+  RerunFailedJobsResult,
 } from "../../../shared/types/pr-status";
 
 /**
@@ -3279,6 +3280,80 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
     }
   );
 
+  // Rerun failed GitHub Actions jobs for the selected PR, then refresh its status.
+  ipcMain.handle(
+    IPC_CHANNELS.GITHUB_WORKFLOW_RERUN_FAILED,
+    async (_, projectId: string, prNumber: number): Promise<RerunFailedJobsResult> => {
+      const result = await withProjectOrNull(projectId, async (project) => {
+        const config = getGitHubConfig(project);
+        if (!config) {
+          return { success: false, rerunCount: 0, runIds: [], error: "No GitHub configuration found" };
+        }
+
+        try {
+          const prData = (await githubFetch(
+            config.token,
+            `/repos/${config.repo}/pulls/${prNumber}`
+          )) as { head?: { sha?: string } };
+          const headSha = prData.head?.sha;
+          if (!headSha) {
+            return { success: false, rerunCount: 0, runIds: [], error: "Could not resolve the PR head commit" };
+          }
+
+          const runsData = (await githubFetch(
+            config.token,
+            `/repos/${config.repo}/actions/runs?head_sha=${encodeURIComponent(headSha)}&status=completed&per_page=100`
+          )) as { workflow_runs?: Array<{ id: number; head_sha: string; conclusion: string | null }> };
+          const failedRuns = (runsData.workflow_runs ?? []).filter(
+            (run) => run.head_sha === headSha && run.conclusion === "failure"
+          );
+          if (failedRuns.length === 0) {
+            return {
+              success: false,
+              rerunCount: 0,
+              runIds: [],
+              error: "No failed GitHub Actions workflow runs were found for the current PR commit",
+            };
+          }
+
+          const rerunIds: number[] = [];
+          const failures: string[] = [];
+          for (const run of failedRuns) {
+            try {
+              await githubFetch(
+                config.token,
+                `/repos/${config.repo}/actions/runs/${run.id}/rerun-failed-jobs`,
+                { method: "POST" }
+              );
+              rerunIds.push(run.id);
+            } catch (error) {
+              failures.push(error instanceof Error ? error.message : `Workflow run ${run.id} failed`);
+            }
+          }
+
+          if (rerunIds.length > 0) {
+            await prStatusPoller.refreshPR(projectId, prNumber);
+          }
+          return {
+            success: failures.length === 0,
+            rerunCount: rerunIds.length,
+            runIds: rerunIds,
+            error: failures.length > 0 ? failures.join("; ") : undefined,
+          };
+        } catch (error) {
+          return {
+            success: false,
+            rerunCount: 0,
+            runIds: [],
+            error: error instanceof Error ? error.message : "Failed to rerun GitHub Actions jobs",
+          };
+        }
+      });
+
+      return result ?? { success: false, rerunCount: 0, runIds: [], error: "Project not found" };
+    }
+  );
+
   // Get PR review memories from the memory layer
   ipcMain.handle(
     IPC_CHANNELS.GITHUB_PR_MEMORY_GET,
@@ -3485,6 +3560,12 @@ export function registerPRHandlers(getMainWindow: () => BrowserWindow | null): v
         return { success: false };
       }
     }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.GITHUB_PR_STATUS_REFRESH,
+    async (_, projectId: string, prNumber: number): Promise<boolean> =>
+      prStatusPoller.refreshPR(projectId, prNumber)
   );
 
   // Get current polling metadata for a project

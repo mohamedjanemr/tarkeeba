@@ -275,7 +275,12 @@ export async function githubFetch(
     throw new Error(`GitHub API error: ${response.status} - ${errorBody}`);
   }
 
-  return response.json();
+  if (response.status === 204) {
+    return null;
+  }
+
+  const body = await response.text();
+  return body ? JSON.parse(body) : null;
 }
 
 /**

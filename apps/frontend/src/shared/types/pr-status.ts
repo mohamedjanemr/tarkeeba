@@ -15,6 +15,9 @@
  */
 export type ChecksStatus = 'success' | 'pending' | 'failure' | 'none';
 
+/** Best-effort classification for failed CI checks. */
+export type CIFailureCategory = 'infrastructure' | 'code' | null;
+
 /**
  * Review status - aggregated from all reviewers
  * - approved: At least one approval, no changes requested
@@ -48,6 +51,8 @@ export interface PRStatus {
   prNumber: number;
   /** CI checks status */
   checksStatus: ChecksStatus;
+  /** Whether a failed check looks retryable or requires a code change */
+  failureCategory: CIFailureCategory;
   /** Review status */
   reviewsStatus: ReviewsStatus;
   /** Mergeable state */
@@ -123,6 +128,14 @@ export interface StartPollingRequest {
 export interface StopPollingRequest {
   /** Project ID (owner/repo format) */
   projectId: string;
+}
+
+/** Result returned after asking GitHub to rerun failed jobs for a PR. */
+export interface RerunFailedJobsResult {
+  success: boolean;
+  rerunCount: number;
+  runIds: number[];
+  error?: string;
 }
 
 /**

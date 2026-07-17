@@ -408,6 +408,12 @@
     "viewOnGitHub": "Voir",
     "approveWorkflow": "Approuver",
     "approveAllWorkflows": "Approuver tous les workflows",
+    "rerunFailedChecks": "Relancer les vérifications échouées",
+    "autoRefreshingChecks": "Suivi de la relance...",
+    "rerunStarted": "Relance de {{count}} workflow démarrée. Le statut sera actualisé automatiquement.",
+    "rerunFailed": "Impossible de démarrer la relance du workflow.",
+    "rerunPassed": "La relance a réussi.",
+    "rerunStillRunning": "La relance est toujours en cours. L'actualisation en arrière-plan continue.",
     "postCleanReview": "Publier révision propre",
     "postingCleanReview": "Publication...",
     "cleanReviewPosted": "Révision propre publiée",
@@ -863,7 +869,11 @@
       "failure": "CI échouée",
       "successTooltip": "Toutes les vérifications CI ont réussi",
       "pendingTooltip": "Les vérifications CI sont en cours",
-      "failureTooltip": "Une ou plusieurs vérifications CI ont échoué"
+      "failureTooltip": "Une ou plusieurs vérifications CI ont échoué",
+      "failureCategory": {
+        "infrastructure": "L'infrastructure CI a échoué ; une relance peut résoudre le problème",
+        "code": "Une vérification de code ou de test a échoué ; consultez les journaux avant de relancer"
+      }
     },
     "review": {
       "approved": "Approuvée",

@@ -135,6 +135,7 @@ export function TaskReview({
         /* Worktree exists but not yet staged - show staging UI */
         <WorkspaceStatus
           taskId={task.id}
+          existingPRUrl={task.metadata?.prUrl}
           worktreeStatus={worktreeStatus}
           workspaceError={workspaceError}
           stageOnly={stageOnly}
@@ -201,6 +202,7 @@ export function TaskReview({
         worktreeStatus={worktreeStatus}
         onOpenChange={onShowPRDialog}
         onCreatePR={onCreatePR}
+        isExistingPR={Boolean(task.metadata?.prUrl)}
       />
     </div>
   );

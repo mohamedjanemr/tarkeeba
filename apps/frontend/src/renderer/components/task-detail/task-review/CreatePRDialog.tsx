@@ -21,6 +21,7 @@ interface CreatePRDialogProps {
   worktreeStatus: WorktreeStatus | null;
   onOpenChange: (open: boolean) => void;
   onCreatePR: (options: { targetBranch?: string; title?: string; draft?: boolean }) => Promise<WorktreeCreatePRResult | null>;
+  isExistingPR?: boolean;
 }
 
 /**
@@ -32,7 +33,8 @@ export function CreatePRDialog({
   task,
   worktreeStatus,
   onOpenChange,
-  onCreatePR
+  onCreatePR,
+  isExistingPR = false
 }: CreatePRDialogProps) {
   const { t } = useTranslation(['taskReview', 'common']);
   const [targetBranch, setTargetBranch] = useState('');
@@ -128,10 +130,10 @@ export function CreatePRDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <GitPullRequest className="h-5 w-5 text-primary" />
-            {t('taskReview:pr.title')}
+            {t(isExistingPR ? 'taskReview:pr.updateTitle' : 'taskReview:pr.title')}
           </DialogTitle>
           <DialogDescription>
-            {t('taskReview:pr.description', { taskTitle: task.title })}
+            {t(isExistingPR ? 'taskReview:pr.updateDescription' : 'taskReview:pr.description', { taskTitle: task.title })}
           </DialogDescription>
         </DialogHeader>
 
@@ -140,7 +142,11 @@ export function CreatePRDialog({
           <div className="space-y-4">
             <div className="bg-success/10 border border-success/30 rounded-lg p-4">
               <p className="text-sm text-success font-medium mb-2">
-                {result.alreadyExists
+                {result.upToDate
+                  ? t('taskReview:pr.success.noChangesToPush')
+                  : result.alreadyExists && isExistingPR
+                  ? t('taskReview:pr.success.updatesPushed')
+                  : result.alreadyExists
                   ? t('taskReview:pr.success.alreadyExists')
                   : t('taskReview:pr.success.created')}
               </p>
@@ -256,12 +262,14 @@ export function CreatePRDialog({
                 {isCreating ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {t('taskReview:pr.actions.creating')}
+                    {t(isExistingPR ? 'taskReview:pr.actions.pushing' : 'taskReview:pr.actions.creating')}
                   </>
                 ) : (
                   <>
                     <GitPullRequest className="mr-2 h-4 w-4" />
-                    {t('taskReview:pr.actions.create')}
+                    {isExistingPR
+                      ? t('taskReview:pr.actions.pushUpdates')
+                      : t('taskReview:pr.actions.create')}
                   </>
                 )}
               </Button>

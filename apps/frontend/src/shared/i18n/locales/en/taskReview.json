@@ -64,6 +64,8 @@
   "pr": {
     "title": "Create Pull Request",
     "description": "Push branch and create a pull request for \"{{taskTitle}}\"",
+    "updateTitle": "Push Pull Request Updates",
+    "updateDescription": "Push new commits for \"{{taskTitle}}\" to its existing pull request",
     "errors": {
       "unknown": "An unknown error occurred while creating the pull request",
       "invalidBranchName": "Branch name contains invalid characters. Use only letters, numbers, hyphens (-), underscores (_), and forward slashes (/).",
@@ -71,12 +73,16 @@
     },
     "success": {
       "created": "Pull request created successfully!",
-      "alreadyExists": "A pull request already exists for this branch"
+      "alreadyExists": "A pull request already exists for this branch",
+      "updatesPushed": "Updates pushed to the existing pull request.",
+      "noChangesToPush": "No changes to push. The existing pull request is already up to date."
     },
     "actions": {
       "retry": "Retry",
       "creating": "Creating PR...",
-      "create": "Create Pull Request"
+      "pushing": "Pushing updates...",
+      "create": "Create Pull Request",
+      "pushUpdates": "Push Updates"
     },
     "labels": {
       "sourceBranch": "Source branch",

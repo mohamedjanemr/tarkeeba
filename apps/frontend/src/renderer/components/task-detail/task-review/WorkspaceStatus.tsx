@@ -32,6 +32,7 @@ const MAX_LOG_ENTRIES = 500;
 
 interface WorkspaceStatusProps {
   taskId: string;
+  existingPRUrl?: string;
   worktreeStatus: WorktreeStatus;
   workspaceError: string | null;
   stageOnly: boolean;
@@ -91,6 +92,7 @@ const TERMINAL_LABELS: Partial<Record<SupportedTerminal, string>> = {
 
 export function WorkspaceStatus({
   taskId,
+  existingPRUrl,
   worktreeStatus,
   workspaceError,
   stageOnly,
@@ -712,12 +714,14 @@ export function WorkspaceStatus({
               {isCreatingPR ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {t('taskReview:pr.actions.creating')}
+                  {t(existingPRUrl ? 'taskReview:pr.actions.pushing' : 'taskReview:pr.actions.creating')}
                 </>
               ) : (
                 <>
                   <GitPullRequest className="mr-2 h-4 w-4" />
-                  {t('common:buttons.createPR')}
+                  {existingPRUrl
+                    ? t('taskReview:pr.actions.pushUpdates')
+                    : t('common:buttons.createPR')}
                 </>
               )}
             </Button>

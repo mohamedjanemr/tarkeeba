@@ -8,6 +8,7 @@ import type {
 import {
   usePRReviewStore,
 } from "../../../stores/github";
+import type { CIFailureCategory, ChecksStatus, MergeableState, ReviewsStatus } from '../../../../shared/types/pr-status';
 
 // Re-export types for consumers
 export type { PRData, PRReviewResult, PRReviewProgress };
@@ -61,6 +62,10 @@ interface UseGitHubPRsResult {
     previousResult: PRReviewResult | null;
     error: string | null;
     newCommitsCheck?: NewCommitsCheck | null;
+    checksStatus?: ChecksStatus | null;
+    failureCategory?: CIFailureCategory;
+    reviewsStatus?: ReviewsStatus | null;
+    mergeableState?: MergeableState | null;
   } | null;
 }
 
@@ -144,6 +149,7 @@ export function useGitHubPRs(
         error: state.error,
         newCommitsCheck: state.newCommitsCheck,
         checksStatus: state.checksStatus,
+        failureCategory: state.failureCategory,
         reviewsStatus: state.reviewsStatus,
         mergeableState: state.mergeableState,
       };

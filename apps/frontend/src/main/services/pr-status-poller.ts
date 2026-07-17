@@ -20,6 +20,7 @@ import type {
   PollingMetadata,
   PRStatusUpdate,
   ChecksStatus,
+  CIFailureCategory,
   ReviewsStatus,
   MergeableState,
   PRPollingTier,
@@ -61,9 +62,22 @@ interface CombinedStatusResponse {
 interface CheckRunsResponse {
   total_count: number;
   check_runs: Array<{
+    id?: number;
+    name?: string;
     status: 'queued' | 'in_progress' | 'completed';
     conclusion: string | null;
+    output?: {
+      title?: string | null;
+      summary?: string | null;
+      text?: string | null;
+    };
+    annotations?: Array<{ title?: string | null; message?: string | null; raw_details?: string | null }>;
   }>;
+}
+
+interface ChecksResult {
+  status: ChecksStatus;
+  failureCategory: CIFailureCategory;
 }
 
 /**
@@ -84,6 +98,7 @@ interface PRPollingState {
   lastActivity: Date;
   lastPolled: Date | null;
   checksStatus: ChecksStatus;
+  failureCategory: CIFailureCategory;
   reviewsStatus: ReviewsStatus;
   mergeableState: MergeableState;
   /** Pending retry for unknown mergeable state */
@@ -210,6 +225,7 @@ export class PRStatusPoller {
         lastActivity: new Date(),
         lastPolled: null,
         checksStatus: 'none',
+        failureCategory: null,
         reviewsStatus: 'none',
         mergeableState: 'unknown',
       });
@@ -313,6 +329,7 @@ export class PRStatusPoller {
           lastActivity: new Date(),
           lastPolled: null,
           checksStatus: 'none',
+          failureCategory: null,
           reviewsStatus: 'none',
           mergeableState: 'unknown',
         });
@@ -344,6 +361,18 @@ export class PRStatusPoller {
     console.log(
       `[PRStatusPoller] Removed ${prNumbers.length} PRs from ${projectId}`
     );
+  }
+
+  /** Poll one PR immediately, for example after a workflow rerun request. */
+  async refreshPR(projectId: string, prNumber: number): Promise<boolean> {
+    const context = this.contexts.get(projectId);
+    if (!context || !context.prStates.has(prNumber) || this.isPausedForRateLimit) {
+      return false;
+    }
+
+    clearETagCacheForProject(projectId);
+    await this.pollPRs(context, [prNumber]);
+    return true;
   }
 
   /**
@@ -511,7 +540,7 @@ export class PRStatusPoller {
       state.tier = tier;
 
       // Fetch CI status (pass headSha to avoid duplicate PR fetch)
-      const checksStatus = await this.fetchChecksStatus(context, prNumber, prData.head.sha);
+      const checks = await this.fetchChecksStatus(context, prNumber, prData.head.sha);
 
       // Fetch review status
       const reviewsStatus = await this.fetchReviewsStatus(context, prNumber);
@@ -524,14 +553,16 @@ export class PRStatusPoller {
       );
 
       // Update state
-      state.checksStatus = checksStatus;
+      state.checksStatus = checks.status;
+      state.failureCategory = checks.failureCategory;
       state.reviewsStatus = reviewsStatus;
       state.mergeableState = mergeableState;
       state.lastPolled = new Date();
 
       return {
         prNumber,
-        checksStatus,
+        checksStatus: checks.status,
+        failureCategory: checks.failureCategory,
         reviewsStatus,
         mergeableState,
         lastPolled: state.lastPolled.toISOString(),
@@ -559,7 +590,7 @@ export class PRStatusPoller {
     context: ProjectPollingContext,
     prNumber: number,
     headSha: string
-  ): Promise<ChecksStatus> {
+  ): Promise<ChecksResult> {
     const { owner, repo, token } = context;
 
     try {
@@ -577,6 +608,27 @@ export class PRStatusPoller {
 
       const checksData = checksResult.data as CheckRunsResponse;
 
+      // GitHub infrastructure messages (including the "Unicorn" failure page)
+      // are commonly exposed as check-run annotations rather than output text.
+      const failedRuns = checksData.check_runs.filter(
+        (run) => run.id && run.status === 'completed' && run.conclusion &&
+          !['success', 'neutral', 'skipped'].includes(run.conclusion)
+      );
+      await Promise.all(failedRuns.slice(0, 10).map(async (run) => {
+        try {
+          const annotationsResult = await githubFetchWithETag(
+            token,
+            `/repos/${owner}/${repo}/check-runs/${run.id}/annotations?per_page=100`
+          );
+          this.updateGitHubRateLimitInfo(annotationsResult.rateLimitInfo);
+          run.annotations = Array.isArray(annotationsResult.data)
+            ? annotationsResult.data as CheckRunsResponse['check_runs'][number]['annotations']
+            : [];
+        } catch {
+          run.annotations = [];
+        }
+      }));
+
       // Aggregate status
       return this.aggregateChecksStatus(statusData, checksData);
     } catch (error) {
@@ -584,7 +636,7 @@ export class PRStatusPoller {
         `[PRStatusPoller] Error fetching checks status for PR #${prNumber}:`,
         error
       );
-      return 'none';
+      return { status: 'none', failureCategory: null };
     }
   }
 
@@ -594,24 +646,28 @@ export class PRStatusPoller {
   private aggregateChecksStatus(
     statusData: CombinedStatusResponse,
     checksData: CheckRunsResponse
-  ): ChecksStatus {
+  ): ChecksResult {
     const hasStatuses = statusData.statuses.length > 0;
     const hasCheckRuns = checksData.total_count > 0;
 
     if (!hasStatuses && !hasCheckRuns) {
-      return 'none';
+      return { status: 'none', failureCategory: null };
     }
 
     // Check for failures
     const statusFailed = statusData.statuses.some(
       (s) => s.state === 'failure' || s.state === 'error'
     );
-    const checksFailed = checksData.check_runs.some(
-      (c) => c.status === 'completed' && c.conclusion === 'failure'
+    const failedCheckRuns = checksData.check_runs.filter(
+      (c) => c.status === 'completed' && c.conclusion && !['success', 'neutral', 'skipped'].includes(c.conclusion)
     );
+    const checksFailed = failedCheckRuns.length > 0;
 
     if (statusFailed || checksFailed) {
-      return 'failure';
+      return {
+        status: 'failure',
+        failureCategory: this.classifyFailure(statusFailed, failedCheckRuns),
+      };
     }
 
     // Check for pending
@@ -621,11 +677,59 @@ export class PRStatusPoller {
     );
 
     if (statusPending || checksPending) {
-      return 'pending';
+      return { status: 'pending', failureCategory: null };
     }
 
     // All passed
-    return 'success';
+    return { status: 'success', failureCategory: null };
+  }
+
+  private classifyFailure(
+    statusFailed: boolean,
+    failedCheckRuns: CheckRunsResponse['check_runs']
+  ): Exclude<CIFailureCategory, null> {
+    // A legacy commit status failure has no structured diagnostics, so avoid
+    // suggesting a blind rerun. Failed Actions checks are classified from the
+    // conclusion and GitHub-provided output text.
+    if (statusFailed && failedCheckRuns.length === 0) {
+      return 'code';
+    }
+
+    const infrastructureConclusions = new Set([
+      'cancelled',
+      'timed_out',
+      'stale',
+      'startup_failure',
+      'action_required',
+    ]);
+    const infrastructurePattern = /\b(unicorn|infrastructure|internal server error|service unavailable|runner (?:lost|offline)|lost communication|job was not acquired|connection (?:reset|timed out)|failed to (?:download|resolve) action|github actions is currently unavailable)\b/i;
+
+    const diagnosticFor = (run: CheckRunsResponse['check_runs'][number]) => [
+      run.name,
+      run.output?.title,
+      run.output?.summary,
+      run.output?.text,
+      ...(run.annotations ?? []).flatMap((annotation) => [
+        annotation.title,
+        annotation.message,
+        annotation.raw_details,
+      ]),
+    ].filter(Boolean).join(' ');
+
+    const hasCodeFailure = failedCheckRuns.some((run) => {
+      if (run.conclusion !== 'failure') return false;
+      const diagnostic = diagnosticFor(run);
+      return !infrastructurePattern.test(diagnostic);
+    });
+    if (hasCodeFailure) {
+      return 'code';
+    }
+
+    const allRetryable = failedCheckRuns.length > 0 && failedCheckRuns.every((run) => {
+      const diagnostic = diagnosticFor(run);
+      return infrastructureConclusions.has(run.conclusion ?? '') || infrastructurePattern.test(diagnostic);
+    });
+    return allRetryable ? 'infrastructure' : 'code';
   }
 
   /**

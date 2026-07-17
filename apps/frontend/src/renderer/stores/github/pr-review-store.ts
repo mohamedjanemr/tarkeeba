@@ -7,6 +7,7 @@ import type {
 } from '../../../preload/api/modules/github-api';
 import type {
   ChecksStatus,
+  CIFailureCategory,
   ReviewsStatus,
   MergeableState,
   PRStatusUpdate
@@ -30,6 +31,8 @@ interface PRReviewState {
   newCommitsCheck: NewCommitsCheck | null;
   /** CI checks status from polling */
   checksStatus: ChecksStatus | null;
+  /** Best-effort category for failed CI checks */
+  failureCategory: CIFailureCategory;
   /** Review status from polling */
   reviewsStatus: ReviewsStatus | null;
   /** Mergeable state from polling */
@@ -55,6 +58,7 @@ interface PRReviewStoreState {
   /** Update PR status from polling (CI checks, reviews, mergeability) */
   setPRStatus: (projectId: string, prNumber: number, status: {
     checksStatus: ChecksStatus;
+    failureCategory: CIFailureCategory;
     reviewsStatus: ReviewsStatus;
     mergeableState: MergeableState;
     lastPolled: string;
@@ -97,6 +101,7 @@ export const usePRReviewStore = create<PRReviewStoreState>((set, get) => ({
         isExternalReview: payload.isExternalReview,
         // Preserve polling data — not managed by XState
         checksStatus: existing?.checksStatus ?? null,
+        failureCategory: existing?.failureCategory ?? null,
         reviewsStatus: existing?.reviewsStatus ?? null,
         mergeableState: existing?.mergeableState ?? null,
         lastPolled: existing?.lastPolled ?? null,
@@ -143,6 +148,7 @@ export const usePRReviewStore = create<PRReviewStoreState>((set, get) => ({
           error: null,
           newCommitsCheck: options?.preserveNewCommitsCheck ? (existing?.newCommitsCheck ?? null) : null,
           checksStatus: existing?.checksStatus ?? null,
+          failureCategory: existing?.failureCategory ?? null,
           reviewsStatus: existing?.reviewsStatus ?? null,
           mergeableState: existing?.mergeableState ?? null,
           lastPolled: existing?.lastPolled ?? null,
@@ -171,6 +177,7 @@ export const usePRReviewStore = create<PRReviewStoreState>((set, get) => ({
             error: null,
             newCommitsCheck: check,
             checksStatus: null,
+            failureCategory: null,
             reviewsStatus: null,
             mergeableState: null,
             lastPolled: null,
@@ -193,6 +200,7 @@ export const usePRReviewStore = create<PRReviewStoreState>((set, get) => ({
 
   setPRStatus: (projectId: string, prNumber: number, status: {
     checksStatus: ChecksStatus;
+    failureCategory: CIFailureCategory;
     reviewsStatus: ReviewsStatus;
     mergeableState: MergeableState;
     lastPolled: string;
@@ -215,6 +223,7 @@ export const usePRReviewStore = create<PRReviewStoreState>((set, get) => ({
             error: null,
             newCommitsCheck: null,
             checksStatus: status.checksStatus,
+            failureCategory: status.failureCategory,
             reviewsStatus: status.reviewsStatus,
             mergeableState: status.mergeableState,
             lastPolled: status.lastPolled,
@@ -229,6 +238,7 @@ export const usePRReviewStore = create<PRReviewStoreState>((set, get) => ({
         [key]: {
           ...existing,
           checksStatus: status.checksStatus,
+          failureCategory: status.failureCategory,
           reviewsStatus: status.reviewsStatus,
           mergeableState: status.mergeableState,
           lastPolled: status.lastPolled
@@ -249,6 +259,7 @@ export const usePRReviewStore = create<PRReviewStoreState>((set, get) => ({
         [key]: {
           ...existing,
           checksStatus: null,
+          failureCategory: null,
           reviewsStatus: null,
           mergeableState: null,
           lastPolled: null
@@ -330,6 +341,7 @@ export function initializePRReviewListeners(): void {
       for (const status of statuses) {
         store.setPRStatus(projectId, status.prNumber, {
           checksStatus: status.checksStatus,
+          failureCategory: status.failureCategory,
           reviewsStatus: status.reviewsStatus,
           mergeableState: status.mergeableState,
           lastPolled: status.lastPolled ?? new Date().toISOString()

@@ -568,6 +568,8 @@ export interface WorktreeCreatePRResult {
   error?: string;
   message?: string;  // Human-readable message for both success and error cases
   alreadyExists?: boolean;
+  /** True when the remote branch already contained the local HEAD. */
+  upToDate?: boolean;
 }
 
 /**

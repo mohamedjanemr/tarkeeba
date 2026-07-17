@@ -5,7 +5,7 @@ import { Button } from '../../ui/button';
 import { cn } from '../../../lib/utils';
 import type { PRData, PRReviewProgress, PRReviewResult } from '../hooks/useGitHubPRs';
 import type { NewCommitsCheck } from '../../../../preload/api/modules/github-api';
-import type { ChecksStatus, ReviewsStatus, MergeableState } from '../../../../shared/types/pr-status';
+import type { CIFailureCategory, ChecksStatus, ReviewsStatus, MergeableState } from '../../../../shared/types/pr-status';
 import { useTranslation } from 'react-i18next';
 import { CompactStatusIndicator } from './StatusIndicator';
 
@@ -165,6 +165,7 @@ interface PRReviewInfo {
   newCommitsCheck?: NewCommitsCheck | null;
   /** CI checks status from polling */
   checksStatus?: ChecksStatus | null;
+  failureCategory?: CIFailureCategory;
   /** Review status from polling */
   reviewsStatus?: ReviewsStatus | null;
   /** Mergeable state from polling */
@@ -317,6 +318,7 @@ export function PRList({
                     {/* GitHub status indicators (CI, reviews, merge status) */}
                     <CompactStatusIndicator
                       checksStatus={reviewState?.checksStatus}
+                      failureCategory={reviewState?.failureCategory}
                       reviewsStatus={reviewState?.reviewsStatus}
                       mergeableState={reviewState?.mergeableState}
                       showMergeStatus={false}

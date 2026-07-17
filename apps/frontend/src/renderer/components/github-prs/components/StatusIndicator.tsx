@@ -1,7 +1,7 @@
 import { CheckCircle2, Circle, XCircle, Loader2, AlertTriangle, GitMerge, Ban, HelpCircle } from 'lucide-react';
 import { Badge } from '../../ui/badge';
 import { cn } from '../../../lib/utils';
-import type { ChecksStatus, ReviewsStatus, MergeableState } from '../../../../shared/types/pr-status';
+import type { CIFailureCategory, ChecksStatus, ReviewsStatus, MergeableState } from '../../../../shared/types/pr-status';
 import { useTranslation } from 'react-i18next';
 
 /**
@@ -100,6 +100,8 @@ function MergeReadinessIcon({ state, className }: MergeReadinessIconProps) {
 export interface StatusIndicatorProps {
   /** CI checks status */
   checksStatus?: ChecksStatus | null;
+  /** Best-effort failure category used to explain whether a rerun may help */
+  failureCategory?: CIFailureCategory;
   /** Review status */
   reviewsStatus?: ReviewsStatus | null;
   /** Mergeable state */
@@ -130,6 +132,7 @@ const mergeKeyMap: Record<string, string> = {
 
 export function StatusIndicator({
   checksStatus,
+  failureCategory,
   reviewsStatus,
   mergeableState,
   className,
@@ -144,16 +147,21 @@ export function StatusIndicator({
   }
 
   const mergeKey = mergeableState ? mergeKeyMap[mergeableState] : null;
+  const ciLabel = checksStatus === 'failure' && failureCategory
+    ? t(`prStatus.ci.failureCategory.${failureCategory}`)
+    : checksStatus
+      ? t(`prStatus.ci.${checksStatus}`)
+      : '';
 
   return (
     <div className={cn('flex items-center gap-2', className)}>
       {/* CI Status */}
       {checksStatus && checksStatus !== 'none' && (
-        <div className="flex items-center gap-1" title={t(`prStatus.ci.${checksStatus}`)}>
+        <div className="flex items-center gap-1" title={ciLabel}>
           <CIStatusIcon status={checksStatus} />
           {!compact && (
             <span className="text-xs text-muted-foreground">
-              {t(`prStatus.ci.${checksStatus}`)}
+              {ciLabel}
             </span>
           )}
         </div>

@@ -434,6 +434,7 @@ export const IPC_CHANNELS = {
   // GitHub PR Status Polling (production system checks)
   GITHUB_PR_STATUS_POLL_START: 'github:pr:statusPollStart',   // Start polling PR status
   GITHUB_PR_STATUS_POLL_STOP: 'github:pr:statusPollStop',     // Stop polling PR status
+  GITHUB_PR_STATUS_REFRESH: 'github:pr:statusRefresh',        // Refresh one PR immediately
   GITHUB_PR_STATUS_UPDATE: 'github:pr:statusUpdate',          // Event: PR status updated (main -> renderer)
 
   // GitHub PR Memory operations (saves review insights to memory layer)
@@ -443,6 +444,7 @@ export const IPC_CHANNELS = {
   // GitHub Workflow Approval (for fork PRs)
   GITHUB_WORKFLOWS_AWAITING_APPROVAL: 'github:workflows:awaitingApproval',
   GITHUB_WORKFLOW_APPROVE: 'github:workflow:approve',
+  GITHUB_WORKFLOW_RERUN_FAILED: 'github:workflow:rerunFailed',
 
   // GitHub Issue Triage operations
   GITHUB_TRIAGE_RUN: 'github:triage:run',

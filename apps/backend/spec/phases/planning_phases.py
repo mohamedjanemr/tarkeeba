@@ -75,21 +75,33 @@ class PlanningPhaseMixin:
 
         # Fall back to agent
         self.ui.print_status("Falling back to planner agent...", "progress")
+        validation_feedback = ""
         for attempt in range(budget.max_spec_attempts):
             self.ui.print_status(
                 f"Running planner agent (attempt {attempt + 1})...", "progress"
             )
 
+            budget_context = (
+                f"\n## EXECUTION BUDGET\n\nCreate no more than "
+                f"{budget.max_subtasks} vertical subtasks total. Group related "
+                "file changes into one subtask and keep each subtask independently "
+                "verifiable.\n"
+                if budget.max_subtasks is not None
+                else ""
+            )
+            repair_context = (
+                "\n## PLAN VALIDATION FEEDBACK\n\n"
+                "The previous plan was rejected. Repair every issue below before "
+                "finishing. If a file is needed by multiple slices, merge those "
+                "slices or assign all edits for that file to exactly one slice.\n\n"
+                f"{validation_feedback}\n"
+                if validation_feedback
+                else ""
+            )
+
             success, output = await self.run_agent_fn(
                 "planner.md",
-                additional_context=(
-                    f"\n## EXECUTION BUDGET\n\nCreate no more than "
-                    f"{budget.max_subtasks} vertical subtasks total. Group related "
-                    "file changes into one subtask and keep each subtask independently "
-                    "verifiable.\n"
-                    if budget.max_subtasks is not None
-                    else ""
-                ),
+                additional_context=budget_context + repair_context,
                 phase_name="planning",
             )
 
@@ -111,6 +123,12 @@ class PlanningPhaseMixin:
                             return PhaseResult(
                                 "planning", True, [str(plan_file)], [], attempt
                             )
+                    validation_feedback = "\n".join(
+                        [
+                            *(f"ERROR: {error}" for error in result.errors),
+                            *(f"FIX: {fix}" for fix in result.fixes),
+                        ]
+                    )
                     errors.append(f"Agent attempt {attempt + 1}: {result.errors}")
                     self.ui.print_status("Plan created but invalid", "error")
             else:

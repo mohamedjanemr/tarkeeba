@@ -1445,6 +1445,7 @@ interface ParsedPRResult {
   prUrl?: string;
   alreadyExists?: boolean;
   error?: string;
+  upToDate?: boolean;
 }
 
 /**
@@ -1501,7 +1502,9 @@ function parsePRJsonOutput(stdout: string): ParsedPRResult | null {
       prUrl: validatedPrUrl,
       alreadyExists: typeof parsed.already_exists === 'boolean' ? parsed.already_exists :
                      typeof parsed.alreadyExists === 'boolean' ? parsed.alreadyExists : undefined,
-      error: typeof parsed.error === 'string' ? parsed.error : undefined
+      error: typeof parsed.error === 'string' ? parsed.error : undefined,
+      upToDate: typeof parsed.up_to_date === 'boolean' ? parsed.up_to_date :
+                 typeof parsed.upToDate === 'boolean' ? parsed.upToDate : undefined
     };
   } catch {
     return null;
@@ -3372,7 +3375,8 @@ export function registerWorktreeHandlers(
                     success: result.success,
                     prUrl: result.prUrl,
                     error: result.error,
-                    alreadyExists: result.alreadyExists
+                    alreadyExists: result.alreadyExists,
+                    upToDate: result.upToDate
                   }
                 });
               } else {

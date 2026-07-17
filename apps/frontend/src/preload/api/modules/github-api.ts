@@ -10,7 +10,8 @@ import type {
   VersionSuggestion,
   PaginatedIssuesResult,
   PRStatusUpdate,
-  PollingMetadata
+  PollingMetadata,
+  RerunFailedJobsResult
 } from '../../../shared/types';
 import { createIpcListener, invokeIpc, sendIpc, IpcListenerCleanup } from './ipc-utils';
 
@@ -300,6 +301,7 @@ export interface GitHubAPI {
   // Workflow approval (for fork PRs)
   getWorkflowsAwaitingApproval: (projectId: string, prNumber: number) => Promise<WorkflowsAwaitingApprovalResult>;
   approveWorkflow: (projectId: string, runId: number) => Promise<boolean>;
+  rerunFailedJobs: (projectId: string, prNumber: number) => Promise<RerunFailedJobsResult>;
 
   // PR event listeners
   onPRReviewProgress: (
@@ -323,6 +325,8 @@ export interface GitHubAPI {
   startStatusPolling: (projectId: string, prNumbers: number[]) => Promise<boolean>;
   /** Stop background polling for a project */
   stopStatusPolling: (projectId: string) => Promise<boolean>;
+  /** Immediately refresh one PR's status */
+  refreshPRStatus: (projectId: string, prNumber: number) => Promise<boolean>;
   /** Get current polling metadata (rate limits, errors, etc.) */
   getPollingMetadata: (projectId: string) => Promise<PollingMetadata | null>;
 
@@ -791,6 +795,9 @@ export const createGitHubAPI = (): GitHubAPI => ({
   approveWorkflow: (projectId: string, runId: number): Promise<boolean> =>
     invokeIpc(IPC_CHANNELS.GITHUB_WORKFLOW_APPROVE, projectId, runId),
 
+  rerunFailedJobs: (projectId: string, prNumber: number): Promise<RerunFailedJobsResult> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_WORKFLOW_RERUN_FAILED, projectId, prNumber),
+
   // PR event listeners
   onPRReviewProgress: (
     callback: (projectId: string, progress: PRReviewProgress) => void
@@ -823,6 +830,9 @@ export const createGitHubAPI = (): GitHubAPI => ({
 
   stopStatusPolling: (projectId: string): Promise<boolean> =>
     invokeIpc(IPC_CHANNELS.GITHUB_PR_STATUS_POLL_STOP, { projectId }),
+
+  refreshPRStatus: (projectId: string, prNumber: number): Promise<boolean> =>
+    invokeIpc(IPC_CHANNELS.GITHUB_PR_STATUS_REFRESH, projectId, prNumber),
 
   getPollingMetadata: (projectId: string): Promise<PollingMetadata | null> =>
     invokeIpc(IPC_CHANNELS.GITHUB_PR_STATUS_UPDATE, projectId),

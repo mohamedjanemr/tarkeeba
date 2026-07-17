@@ -132,6 +132,17 @@ describe('PRDetail - Clean Review State Reset Integration', () => {
     mockOnPostComment.mockResolvedValue(true);
   });
 
+  it('uses the selected project when loading workflow approvals', async () => {
+    renderPRDetail();
+
+    await waitFor(() => {
+      expect(window.electronAPI.github.getWorkflowsAwaitingApproval).toHaveBeenCalledWith(
+        mockProjectId,
+        123
+      );
+    });
+  });
+
   it('should reset cleanReviewPosted state when pr.number changes', async () => {
     const initialPR = createMockPR({ number: 123 });
     const cleanReviewResult = createMockCleanReviewResult();

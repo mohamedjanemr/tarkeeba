@@ -1279,6 +1279,7 @@ def handle_create_pr_command(
         "pushed": raw_result.get("pushed", False),
         "remote": raw_result.get("remote", ""),
         "branch": raw_result.get("branch", ""),
+        "up_to_date": raw_result.get("up_to_date", False),
     }
 
     if result.get("success"):

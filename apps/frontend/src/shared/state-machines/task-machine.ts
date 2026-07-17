@@ -30,6 +30,7 @@ export type TaskEvent =
   | { type: 'PROCESS_EXITED'; exitCode: number; signal?: string; unexpected?: boolean }
   | { type: 'USER_STOPPED'; hasPlan?: boolean }
   | { type: 'USER_RESUMED' }
+  | { type: 'FOLLOWUP_REQUESTED' }
   | { type: 'MARK_DONE' }
   | { type: 'CREATE_PR' }
   | { type: 'PR_CREATED'; prUrl: string };
@@ -127,6 +128,7 @@ export const taskMachine = createMachine(
           CREATE_PR: 'creating_pr',
           MARK_DONE: 'done',
           USER_RESUMED: { target: 'coding', actions: 'clearReviewReason' },
+          FOLLOWUP_REQUESTED: { target: 'qa_fixing', actions: 'clearReviewReason' },
           // Allow restarting planning from human_review (e.g., incomplete task with no subtasks)
           PLANNING_STARTED: { target: 'planning', actions: 'clearReviewReason' }
         }
@@ -146,11 +148,14 @@ export const taskMachine = createMachine(
       },
       pr_created: {
         on: {
-          MARK_DONE: 'done'
+          MARK_DONE: 'done',
+          FOLLOWUP_REQUESTED: { target: 'qa_fixing', actions: 'clearReviewReason' }
         }
       },
       done: {
-        type: 'final'
+        on: {
+          FOLLOWUP_REQUESTED: { target: 'qa_fixing', actions: 'clearReviewReason' }
+        }
       }
     }
   },

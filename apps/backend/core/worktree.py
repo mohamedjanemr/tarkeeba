@@ -124,6 +124,7 @@ class PushBranchResult(TypedDict, total=False):
     branch: str
     remote: str
     error: str
+    up_to_date: bool
 
 
 class PullRequestResult(TypedDict, total=False):
@@ -148,6 +149,7 @@ class PushAndCreatePRResult(TypedDict, total=False):
     already_exists: bool
     error: str
     message: str
+    up_to_date: bool
 
 
 class WorktreeError(Exception):
@@ -1149,6 +1151,9 @@ class WorktreeManager:
                             success=True,
                             branch=info.branch,
                             remote="origin",
+                            up_to_date="everything up-to-date" in (
+                                f"{result.stdout}\n{result.stderr}"
+                            ).lower(),
                         ),
                         "",
                     )
@@ -1898,6 +1903,7 @@ class WorktreeManager:
             provider=provider,
             pr_url=pr_result.get("pr_url"),
             already_exists=pr_result.get("already_exists", False),
+            up_to_date=push_result.get("up_to_date", False),
             error=pr_result.get("error"),
         )
 

@@ -613,6 +613,76 @@ describe('PRStatusPoller', () => {
       const metadata = poller.getPollingMetadata('owner/repo');
       expect(metadata.isPolling).toBe(true);
     });
+
+    it('should classify GitHub infrastructure failures as retryable', async () => {
+      poller.setMainWindowGetter(() => ({ webContents: { send: vi.fn() } }) as unknown as Electron.BrowserWindow);
+      mockGithubFetchWithETag
+        .mockResolvedValueOnce({
+          data: { number: 1, updated_at: new Date().toISOString(), head: { sha: 'abc123' }, mergeable: true, mergeable_state: 'clean' },
+          fromCache: false,
+          rateLimitInfo: null
+        })
+        .mockResolvedValueOnce({
+          data: { state: 'success', statuses: [] },
+          fromCache: false,
+          rateLimitInfo: null
+        })
+        .mockResolvedValueOnce({
+          data: {
+            total_count: 1,
+            check_runs: [{
+              name: 'test-python',
+              status: 'completed',
+              conclusion: 'failure',
+              output: { summary: 'GitHub Unicorn: an internal server error interrupted this job' }
+            }]
+          },
+          fromCache: false,
+          rateLimitInfo: null
+        })
+        .mockResolvedValueOnce({ data: [], fromCache: false, rateLimitInfo: null });
+
+      await poller.startPolling('owner/repo', [1], 'test-token');
+
+      const update = mockSafeSendToRenderer.mock.calls.at(-1)?.[2];
+      expect(update.statuses[0]).toMatchObject({
+        checksStatus: 'failure',
+        failureCategory: 'infrastructure'
+      });
+    });
+
+    it('should classify ordinary failed tests as code failures', async () => {
+      poller.setMainWindowGetter(() => ({ webContents: { send: vi.fn() } }) as unknown as Electron.BrowserWindow);
+      mockGithubFetchWithETag
+        .mockResolvedValueOnce({
+          data: { number: 1, updated_at: new Date().toISOString(), head: { sha: 'abc123' }, mergeable: true, mergeable_state: 'clean' },
+          fromCache: false,
+          rateLimitInfo: null
+        })
+        .mockResolvedValueOnce({ data: { state: 'success', statuses: [] }, fromCache: false, rateLimitInfo: null })
+        .mockResolvedValueOnce({
+          data: {
+            total_count: 1,
+            check_runs: [{
+              name: 'frontend tests',
+              status: 'completed',
+              conclusion: 'failure',
+              output: { summary: 'Expected button to be enabled' }
+            }]
+          },
+          fromCache: false,
+          rateLimitInfo: null
+        })
+        .mockResolvedValueOnce({ data: [], fromCache: false, rateLimitInfo: null });
+
+      await poller.startPolling('owner/repo', [1], 'test-token');
+
+      const update = mockSafeSendToRenderer.mock.calls.at(-1)?.[2];
+      expect(update.statuses[0]).toMatchObject({
+        checksStatus: 'failure',
+        failureCategory: 'code'
+      });
+    });
   });
 
   describe('Main Window Integration', () => {

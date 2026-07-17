@@ -476,4 +476,20 @@ describe('taskMachine', () => {
       }
     });
   });
+
+  describe('completed task follow-up', () => {
+    it.each(['human_review', 'pr_created', 'done']) (
+      'should enter QA fixing from %s when feedback is requested',
+      (initialState) => {
+        const actor = createActor(taskMachine, {
+          snapshot: taskMachine.resolveState({ value: initialState, context: {} })
+        });
+        actor.start();
+        actor.send({ type: 'FOLLOWUP_REQUESTED' });
+
+        expect(actor.getSnapshot().value).toBe('qa_fixing');
+        actor.stop();
+      }
+    );
+  });
 });

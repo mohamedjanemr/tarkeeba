@@ -406,4 +406,30 @@ describe('CreatePRDialog', () => {
       expect(screen.queryByTestId('pr-link-button')).not.toBeInTheDocument();
     });
   });
+
+  it('should explicitly report when an existing PR has no changes to push', async () => {
+    mockOnCreatePR.mockResolvedValue({
+      success: true,
+      prUrl: 'https://github.com/test/repo/pull/456',
+      alreadyExists: true,
+      upToDate: true
+    });
+
+    render(
+      <CreatePRDialog
+        open={true}
+        task={mockTask}
+        worktreeStatus={mockWorktreeStatus}
+        onOpenChange={mockOnOpenChange}
+        onCreatePR={mockOnCreatePR}
+        isExistingPR={true}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /push updates/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/no changes to push/i)).toBeInTheDocument();
+    });
+  });
 });

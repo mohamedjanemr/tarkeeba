@@ -162,6 +162,12 @@ export function PRDetail({
   const [workflowsAwaiting, setWorkflowsAwaiting] = useState<WorkflowsAwaitingApprovalResult | null>(null);
   const [isApprovingWorkflow, setIsApprovingWorkflow] = useState<number | null>(null);
   const [workflowsExpanded, setWorkflowsExpanded] = useState(true);
+  const [isRerunningChecks, setIsRerunningChecks] = useState(false);
+  const [isAutoRefreshingChecks, setIsAutoRefreshingChecks] = useState(false);
+  const [rerunMessage, setRerunMessage] = useState<string | null>(null);
+  const polledStatus = usePRReviewStore((state) =>
+    state.prReviews[`${projectId}:${pr.number}`] ?? null
+  );
 
   // Generate stable IDs for accessibility
   const cleanReviewErrorDetailsId = useId();
@@ -556,6 +562,9 @@ export function PRDetail({
     setBranchUpdateError(null);
     setBranchUpdateSuccess(false);
     setIsUpdatingBranch(false);
+    setIsRerunningChecks(false);
+    setIsAutoRefreshingChecks(false);
+    setRerunMessage(null);
   }, [pr.number]);
 
   // Check for workflows awaiting approval (fork PRs) when PR changes or review completes
@@ -563,7 +572,7 @@ export function PRDetail({
     const checkWorkflows = async () => {
       try {
         const result = await window.electronAPI.github.getWorkflowsAwaitingApproval(
-          '', // projectId will be resolved from active project
+          projectId,
           pr.number
         );
         setWorkflowsAwaiting(result);
@@ -574,7 +583,7 @@ export function PRDetail({
 
     checkWorkflows();
     // Re-check when a review is completed (CI status might have changed)
-  }, [pr.number, reviewResult]);
+  }, [pr.number, projectId, reviewResult]);
 
   // Check merge readiness (real-time validation) when PR is selected
   // This runs on every PR selection to catch stale verdicts
@@ -617,16 +626,16 @@ export function PRDetail({
   const handleApproveWorkflow = useCallback(async (runId: number) => {
     setIsApprovingWorkflow(runId);
     try {
-      const success = await window.electronAPI.github.approveWorkflow('', runId);
+      const success = await window.electronAPI.github.approveWorkflow(projectId, runId);
       if (success) {
         // Refresh the workflows list after approval
-        const result = await window.electronAPI.github.getWorkflowsAwaitingApproval('', pr.number);
+        const result = await window.electronAPI.github.getWorkflowsAwaitingApproval(projectId, pr.number);
         setWorkflowsAwaiting(result);
       }
     } finally {
       setIsApprovingWorkflow(null);
     }
-  }, [pr.number]);
+  }, [pr.number, projectId]);
 
   // Handler to approve all workflows at once
   const handleApproveAllWorkflows = useCallback(async () => {
@@ -635,7 +644,7 @@ export function PRDetail({
     for (const workflow of workflowsAwaiting.workflow_runs) {
       setIsApprovingWorkflow(workflow.id);
       try {
-        await window.electronAPI.github.approveWorkflow('', workflow.id);
+        await window.electronAPI.github.approveWorkflow(projectId, workflow.id);
       } catch {
         // Continue with other workflows even if one fails
       }
@@ -643,9 +652,48 @@ export function PRDetail({
     setIsApprovingWorkflow(null);
 
     // Refresh the workflows list
-    const result = await window.electronAPI.github.getWorkflowsAwaitingApproval('', pr.number);
+    const result = await window.electronAPI.github.getWorkflowsAwaitingApproval(projectId, pr.number);
     setWorkflowsAwaiting(result);
-  }, [pr.number, workflowsAwaiting]);
+  }, [pr.number, projectId, workflowsAwaiting]);
+
+  const handleRerunFailedChecks = useCallback(async () => {
+    setIsRerunningChecks(true);
+    setRerunMessage(null);
+    try {
+      const result = await window.electronAPI.github.rerunFailedJobs(projectId, pr.number);
+      if (result.rerunCount > 0) {
+        setRerunMessage(t('prReview.rerunStarted', { count: result.rerunCount }));
+        setIsAutoRefreshingChecks(true);
+      } else {
+        setRerunMessage(result.error || t('prReview.rerunFailed'));
+      }
+    } catch (error) {
+      setRerunMessage(error instanceof Error ? error.message : t('prReview.rerunFailed'));
+    } finally {
+      setIsRerunningChecks(false);
+    }
+  }, [projectId, pr.number, t]);
+
+  useEffect(() => {
+    if (!isAutoRefreshingChecks) return;
+    if (polledStatus?.checksStatus === 'success') {
+      setIsAutoRefreshingChecks(false);
+      setRerunMessage(t('prReview.rerunPassed'));
+      return;
+    }
+
+    const startedAt = Date.now();
+    const refresh = () => {
+      window.electronAPI.github.refreshPRStatus(projectId, pr.number).catch(() => undefined);
+      if (Date.now() - startedAt >= 120_000) {
+        setIsAutoRefreshingChecks(false);
+        setRerunMessage(t('prReview.rerunStillRunning'));
+      }
+    };
+    const interval = window.setInterval(refresh, 5_000);
+    refresh();
+    return () => window.clearInterval(interval);
+  }, [isAutoRefreshingChecks, polledStatus?.checksStatus, projectId, pr.number, t]);
 
   // Handler to update PR branch when behind base
   const handleUpdateBranch = useCallback(async () => {
@@ -1071,6 +1119,34 @@ ${t('prReview.blockedStatusMessageFooter')}`;
 
         {/* Refactored Header */}
         <PRHeader pr={pr} isLoadingFiles={isLoadingFiles} />
+
+        {polledStatus?.checksStatus === 'failure' && (
+          <Card className={polledStatus.failureCategory === 'infrastructure'
+            ? 'border-warning/50 bg-warning/10'
+            : 'border-destructive/40 bg-destructive/5'}>
+            <CardContent className="py-4 flex flex-wrap items-center gap-3">
+              <AlertTriangle className="h-5 w-5 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="font-medium">
+                  {t(`prStatus.ci.failureCategory.${polledStatus.failureCategory ?? 'code'}`)}
+                </p>
+                {rerunMessage && <p className="text-sm text-muted-foreground mt-1">{rerunMessage}</p>}
+              </div>
+              <Button
+                variant="outline"
+                onClick={handleRerunFailedChecks}
+                disabled={isRerunningChecks || isAutoRefreshingChecks}
+              >
+                {isRerunningChecks || isAutoRefreshingChecks ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                )}
+                {isAutoRefreshingChecks ? t('prReview.autoRefreshingChecks') : t('prReview.rerunFailedChecks')}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Merge Readiness Warning Banner - shows when real-time status contradicts AI verdict */}
         {mergeReadiness && mergeReadiness.blockers.length > 0 && reviewResult?.success && (

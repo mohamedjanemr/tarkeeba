@@ -399,6 +399,12 @@
     "viewOnGitHub": "View",
     "approveWorkflow": "Approve",
     "approveAllWorkflows": "Approve All Workflows",
+    "rerunFailedChecks": "Re-run failed checks",
+    "autoRefreshingChecks": "Watching re-run...",
+    "rerunStarted": "Started {{count}} workflow re-run. Status will refresh automatically.",
+    "rerunFailed": "Failed to start the workflow re-run.",
+    "rerunPassed": "The re-run passed.",
+    "rerunStillRunning": "The re-run is still running. Background polling will continue.",
     "postCleanReview": "Post Clean Review",
     "postingCleanReview": "Posting...",
     "cleanReviewPosted": "Clean review posted",
@@ -863,7 +869,11 @@
       "failure": "CI Failed",
       "successTooltip": "All CI checks have passed",
       "pendingTooltip": "CI checks are still running",
-      "failureTooltip": "One or more CI checks have failed"
+      "failureTooltip": "One or more CI checks have failed",
+      "failureCategory": {
+        "infrastructure": "CI infrastructure failed; a re-run may recover it",
+        "code": "A code or test check failed; inspect the job logs before re-running"
+      }
     },
     "review": {
       "approved": "Approved",

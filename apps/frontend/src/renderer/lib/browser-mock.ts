@@ -236,6 +236,7 @@ const browserMockAPI: ElectronAPI = {
     getPRLogs: async () => null,
     getWorkflowsAwaitingApproval: async () => ({ awaiting_approval: 0, workflow_runs: [], can_approve: false }),
     approveWorkflow: async () => true,
+    rerunFailedJobs: async () => ({ success: false, rerunCount: 0, runIds: [], error: 'Not available in browser mode' }),
     onPRReviewProgress: () => () => {},
     onPRReviewComplete: () => () => {},
     onPRReviewError: () => () => {},
@@ -255,6 +256,7 @@ const browserMockAPI: ElectronAPI = {
     // PR status polling
     startStatusPolling: async () => true,
     stopStatusPolling: async () => true,
+    refreshPRStatus: async () => true,
     getPollingMetadata: async () => null,
     onPRStatusUpdate: () => () => {}
   },
