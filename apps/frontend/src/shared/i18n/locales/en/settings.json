@@ -344,7 +344,18 @@
       "title": "General",
       "description": "Auto-Build and agent config",
       "useClaudeMd": "Use CLAUDE.md",
-      "useClaudeMdDescription": "Include CLAUDE.md instructions in agent context"
+      "useClaudeMdDescription": "Include CLAUDE.md instructions in agent context",
+      "projectLocation": {
+        "title": "Project Location",
+        "pathLabel": "Path",
+        "copyButton": "Copy Path",
+        "openButton": "Open Folder",
+        "copySuccess": "Path copied to clipboard",
+        "copyFailed": "Failed to copy path",
+        "openSuccess": "Folder opened",
+        "openFailed": "Failed to open folder",
+        "invalidPath": "The project path is invalid or no longer exists"
+      }
     },
     "claude": {
       "title": "Claude Auth",

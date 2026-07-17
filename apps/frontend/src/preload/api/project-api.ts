@@ -39,6 +39,7 @@ export interface ProjectAPI {
   ) => Promise<IPCResult>;
   initializeProject: (projectId: string) => Promise<IPCResult<InitializationResult>>;
   checkProjectVersion: (projectId: string) => Promise<IPCResult<AutoBuildVersionInfo>>;
+  openProjectLocation: (path: string) => Promise<IPCResult>;
 
   // Tab State (persisted in main process for reliability)
   getTabState: () => Promise<IPCResult<TabState>>;
@@ -214,6 +215,8 @@ export const createProjectAPI = (): ProjectAPI => ({
 
   checkProjectVersion: (projectId: string): Promise<IPCResult<AutoBuildVersionInfo>> =>
     ipcRenderer.invoke(IPC_CHANNELS.PROJECT_CHECK_VERSION, projectId),
+  openProjectLocation: (path: string): Promise<IPCResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.PROJECT_OPEN_LOCATION, path),
 
   // Tab State (persisted in main process for reliability)
   getTabState: (): Promise<IPCResult<TabState>> =>

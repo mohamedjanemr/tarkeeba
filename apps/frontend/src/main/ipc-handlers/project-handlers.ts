@@ -1,5 +1,5 @@
-import { ipcMain } from 'electron';
-import { existsSync } from 'fs';
+import { ipcMain, shell } from 'electron';
+import { existsSync, statSync } from 'fs';
 import { execFileSync } from 'child_process';
 import { IPC_CHANNELS } from '../../shared/constants';
 import type {
@@ -27,6 +27,7 @@ import { insightsService } from '../insights-service';
 import { titleGenerator } from '../title-generator';
 import type { BrowserWindow } from 'electron';
 import { getEffectiveSourcePath } from '../updater/path-resolver';
+import { isSecurePath } from '../platform';
 
 // ============================================
 // Git Helper Functions
@@ -353,6 +354,38 @@ export function registerProjectHandlers(
         return { success: true };
       }
       return { success: false, error: 'Project not found' };
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.PROJECT_OPEN_LOCATION,
+    async (_, projectPath: string): Promise<IPCResult> => {
+      try {
+        if (!isSecurePath(projectPath)) {
+          return { success: false, error: 'Invalid project path' };
+        }
+
+        if (!existsSync(projectPath)) {
+          return { success: false, error: 'Directory does not exist' };
+        }
+
+        if (!statSync(projectPath).isDirectory()) {
+          return { success: false, error: 'Path is not a directory' };
+        }
+
+        const result = await shell.openPath(projectPath);
+        if (result) {
+          // shell.openPath resolves with a non-empty string on failure
+          return { success: false, error: result };
+        }
+
+        return { success: true };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        };
+      }
     }
   );
 

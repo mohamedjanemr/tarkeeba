@@ -198,6 +198,7 @@ export interface ElectronAPI {
   updateProjectSettings: (projectId: string, settings: Partial<ProjectSettings>) => Promise<IPCResult>;
   initializeProject: (projectId: string) => Promise<IPCResult<InitializationResult>>;
   checkProjectVersion: (projectId: string) => Promise<IPCResult<AutoBuildVersionInfo>>;
+  openProjectLocation: (path: string) => Promise<IPCResult>;
 
   // Tab State (persisted in main process for reliability)
   getTabState: () => Promise<IPCResult<TabState>>;

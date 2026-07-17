@@ -43,6 +43,8 @@ export const projectMock = {
     }
   }),
 
+  openProjectLocation: async () => ({ success: true }),
+
   // Tab state operations (persisted in main process)
   getTabState: async () => ({
     success: true,

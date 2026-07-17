@@ -344,7 +344,18 @@
       "title": "Général",
       "description": "Auto-Build et configuration de l'agent",
       "useClaudeMd": "Utiliser CLAUDE.md",
-      "useClaudeMdDescription": "Inclure les instructions CLAUDE.md dans le contexte de l'agent"
+      "useClaudeMdDescription": "Inclure les instructions CLAUDE.md dans le contexte de l'agent",
+      "projectLocation": {
+        "title": "Emplacement du projet",
+        "pathLabel": "Chemin",
+        "copyButton": "Copier le chemin",
+        "openButton": "Ouvrir le dossier",
+        "copySuccess": "Chemin copié dans le presse-papiers",
+        "copyFailed": "Échec de la copie du chemin",
+        "openSuccess": "Dossier ouvert",
+        "openFailed": "Échec de l'ouverture du dossier",
+        "invalidPath": "Le chemin du projet est invalide ou n'existe plus"
+      }
     },
     "claude": {
       "title": "Auth Claude",
